@@ -8,6 +8,8 @@
       systems = [ "x86_64-linux" "aarch64-linux" ];
       forAll = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
     in {
+      nixosModules.default = ./nix/nixos-module.nix;
+
       packages = forAll (pkgs: let
         # swaybg hard-codes the layer-shell namespace "wallpaper".  Prefix it
         # so `niri msg layers` shows which shell owns the background.

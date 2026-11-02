@@ -160,12 +160,42 @@ cava、fontconfig、jq、niri、swayidle、swaybg 等运行依赖放进自己的
 系统里要已经有 Pleamar 0.4.x；`bin/pleamar-shell` 会从 PATH 或
 `/nix/store/*-pleamar-*/bin/pleamar` 找到它（Vitreus 用户通常已经装了）。
 
-niri 配置里启动 Island，并把三个面板绑到键上：
+### systemd user service（推荐）
+
+`nixosModules.default` 提供 `services.pleamar-shell`，会安装包并生成
+`pleamar-shell.service`。在 NixOS flake 里：
+
+```nix
+imports = [
+  inputs.pleamar-shell.nixosModules.default
+];
+
+services.pleamar-shell = {
+  enable = true;
+  layout = "island"; # 或 "frame"
+};
+```
+
+然后 **删掉** niri 里原来的：
+
+```kdl
+spawn-at-startup "pleamar-shell" "island";
+```
+
+重新部署后由 systemd 管理，编译/切换新提交后直接：
+
+```sh
+systemctl --user restart pleamar-shell.service
+systemctl --user status pleamar-shell.service
+```
+
+不再需要 niri 重启。首次从 `spawn-at-startup` 迁移时，先停掉旧的 shell，
+或在登录时让 systemd 启动它；否则 service 会因为已有 `pleamar --scene` 进程而退出。
+
+niri 里只保留面板/锁屏 IPC 按键：
 
 ```kdl
 // ~/.config/niri/config.kdl
-spawn-at-startup "pleamar-shell" "island";
-
 binds {
     Mod+Space     { spawn "pleamar-ipc" "search"; }
     Mod+Shift+S   { spawn "pleamar-ipc" "settings"; }
