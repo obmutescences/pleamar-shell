@@ -1,0 +1,15 @@
+language 0.4
+//  Reference only: one full-screen water ring.  Its corners are perfect, but
+//  niri composites the whole layer every frame, so it measures ~120 fps alone
+//  and ~90 fps while switching workspaces.  The shell uses the four-strip
+//  scenes in ../shell/ instead.
+scene Wrap {
+    surface { size: full, full; anchor: top_left; reserve: 0; rate: 120; level: top }
+    shader water = file "water_screen.wgsl"
+    shader water {
+        at: 0, 0
+        size: screen.width, screen.height
+        values: 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.9, 46
+        colors: #8ff5df, #58c8ff
+    }
+}

@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Show a wallpaper behind the windows.  Vitreus drives awww; this checkout
+# drives the much smaller swaybg with the same idea: the shell owns the image,
+# and the compositor (not a full-screen pleamar surface) paints it.
+set -euo pipefail
+
+path="${1:-}"
+[[ -n "$path" && -f "$path" ]] || { echo "usage: $0 <image>" >&2; exit 2; }
+
+swaybg="${SWAYBG:-}"
+if [[ -z "$swaybg" ]]; then
+    swaybg="$(command -v swaybg 2>/dev/null || true)"
+fi
+if [[ -z "$swaybg" ]]; then
+    #  Prefer the patched build (its layer namespace is pleamar-shell-wallpaper);
+    #  a plain swaybg is only the fallback.
+    swaybg="$(ls -d /nix/store/*-swaybg-pleamar-*/bin/swaybg 2>/dev/null | sort -V | tail -1)"
+fi
+if [[ -z "$swaybg" ]]; then
+    swaybg="$(ls -d /nix/store/*-swaybg-*/bin/swaybg 2>/dev/null | sort -V | tail -1)"
+fi
+[[ -n "$swaybg" && -x "$swaybg" ]] || { echo "swaybg not found" >&2; exit 3; }
+
+runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+marker="$runtime/pleamar-swaybg.path"
+
+#  The same picture already up: leave the daemon alone.  This is what a
+#  scene reload (or a second shell) does, so the wallpaper does not blink.
+if pgrep -f -- "$swaybg" >/dev/null 2>&1 && [[ "$(cat "$marker" 2>/dev/null || true)" == "$path" ]]; then
+    exit 0
+fi
+
+#  Stop the old one and wait for it to go: starting the new swaybg while the
+#  old is still alive was leaving two full-screen layers (and twice the cost).
+pkill -TERM -f -- "$swaybg" >/dev/null 2>&1 || true
+for _ in $(seq 1 40); do
+    pgrep -f -- "$swaybg" >/dev/null 2>&1 || break
+    sleep 0.05
+done
+pkill -KILL -f -- "$swaybg" >/dev/null 2>&1 || true
+mkdir -p "$runtime"
+printf '%s' "$path" >"$marker"
+setsid -f "$swaybg" -i "$path" -m fill >/tmp/pleamar-swaybg.log 2>&1
+for _ in $(seq 1 40); do
+    pgrep -f -- "$swaybg" >/dev/null 2>&1 && break
+    sleep 0.05
+done
+if ! pgrep -f -- "$swaybg" >/dev/null 2>&1; then
+    rm -f "$marker"
+    exit 4
+fi

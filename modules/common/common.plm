@@ -1,0 +1,277 @@
+part Common {
+    //  Everything both layouts share: the palette, the audio bands, the panel
+    //  state and the one shader.  Each scene adds its own surfaces; the
+    //  permissions and the clock service live in the scene, where pleamar
+    //  registers them.
+    //  The glass palette.  It follows the shape Vitreus's glass uses: a dark
+    //  tint, a mint crest, and enough edge light for the rim to read without
+    //  a shadow turning the strip into a dirty ring.
+    //  The palette follows the wallpaper (bin/pleamar-colors): three facts per
+    //  colour, so a change is a change of facts and the scene does not reload.
+    //  The defaults are the old hand-picked glass palette, so a shell without
+    //  a wallpaper still starts in the same colours.
+    fact pal_ink_r: number = 0.918
+    fact pal_ink_g: number = 0.969
+    fact pal_ink_b: number = 0.961
+    fact pal_faint_r: number = 0.624
+    fact pal_faint_g: number = 0.722
+    fact pal_faint_b: number = 0.714
+    fact pal_aqua_r: number = 0.561
+    fact pal_aqua_g: number = 0.961
+    fact pal_aqua_b: number = 0.875
+    fact pal_azure_r: number = 0.345
+    fact pal_azure_g: number = 0.784
+    fact pal_azure_b: number = 1
+    //  Material roles from the same wallpaper read: the centre panel uses
+    //  primary and secondary explicitly, while the water keeps aqua/azure.
+    fact pal_primary_r: number = 0.561
+    fact pal_primary_g: number = 0.961
+    fact pal_primary_b: number = 0.875
+    fact pal_secondary_r: number = 0.345
+    fact pal_secondary_g: number = 0.784
+    fact pal_secondary_b: number = 1
+    fact pal_deep_r: number = 0.020
+    fact pal_deep_g: number = 0.047
+    fact pal_deep_b: number = 0.059
+    fact pal_tint_r: number = 0.047
+    fact pal_tint_g: number = 0.102
+    fact pal_tint_b: number = 0.118
+    fact pal_panel_r: number = 0.039
+    fact pal_panel_g: number = 0.090
+    fact pal_panel_b: number = 0.106
+
+    let ink = rgb(pal_ink_r, pal_ink_g, pal_ink_b)
+    let faint = rgb(pal_faint_r, pal_faint_g, pal_faint_b)
+    let aqua = rgb(pal_aqua_r, pal_aqua_g, pal_aqua_b)
+    let azure = rgb(pal_azure_r, pal_azure_g, pal_azure_b)
+    let primary = rgb(pal_primary_r, pal_primary_g, pal_primary_b)
+    let secondary = rgb(pal_secondary_r, pal_secondary_g, pal_secondary_b)
+    let deep = rgb(pal_deep_r, pal_deep_g, pal_deep_b)
+    let tint = rgb(pal_tint_r, pal_tint_g, pal_tint_b)
+    let panel = rgb(pal_panel_r, pal_panel_g, pal_panel_b)
+    let alert = #ef4444
+    let glass_shadow = #000000
+
+    //  The water follows every sound the sink plays (cava, PipeWire monitor).
+    //  The six facts are filled by the logic at cava's pace; the springs smooth
+    //  them to the renderer's pace so the shader never steps.
+    fact glass_on = true
+    fact glass_bend = true
+    fact glass_refr: number = 1
+    fact glass_disp: number = 1
+    fact glass_dome: number = 0
+    fact glass_milk: number = 0
+    fact settings_page: number = 1
+    //  Per-panel opening motion (0 fade, 1 spin, 2 unfold, 3 drop,
+    //  4 aperture, 5 random).  The *_fx facts are the pose chosen when a
+    //  panel opens; the close keeps that pose, so it never changes mid-move.
+    fact anim_search: number = 0
+    fact anim_panel: number = 0
+    fact anim_toast: number = 0
+    fact anim_center: number = 0
+    fact anim_center_panel: number = 0
+    fact search_fx: number = 0
+    fact panel_fx: number = 0
+    fact toast_fx: number = 0
+    fact center_fx: number = 0
+    fact center_panel_fx: number = 0
+    event anim_set ->
+    //  Height of the floating island bar (the capsule reused in Frame), in px.
+    fact bar_height: number = 44
+    fact glass_tint: number = 58
+    fact glass_frost: number = 100
+    fact glass_edge: number = 34
+    fact wave_on = true
+    fact wave_depth: number = 100
+    fact wave_blend: number = 0.55
+    //  Ripples: 1 (one long train) to 10 finer trains.  Gain is the cava
+    //  sensitivity (envelope shaping); amplitude expands the visible reach.
+    fact wave_gain: number = 1.4
+    fact wave_amp: number = 1.4
+    fact wave_ripples: number = 1
+    //  Height of the ripples themselves, independent of the overall reach.
+    //  0 is a smooth meniscus; 3 is a rough, crest-heavy edge.
+    fact wave_height: number = 1.6
+
+    //  Lock screen settings.  The lock scene is a separate process, so these
+    //  live in the shell config and are pushed to it when it opens.
+    fact lock_blur: number = 36
+    fact lock_12h = true
+    fact lock_ampm = true
+    fact lock_media = true
+    fact lock_secs = false
+    fact lock_power = true
+    fact lock_px: number = 200
+    fact lock_date: number = 0          // 0 long, 1 short, 2 day first, 3 ISO
+    fact lock_mask: number = 0          // 0 shapes, 1 dots, 2 stars, 3 special
+    fact lock_pal: number = 1           // 0 vibrant, 1 accent, 2 neon, 3 pastel, 4 mono
+
+    //  Idle: 0 is Never; the minutes are what swayidle waits for.
+    fact idle_lock_i: number = 0
+    fact idle_off_i: number = 0
+    fact idle_lock_minutes: number = 0
+    fact idle_off_minutes: number = 0
+    text idle_lock_t = "Never"
+    text idle_off_t = "Never"
+    event lock_now ->
+    event lock_test ->
+
+    fact music_on = false
+    fact quiet = true
+    fact ready = false
+    fact bands.0 = 0
+    fact bands.1 = 0
+    fact bands.2 = 0
+    fact bands.3 = 0
+    fact bands.4 = 0
+    fact bands.5 = 0
+
+    //  Fast enough to show a kick; still damped enough not to jitter.
+    spring wave_smooth = 900, 45
+    prop band.s.0 = 0 ~wave_smooth
+    follow band.s.0 = bands.0
+    prop band.s.1 = 0 ~wave_smooth
+    follow band.s.1 = bands.1
+    prop band.s.2 = 0 ~wave_smooth
+    follow band.s.2 = bands.2
+    prop band.s.3 = 0 ~wave_smooth
+    follow band.s.3 = bands.3
+    prop band.s.4 = 0 ~wave_smooth
+    follow band.s.4 = bands.4
+    prop band.s.5 = 0 ~wave_smooth
+    follow band.s.5 = bands.5
+
+    //  The config panel's switch knob.
+    prop cfg_knob = 0 ~quick
+    follow cfg_knob = wave_on
+    prop glass_knob = 0 ~quick
+    follow glass_knob = glass_on
+    prop bend_knob = 0 ~quick
+    follow bend_knob = glass_bend
+    prop wall_knob = 0 ~quick
+    follow wall_knob = wall_auto
+    prop snd_knob = 0 ~quick
+    follow snd_knob = snd_on
+    prop nt_snd_knob = 0 ~quick
+    follow nt_snd_knob = nt_snd_on
+    prop nt_dnd_knob = 0 ~quick
+    follow nt_dnd_knob = nt_dnd
+
+    //  Small, many waves: the water lives in a 72 px band, the frame rail is
+    //  46 px, and the whole edge strip is 120 px.  Depth is a relative scale,
+    //  not a pixel value: scaling the bands here keeps the shader's profile
+    //  unchanged when the panel changes it.
+    let wave.edge = 120
+    let wave.rail = 46
+    let wave.deep = 72
+    let depth_k = clamp(wave_depth / 100, 0.4, 1.2)
+    //  Packed into b.z for the shaders: height hundredths and blend
+    //  hundredths.  A straight edge adds side * 100000 on top.
+    let wave_h = round(clamp(wave_height, 0, 3) * 100) * 1000
+    let wave_b = round(clamp(wave_blend, 0, 1) * 100)
+
+    //  Panels and the launcher.  They share the bar's facts and the same glass.
+    fact panel_open = false
+    fact launch_open = false
+    text layout = ""
+    text query = ""
+    //  Global typeface.  Every text is drawn in "Space Grotesk"; the launch
+    //  wrapper maps that name to font_family through fontconfig, so the choice
+    //  needs a restart.  font_choice is the row picked in the settings panel,
+    //  and font_query searches the installed families.
+    text font_family = "Space Grotesk"
+    text font_choice = "Space Grotesk"
+    text font_query = ""
+    text weather_city = ""
+    model font_rows max 10 { name: text }
+
+    //  ── wallpaper ───────────────────────────────────────────────────────
+    //  The wallpaper is handed to swaybg (the background layer), as Vitreus
+    //  hands it to awww; the logic lists the folder, makes thumbnails and
+    //  reads the palette.  The path lives in the config, so both layouts see
+    //  the same picture.
+    text wallpaper = ""
+    text wallpaper_dir = ""
+    text wall_name = ""
+    text wall_choice = ""
+    text wall_count = ""
+    fact wp_page: number = 0
+    fact wp_pages: number = 1
+    //  A slideshow in the folder's order: the logic counts whole minutes,
+    //  then sets the next picture; off until the picker's switch turns it on.
+    fact wall_auto = false
+    //  The small Vitreus panel click (assets/panel.wav), on bar and panel presses.
+    fact snd_on = true
+    event ui_sound ->
+    event snd_toggle ->
+
+    //  ── notifications ───────────────────────────────────────────────────
+    //  Pleamar is the org.freedesktop.Notifications server.  The logic watches
+    //  its list, keeps a history and decides what is shown; this is the state
+    //  the toast and the centre draw.
+    fact nt_has = false
+    fact nt_center = false
+    fact nt_dnd = false
+    fact nt_urgent = false
+    fact nt_snd_on = true
+    fact nt_sound: number = 1
+    fact nt_pos: number = 1
+    fact nt_unread: number = 0
+    fact nt_anchor: top_right | top = top_right
+    //  Auto-close countdown.  The seconds are a preference; `nt_left` is
+    //  the 1..0 progress driven by the shell's timer, and `nt_timed` hides
+    //  the rail for urgent notifications that stay until dismissed.
+    fact nt_secs: number = 6
+    fact nt_left: number = 1
+    fact nt_timed = false
+    text nt_app = ""
+    text nt_title = ""
+    text nt_body = ""
+    text nt_time = ""
+    text nt_icon = ""
+    text nt_countdown = ""
+    text nt_sound_name = "Message"
+    text nt_pos_name = "Top right"
+    model nt_actions max 3 { label: text }
+    model nt_history max 8 { app: text; title: text; body: text; when: text; urgent: bool }
+    event nt_close ->
+    event nt_act ->
+    event nt_clear ->
+    event nt_dnd_toggle ->
+    event nt_sound_toggle ->
+    event nt_sound_set ->
+    event nt_pos_set ->
+    event nt_test ->
+    event nt_center_toggle ->
+    event nt_center_close ->
+    event nt_history_act ->
+    event nt_settings ->
+    fact wall_minutes: number = 5
+    fact wall_remain: number = 0
+    text wall_next = "Auto rotation off"
+    model wp_rows max 9 { thumb: image 176, 99; name: text; path: text; cur: bool }
+    event wall_apply ->
+    event wall_refresh ->
+    //  The launcher is a search, not an app list: rows carry what they need
+    //  to be drawn and what the logic runs when one is picked.
+    model la_apps max 8 { name: text; sub: text; exec: text; icon: image 22, 22; glyph: text; has_glyph: bool; kind: text }
+    fact la_sel: number = 0
+    text la_mode = "APPS"
+    text la_hint = "Search apps…"
+    event launch ->
+    event la_move ->
+    event la_hint ->
+    event font_apply ->
+    event weather_apply ->
+    event settings_close ->
+    //  Terminal entry points.  `pleamar --say island "emit ipc_open_search"`
+    //  and `… "emit ipc_open_settings"` open the two panels from anywhere.
+    event ipc_open_search ->
+    event ipc_open_settings ->
+    event ipc_open_notifications ->
+
+    shader water = file "../water/water.wgsl"
+    shader corner = file "../water/water_corner.wgsl"
+
+
+}

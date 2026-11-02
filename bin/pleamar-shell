@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# Local dev runner: ./bin/pleamar-shell island|frame [pleamar args...]
+# PLEAMAR=/path/to/pleamar overrides discovery.
+set -euo pipefail
+
+root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+
+find_pleamar() {
+    if [[ -n "${PLEAMAR:-}" ]]; then
+        printf '%s\n' "$PLEAMAR"
+        return 0
+    fi
+    if command -v pleamar >/dev/null 2>&1; then
+        command -v pleamar
+        return 0
+    fi
+
+    # NixOS keeps several generations in /nix/store.  The newest Vulkan loader
+    # is the one built against the running system's glibc; older pleamar
+    # closures fail to load today's Mesa ICD.  Prefer it.
+    local p store ver best="" bestver=""
+    for p in /nix/store/*-pleamar-*/bin/pleamar; do
+        [[ -x "$p" ]] || continue
+        store="${p%/bin/pleamar}"
+        ver="$(nix-store -q --references "$store" 2>/dev/null \
+            | sed -n 's/.*vulkan-loader-\([0-9.]*\).*/\1/p' \
+            | sort -V | tail -1)"
+        [[ -n "$ver" ]] || ver="0"
+        if [[ -z "$best" ]] || [[ "$(printf '%s\n%s\n' "$bestver" "$ver" | sort -V | tail -1)" == "$ver" ]]; then
+            best="$p"
+            bestver="$ver"
+        fi
+    done
+    if [[ -n "$best" ]]; then
+        printf '%s\n' "$best"
+        return 0
+    fi
+    echo "pleamar not found; set PLEAMAR=/path/to/pleamar" >&2
+    return 1
+}
+
+if [[ "${1:-}" == "--path" ]]; then
+    find_pleamar
+    exit 0
+fi
+
+mode="${1:-island}"
+case "$mode" in
+    island|frame|lock) ;;
+    *)
+        echo "usage: $0 island|frame|lock [pleamar args...]" >&2
+        exit 2
+        ;;
+esac
+
+scene="$root/scenes/$mode.plm"
+[[ "$mode" == "lock" ]] && scene="$root/lockscreen/lockscreen.plm"
+
+bin="$(find_pleamar)"
+#  One shell per scene: a second one would only get a numbered socket and
+#  another cava process, which is what a broken restart used to pile up.
+if [[ "$mode" == "lock" ]]; then
+    check="pleamar --scene .*/lockscreen/lockscreen.plm"
+else
+    check="pleamar --scene $scene"
+fi
+if pgrep -f -- "$check" >/dev/null; then
+    echo "a $mode shell is already running" >&2
+    exit 1
+fi
+echo "pleamar: $bin ($("$bin" --version 2>/dev/null | head -1))" >&2
+
+#  Every text asks for "Space Grotesk".  A font choice is applied at process
+#  start the way Vitreus does it: copies of the chosen family are renamed to
+#  Space Grotesk, the real Space Grotesk is rejected, and FONTCONFIG_FILE
+#  points at that setup.  Changing it needs a restart, which the settings
+#  panel's Apply button does.
+cfg="${XDG_CONFIG_HOME:-$HOME/.config}/pleamar-shell/config.json"
+#  A restart started by the settings panel passes the chosen family directly,
+#  so the new process never races the config write.
+font="${PLEAMAR_FONT:-}"
+if [[ -z "$font" && -r "$cfg" ]]; then
+    if command -v jq >/dev/null 2>&1; then
+        font="$(jq -r '.font_family // empty' "$cfg" 2>/dev/null || true)"
+    else
+        font="$(sed -n 's/.*"font_family"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$cfg" | head -n1)"
+    fi
+fi
+font="${font:-Space Grotesk}"
+fontconf="${cfg%/*}/fonts.conf"
+#  A restarted shell inherits the previous shell's environment; never keep a
+#  stale fontconfig path when the choice is the default.
+unset FONTCONFIG_FILE
+if [[ "$font" != "Space Grotesk" ]]; then
+    if generated="$("$root/bin/pleamar-fonts" "$font" 2>/dev/null)" && [[ -f "$generated" ]]; then
+        export FONTCONFIG_FILE="$generated"
+    fi
+else
+    rm -f "$fontconf"
+fi
+export PLEAMAR_SHELL_ROOT="$root"
+export PLEAMAR_SHELL_MODE="$mode"
+
+exec "$bin" --scene "$scene" --no-hud "${@:2}"

@@ -1,0 +1,236 @@
+#!/usr/bin/env python3
+"""Read a wallpaper and print the palette pleamar-shell draws with.
+
+Iris (Vitreus) and iNiR's materialyoucolor both answer a large Material role
+set.  This reads a 128 px histogram with ImageMagick and keeps the colours the
+picture actually shows: a vivid primary for the wave and switches, a secondary
+and a tertiary, a dark surface tinted by the primary's hue, readable ink and
+the Vitreus/Material role names a later script can consume.
+"""
+import json
+import math
+import re
+import subprocess
+import sys
+
+MAGICK = "magick"
+
+
+def run_histogram(path):
+    cmd = [
+        MAGICK, path + "[0]", "-auto-orient",
+        "-resize", "128x128^", "-gravity", "center", "-extent", "128x128",
+        "-depth", "8", "-colors", "24", "-format", "%c", "histogram:info:-",
+    ]
+    out = subprocess.run(cmd, check=True, stdout=subprocess.PIPE,
+                         stderr=subprocess.DEVNULL, text=True).stdout
+    rows = []
+    #  1234: ( 12, 34, 56,255) #0C2238FF srgba(...)
+    pat = re.compile(r"^\s*(\d+):.*?#([0-9a-fA-F]{6})", re.M)
+    for count, hx in pat.findall(out):
+        r, g, b = (int(hx[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+        rows.append((int(count), r, g, b))
+    return rows
+
+
+def rgb_to_hsl(r, g, b):
+    mx, mn = max(r, g, b), min(r, g, b)
+    l = (mx + mn) / 2
+    if mx == mn:
+        return 0.0, 0.0, l
+    d = mx - mn
+    s = d / (2 - mx - mn) if l > 0.5 else d / (mx + mn)
+    if mx == r:
+        h = (g - b) / d + (6 if g < b else 0)
+    elif mx == g:
+        h = (b - r) / d + 2
+    else:
+        h = (r - g) / d + 4
+    return (h / 6.0) % 1.0, s, l
+
+
+def hsl_to_rgb(h, s, l):
+    if s <= 0:
+        return l, l, l
+    q = l * (1 + s) if l < 0.5 else l + s - l * s
+    p = 2 * l - q
+    def chan(t):
+        t %= 1.0
+        if t < 1 / 6:
+            return p + (q - p) * 6 * t
+        if t < 1 / 2:
+            return q
+        if t < 2 / 3:
+            return p + (q - p) * (2 / 3 - t) * 6
+        return p
+    return chan(h + 1 / 3), chan(h), chan(h - 1 / 3)
+
+
+def hexof(rgb):
+    return "#%02x%02x%02x" % tuple(max(0, min(255, round(v * 255))) for v in rgb)
+
+
+def hsl_hex(h, s, l):
+    return hexof(hsl_to_rgb(h % 1.0, max(0, min(1, s)), max(0, min(1, l))))
+
+
+def lum(rgb):
+    def lin(v):
+        return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+    return 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2])
+
+
+def contrast(a, b):
+    la, lb = lum(a), lum(b)
+    return (max(la, lb) + .05) / (min(la, lb) + .05)
+
+
+def readable(h, s, l, bg, ratio=4.5):
+    rgb = hsl_to_rgb(h, s, l)
+    if contrast(rgb, bg) >= ratio:
+        return hexof(rgb)
+    for _ in range(28):
+        l = min(.97, l + .02)
+        rgb = hsl_to_rgb(h, s, l)
+        if contrast(rgb, bg) >= ratio:
+            return hexof(rgb)
+    return "#ffffff"
+
+
+def hex_rgb(hx):
+    return tuple(int(hx[i:i + 2], 16) / 255.0 for i in (1, 3, 5))
+
+
+def mix_hex(a, b, t):
+    ar, ag, ab = hex_rgb(a)
+    br, bg, bb = hex_rgb(b)
+    return hexof((ar + (br - ar) * t, ag + (bg - ag) * t,
+                  ab + (bb - ab) * t))
+
+
+def shade(hx, dl):
+    h, s, l = rgb_to_hsl(*hex_rgb(hx))
+    return hsl_hex(h, s, max(.03, min(.97, l + dl)))
+
+
+def on_colour(hx):
+    #  The text that reads best on this fill, as Vitreus's onmint does.
+    dark, light = "#10161a", "#f5f7f5"
+    return dark if contrast(hex_rgb(dark), hex_rgb(hx)) >= contrast(
+        hex_rgb(light), hex_rgb(hx)) else light
+
+
+def main():
+    path = sys.argv[1] if len(sys.argv) > 1 else ""
+    if not path:
+        print("missing wallpaper", file=sys.stderr)
+        return 2
+    try:
+        rows = run_histogram(path)
+    except Exception as exc:
+        print("could not read %s: %s" % (path, exc), file=sys.stderr)
+        return 1
+    if not rows:
+        print("no colours in %s" % path, file=sys.stderr)
+        return 1
+
+    total = sum(n for n, *_ in rows)
+    colours = []
+    for n, r, g, b in rows:
+        h, s, l = rgb_to_hsl(r, g, b)
+        share = n / total if total else 0
+        colours.append({"share": share, "h": h, "s": s, "l": l,
+                        "rgb": (r, g, b)})
+
+    # The primary is the colour that is both present and actually coloured:
+    # a black night with a neon sign should follow the sign, not the night.
+    candidates = [c for c in colours
+                  if c["share"] >= 0.006 and c["s"] >= 0.12
+                  and 0.10 <= c["l"] <= 0.90]
+    if candidates:
+        primary = max(candidates,
+                      key=lambda c: c["share"] * (c["s"] ** 1.25)
+                      * (0.55 + min(1.0, c["l"] * 1.6)))
+    else:
+        primary = max(colours, key=lambda c: c["share"])
+
+    # A second hue gives the wave's two ends different lives, as the old
+    # azure/aqua pair did.  If the picture is monochrome, rotate a little.
+    others = [c for c in colours
+              if c["share"] >= 0.004
+              and abs((c["h"] - primary["h"] + .5) % 1.0 - .5) >= 0.12]
+    if others:
+        second = max(others, key=lambda c: c["share"] * (0.45 + c["s"]))
+    else:
+        second = {"h": (primary["h"] + 0.09) % 1.0,
+                  "s": max(primary["s"], .5),
+                  "l": .6}
+
+    third_candidates = [
+        c for c in colours
+        if c["share"] >= 0.004
+        and abs((c["h"] - primary["h"] + .5) % 1.0 - .5) >= 0.10
+        and abs((c["h"] - second["h"] + .5) % 1.0 - .5) >= 0.10
+    ]
+    if third_candidates:
+        third = max(third_candidates,
+                    key=lambda c: c["share"] * (0.4 + c["s"]))
+    else:
+        third = {"h": (second["h"] + 0.12) % 1.0,
+                 "s": max(primary["s"], .5), "l": .6}
+
+    hue = primary["h"]
+    # Dark, coloured glass rather than a flat grey: the surface keeps the
+    # wallpaper's hue but not its brightness.
+    tint_l = 0.075
+    tint_s = max(.22, min(.42, primary["s"] * .55 + .12))
+    tint = hsl_hex(hue, tint_s, tint_l)
+    panel = hsl_hex(hue, tint_s * .92, 0.115)
+    deep = hsl_hex(hue, tint_s * .75, 0.035)
+    ink = hsl_hex(hue, .07, .94)
+    faint = readable(hue, .13, .68, hsl_to_rgb(hue, tint_s, tint_l), 4.5)
+    accent = readable(hue, max(.55, min(.92, primary["s"] * 1.7 + .18)),
+                      max(.58, min(.80, primary["l"] + .04)),
+                      hsl_to_rgb(hue, tint_s, tint_l), 4.5)
+    second_h = second["h"]
+    second_s = max(.5, min(.86, second["s"] * 1.5 + .16))
+    second_l = max(.58, min(.78, second.get("l", .62) + .04))
+    azure = readable(second_h, second_s, second_l,
+                     hsl_to_rgb(hue, tint_s, tint_l), 4.5)
+    third_h = third["h"]
+    tertiary = readable(third_h,
+                        max(.48, min(.84, third["s"] * 1.45 + .14)),
+                        max(.58, min(.78, third.get("l", .62) + .04)),
+                        hsl_to_rgb(hue, tint_s, tint_l), 4.5)
+    alert = readable(0.0, .72, .66, hsl_to_rgb(hue, tint_s, tint_l), 3.0)
+    surface_variant = hsl_hex(hue, tint_s * .92, .145)
+    on_primary = on_colour(accent)
+    on_secondary = on_colour(azure)
+    on_tertiary = on_colour(tertiary)
+    outline = mix_hex(tint, faint, .55)
+    off = mix_hex(tint, ink, .22)
+
+    #  The shell reads aq/aqua and azure for the four-edge wave; the rest are
+    #  Vitreus's palette names plus the semantic Material roles a later script
+    #  can take: primary, secondary and tertiary with their on-colours.
+    print(json.dumps({
+        "ink": ink, "faint": faint, "aqua": accent, "azure": azure,
+        "tint": tint, "panel": panel, "deep": deep, "alert": alert,
+        "primary": accent, "secondary": azure, "tertiary": tertiary,
+        "on_primary": on_primary, "on_secondary": on_secondary,
+        "on_tertiary": on_tertiary,
+        "background": tint, "surface": panel,
+        "surface_variant": surface_variant,
+        "on_surface": ink, "on_surface_variant": faint,
+        "outline": outline, "error": alert,
+        "mint": accent, "mintlo": shade(accent, -.10),
+        "minthi": shade(accent, .16), "onmint": on_primary,
+        "off": off,
+        "onPrimary": on_primary, "onSecondary": on_secondary,
+        "onTertiary": on_tertiary, "onSurface": ink,
+        "onSurfaceVariant": faint,
+    }, separators=(",", ":")))
+
+
+if __name__ == "__main__":
+    sys.exit(main())

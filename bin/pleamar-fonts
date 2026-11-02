@@ -1,0 +1,191 @@
+#!/usr/bin/env python3
+"""Copy the chosen family into "Space Grotesk", the name every scene uses.
+
+This is the Vitreus font setup (bin/vitreus-fonts): pleamar resolves a family
+name when the process starts, so a runtime choice is applied by starting it
+with a fontconfig file whose "Space Grotesk" is the chosen typeface.  The real
+Space Grotesk is rejected so fontconfig cannot prefer it.  Nothing is written
+to the system; the faces live in ~/.config/pleamar-shell/fonts.
+"""
+import os
+import shutil
+import struct
+import subprocess
+import sys
+
+HOME = os.path.expanduser("~")
+OUT = os.path.join(HOME, ".config/pleamar-shell/fonts")
+CONF = os.path.join(HOME, ".config/pleamar-shell/fonts.conf")
+WEIGHTS = ((300, "Light"), (400, "Regular"), (500, "Medium"), (600, "SemiBold"), (700, "Bold"))
+
+
+def css_weight(fc):
+    if fc <= 50:
+        return 300
+    if fc <= 85:
+        return 400
+    if fc <= 120:
+        return 500
+    if fc <= 190:
+        return 600
+    return 700
+
+
+def faces(family):
+    pattern = "".join("\\" + c if c in "-:,=\\" else c for c in family)
+    out = subprocess.run(
+        ["fc-list", "-f", "%{file}\t%{weight}\n", ":family=" + pattern],
+        capture_output=True, text=True,
+    ).stdout
+    found = []
+    for line in out.splitlines():
+        path, _, weight = line.partition("\t")
+        if path.lower().endswith((".ttf", ".otf")):
+            try:
+                w = float(weight)
+            except ValueError:
+                w = 80.0
+            found.append((path, w))
+    return found
+
+
+def patch_cff_name(cff, target):
+    """The CFF table's own name is what pleamar's font database notices.
+    Rewrite it in place; the length must stay the same so no CFF offset moves.
+    """
+    try:
+        hdr = cff[2]
+        count = int.from_bytes(cff[hdr:hdr + 2], "big")
+        if count < 1:
+            return cff
+        offsize = cff[hdr + 2]
+        p = hdr + 3
+        offs = []
+        for _ in range(count + 1):
+            offs.append(int.from_bytes(cff[p:p + offsize], "big"))
+            p += offsize
+        start = p + offs[0] - 1
+        end = p + offs[1] - 1
+        old_len = end - start
+        new = target[:old_len].ljust(old_len, "X").encode("ascii")
+        cff[start:end] = new
+    except (IndexError, ValueError):
+        pass
+    return cff
+
+
+def build(path, weight, style):
+    raw = open(path, "rb").read()
+    if raw[:4] not in (b"\x00\x01\x00\x00", b"OTTO", b"true", b"typ1"):
+        raise ValueError("not a TrueType/OpenType face")
+    n = struct.unpack(">H", raw[4:6])[0]
+    tables = {}
+    for i in range(n):
+        tag, _, off, ln = struct.unpack(">4sIII", raw[12 + 16 * i:28 + 16 * i])
+        tables[tag] = bytearray(raw[off:off + ln])
+    head = tables[b"head"]
+    head[8:12] = b"\0\0\0\0"
+    if b"OS/2" in tables:
+        tables[b"OS/2"][4:6] = struct.pack(">H", weight)
+    names = {1: "Space Grotesk", 2: style, 4: "Space Grotesk " + style, 6: "SpaceGrotesk-" + style}
+    recs, strings = b"", b""
+    for nid in sorted(names):
+        s = names[nid].encode("utf-16-be")
+        recs += struct.pack(">HHHHHH", 3, 1, 0x409, nid, len(s), len(strings))
+        strings += s
+    tables[b"name"] = bytearray(
+        struct.pack(">HHH", 0, len(names), 6 + 12 * len(names)) + recs + strings
+    )
+    if b"CFF " in tables:
+        tables[b"CFF "] = patch_cff_name(tables[b"CFF "], "SpaceGrotesk-" + style)
+    tags = sorted(tables)
+    out = bytearray(raw[:4] + struct.pack(">HHHH", len(tags), 0, 0, 0))
+    off = 12 + 16 * len(tags)
+    body = b""
+    for t in tags:
+        d = bytes(tables[t])
+        pad = d + b"\0" * (-len(d) % 4)
+        csum = sum(struct.unpack(">%dI" % (len(pad) // 4), pad)) & 0xFFFFFFFF
+        out += struct.pack(">4sIII", t, csum, off + len(body), len(d))
+        body += pad
+    return bytes(out) + body
+
+
+def main():
+    family = sys.argv[1] if len(sys.argv) > 1 else "Space Grotesk"
+    if family == "Space Grotesk":
+        #  The default needs no generated files: the real thing is right.
+        if os.path.exists(CONF):
+            os.remove(CONF)
+        return 0
+
+    found = faces(family)
+    if not found:
+        return 1
+
+    os.makedirs(OUT, exist_ok=True)
+    marker = os.path.join(OUT, ".family")
+    try:
+        same = open(marker).read() == "spacecff:" + family and any(
+            name.startswith("SpaceGrotesk-") for name in os.listdir(OUT)
+        )
+    except OSError:
+        same = False
+    if not same:
+        shutil.rmtree(OUT, ignore_errors=True)
+        os.makedirs(OUT, exist_ok=True)
+        for weight, style in WEIGHTS:
+            path, _ = min(found, key=lambda f: abs(css_weight(f[1]) - weight))
+            ext = ".otf" if path.lower().endswith(".otf") else ".ttf"
+            with open(os.path.join(OUT, "SpaceGrotesk-%s%s" % (style, ext)), "wb") as f:
+                f.write(build(path, weight, style))
+        with open(marker, "w") as f:
+            f.write("spacecff:" + family)
+
+    #  The directories Vitreus uses, including the generated one.  Files in
+    #  ~/.local/share/fonts are listed one by one because fontconfig treats a
+    #  file there as a directory; the real Space Grotesk is rejected by name.
+    dirs = [
+        "/usr/share/fonts",
+        "/usr/local/share/fonts",
+        "/run/current-system/sw/share/fonts",
+        HOME + "/.nix-profile/share/fonts",
+        "/nix/var/nix/profiles/default/share/fonts",
+        OUT,
+    ]
+    root = HOME + "/.local/share/fonts"
+    if os.path.isdir(root):
+        dirs += [
+            root + "/" + entry
+            for entry in sorted(os.listdir(root))
+            if "grotesk" not in entry.lower()
+        ]
+
+    real_space = []
+    for path in subprocess.run(
+        ["fc-list", "-f", "%{file}\n", ":family=Space Grotesk"],
+        capture_output=True, text=True,
+    ).stdout.splitlines():
+        path = path.strip()
+        if path and not path.startswith(OUT + os.sep) and path not in real_space:
+            real_space.append(path)
+
+    with open(CONF, "w") as f:
+        f.write('<?xml version="1.0"?>\n')
+        f.write('<!DOCTYPE fontconfig SYSTEM "fonts.dtd">\n')
+        f.write("<fontconfig>\n")
+        f.write('  <include ignore_missing="yes">/etc/fonts/fonts.conf</include>\n')
+        for path in dirs:
+            f.write("  <dir>%s</dir>\n" % path)
+        if real_space:
+            f.write("  <selectfont>\n    <rejectfont>\n")
+            for path in real_space:
+                f.write("      <glob>%s</glob>\n" % path)
+            f.write("    </rejectfont>\n  </selectfont>\n")
+        f.write("</fontconfig>\n")
+    print(CONF)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

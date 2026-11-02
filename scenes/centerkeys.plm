@@ -1,0 +1,20 @@
+language 0.4
+//  A one-pixel keyboard helper for the centre panel.  It runs as its own
+//  Pleamar process because a scene with many layer surfaces does not always
+//  get the layer keyboard focus; a single-surface scene does.  It draws
+//  nothing visible and forwards 1–7, Tab/Shift+Tab and Escape to the panel.
+scene CenterKeys {
+    permissions {
+        run: "sh"
+        services: "say:*"
+    }
+    event key_ping ->
+    surface keys {
+        size: 1, 1
+        anchor: top_left
+        level: overlay
+        open: true
+        keyboard: exclusive
+        zone box hit { from: 0, 0; size: 1, 1; label: "Centre panel keys" }
+    }
+}

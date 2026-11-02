@@ -1,0 +1,232 @@
+part Notifications {
+    let nt.card = rgb(pal_panel_r, pal_panel_g, pal_panel_b)
+    let nt.track = mix(tint, ink, 0.10)
+    //  Wallpaper primary / secondary, pulled toward the muted ink so the
+    //  header reads on both bright and dark pictures.
+    let nt.title_tone = mix(aqua, faint, 0.12)
+    let nt.app_tone = mix(azure, faint, 0.08)
+    //  The toast follows Vitreus's notification drawer: the app icon (or a
+    //  pencil bell when it brought none), a ring off the tile, and a bell /
+    //  icon wobble when a new notification arrives.
+    fact nt_icon_on = false
+    fact nt_new: number = 0
+    prop nt_ring = 1 ~600ms
+    prop nt_sw = 1 ~2400ms
+    image nt_img = from nt_icon, 48, 48
+    measure nt.title_m
+    on change nt_new while nt_new > 0 {
+        nt_ring: 0 ~16ms
+        nt_ring: 1 ~800ms after 30ms
+        nt_sw: 0 ~16ms
+        nt_sw: 1 ~2400ms after 450ms
+        //  A new toast always starts with a full rail, even if the previous
+        //  one was closed at zero.
+        nt_fill: 1 ~1ms
+    }
+    prop nt_p = 0 ~quick
+    follow nt_p = nt_has
+    //  The timer writes once every 50 ms; the spring moves the rail between
+    //  those samples, so the countdown reads as one continuous drain.
+    prop nt_fill = 1 ~quick
+    follow nt_fill = nt_left
+    prop ntc_p = 0 ~gentle
+    follow ntc_p = nt_center
+
+    //  The toast: one glass card under the bar, at the top centre or top right.  `nt_anchor` is a fact whose values are surface anchors.
+    surface nt_toast {
+        size: 294, 112
+        anchor: nt_anchor
+        //  top, right, bottom, left: leave the bar 16 px of air below it
+        //  and pull the right-hand toast 16 px in from the screen edge.
+        margin: 56, 56, 0, 0
+        level: overlay
+        open: nt_has or nt_p > 0.01
+        rate: 120, 30 while quiet
+
+        zone box nt_toast_hit { from: 0, 0; size: 294, 112; active: nt_has; label: "Dismiss notification" }
+        on press nt_toast_hit { emit nt_close }
+
+        PanelPop(toast_fx, nt_p, 294, 112) {
+            //  A rounded clip: without it the full-screen lens draws its
+            //  sampled backdrop as a square, which showed behind the card.
+            clip inset 0 box { from: 0, 0; size: 294, 112; corner: 17 }
+            //  The toast was designed on a 420×160 grid.  Scaling the whole
+            //  card by 0.7 keeps every detail proportional while the surface
+            //  itself is 30% smaller.
+            group {
+                scale: 0.7
+                pivot: 0, 0
+            body {
+                color: nt.card
+                glass: if(glass_on, 100%, 0%)
+                opacity: 1% * max(glass_tint, 86)
+                lens: glass_on and glass_bend
+                frost: glass_frost / 100
+                refraction: glass_refr
+                dispersion: glass_disp
+                dome: glass_dome
+                milk: glass_milk
+                rim: 1% * glass_edge
+                shine: pointer
+                box { from: 0, 0; size: 420, 160; corner: 24 }
+            }
+            box { from: 0, 0; size: 420, 160; corner: 24; stroke: 1.8; color: if(nt_urgent, alert, ink); opacity: if(nt_urgent, 32%, 16%) }
+            box { from: 5, 5; size: 410, 150; corner: 20; color: ink; opacity: 4% }
+            line { from: 24, 6; to: 396, 6; width: 1; color: ink; opacity: 9% }
+
+            //  ── icon tile ─────────────────────────────────────────────────
+            //  The tile is centred on the title/body block, not on the
+            //  whole card: at y=92 it sat below the words and the countdown
+            //  ring exaggerated the asymmetry.
+            group {
+                move: 0, -24
+            box { from: 18, 68; size: 48, 48; corner: 14; color: ink; opacity: 7% }
+            ellipse { at: 42, 92; radius: 24 + 24 * clamp(nt_ring, 0, 1); stroke: 1.6; color: if(nt_urgent, alert, aqua); opacity: 75% * (1 - clamp(nt_ring, 0, 1)) }
+            group {
+                show: nt_icon_on
+                pivot: 42, 92
+                rotate: 16deg * (1 - clamp(nt_sw, 0, 1)) * sin(clamp(nt_sw, 0, 1) * 2000)
+                scale: 1 + 0.07 * (1 - clamp(nt_sw, 0, 1)) * sin(clamp(nt_sw, 0, 1) * 2600 + 40)
+                image nt_img { at: 18, 68; size: 48, 48 }
+            }
+            group {
+                show: not nt_icon_on
+                pivot: 42, 92
+                scale: 1.16
+                let bq = clamp(nt_sw, 0, 1)
+                let bsw = (1 - bq) * sin(bq * 2000)
+                let bfr = floor(time * 8)
+                repeat r in 0..6 {
+                    let bang = r * 60 + time * 30
+                    let br0 = 20
+                    let br1 = br0 + 2 + 1.5 * (1 - bq) + sin(time * 200 + r * 90)
+                    line { from: 42 + br0 * cos(bang), 92 + br0 * sin(bang); to: 42 + br1 * cos(bang), 92 + br1 * sin(bang); width: 1.4; color: if(nt_urgent, alert, aqua); opacity: (30% + 50% * (1 - bq)) }
+                }
+                group {
+                    pivot: 42, 80
+                    rotate: 20deg * bsw
+                    repeat bp in 0..2 {
+                        let bo = bp * 0.7
+                        let bj = 0.5 * sin(bfr * 53 + bp * 137)
+                        let bk = 0.5 * sin(bfr * 61 + bp * 71 + 40)
+                        path { at: 42 + bo, 92 + bo * 0.5; stroke: if(bp == 0, 1.8, 1.3); color: ink; opacity: if(bp == 0, 90%, 34%)
+                            move -10 + bj, 6 + bk
+                            curve -5.5 + bk, -6 + bj via -6.5, 2
+                            curve 5.5 + bj, -6 + bk via 0, -15 + bj
+                            curve 10 + bk, 6 + bj via 6.5, 2
+                            line -10 + bj, 6 + bk }
+                    }
+                    path { at: 42, 92; color: if(nt_urgent, alert, aqua); opacity: 30%; move -10, 6; curve -5.5, -6 via -6.5, 2; curve 5.5, -6 via 0, -15; curve 10, 6 via 6.5, 2; close }
+                    ellipse { at: 42 + 0.4 * sin(bfr * 67), 79.7; radius: 1.5; color: ink }
+                    repeat bc in 0..3 {
+                        line { from: 36 + bc * 2, 89 + bc * 1.5 + 0.4 * sin(bfr * 47 + bc * 60); to: 37 + bc * 2, 94 + 0.4 * sin(bfr * 53 + bc * 70); width: 1.1; color: if(nt_urgent, alert, aqua); opacity: 65% }
+                    }
+                    ellipse { at: 42 - 3.5 * bsw + 0.4 * sin(bfr * 59), 102; radius: 2.2; color: if(nt_urgent, alert, aqua) }
+                }
+            }
+            }
+
+            //  ── words ─────────────────────────────────────────────────────
+            text nt_app { at: 82, 24; anchor: left center; size: 11; weight: 600; color: nt.app_tone; width: 300; lines: 1; family: "Space Grotesk" }
+            text nt_title { at: 82, 40; anchor: left top; size: 16; weight: 600; color: nt.title_tone; width: 300; lines: 2; line_height: 1.2; measure: nt.title_m; family: "Space Grotesk" }
+            text nt_body { at: 82, 40 + nt.title_m.height + 4; anchor: left top; size: 13; weight: 400; color: mix(faint, ink, 0.15); width: 300; lines: 2; line_height: 1.25; family: "Space Grotesk" }
+
+            //  ── auto-close countdown ─────────────────────────────────────
+            //  The ring hugs the icon tile: a faint primary track stays put
+            //  while the bright arc retracts toward twelve o'clock.  The
+            //  seconds sit under the tile, so the countdown belongs to the
+            //  icon instead of adding a separate bar at the bottom.
+            group {
+                show: nt_timed
+                let nt.fill = clamp(nt_fill, 0, 1)
+                ellipse { at: 42, 68; radius: 29.5; stroke: 1.5; color: primary; opacity: 9% }
+                arc { at: 42, 68; radius: 29.5; width: 6; span: 360deg * nt.fill; rotate: 180deg * nt.fill; color: primary; opacity: 12% * nt.fill }
+                arc { at: 42, 68; radius: 29.5; width: 2.4; span: 360deg * nt.fill; rotate: 180deg * nt.fill; color: primary; opacity: 62% + 24% * nt.fill }
+                text nt_countdown { at: 42, 105; anchor: center; size: 9; weight: 700; color: primary; opacity: 82%; family: "Space Grotesk" }
+            }
+
+            line { from: 390, 16; to: 400, 26; width: 1.4; color: ink; opacity: 55% + 45% * nt_x.hover }
+            line { from: 400, 16; to: 390, 26; width: 1.4; color: ink; opacity: 55% + 45% * nt_x.hover }
+            zone box nt_x { from: 384, 8; size: 28, 28; corner: 14; cursor: pointer; label: "Dismiss notification" }
+            on press nt_x { emit nt_close }
+            }
+        }
+    }
+
+    //  The notification centre: the recent ones, clear, Do Not Disturb and a
+    //  way into the sound settings.
+    surface nt_center {
+        size: 480, 650
+        anchor: top
+        margin: 56, 56, 0, 0
+        level: overlay
+        open: nt_center or ntc_p > 0.01
+        rate: 120, 30 while quiet
+        keyboard: on_demand while nt_center
+
+        zone box nt_center_shield { from: 0, 0; size: 480, 650; active: nt_center; label: "Notifications" }
+        on press nt_center_shield { nt_center = nt_center }
+
+        PanelPop(center_fx, ntc_p, 480, 650) {
+        body {
+            color: nt.card
+            glass: if(glass_on, 100%, 0%)
+            opacity: 1% * max(glass_tint, 84)
+            lens: glass_on and glass_bend
+            frost: glass_frost / 100
+            refraction: glass_refr
+            dispersion: glass_disp
+            dome: glass_dome
+            milk: glass_milk
+            rim: 1% * glass_edge
+            shine: pointer
+            box { from: 160, 0; size: 160, 10; corner: 5 }
+            box { from: 0, 6; size: 480, 644; corner: 26 }
+        }
+        box { from: 0, 6; size: 480, 644; corner: 26; stroke: 1; color: ink; opacity: 8% }
+
+        text "NOTIFICATIONS" { at: 28, 36; anchor: left center; size: 11; weight: 700; color: faint; family: "Space Grotesk" }
+        text number(nt_unread, 0, "") { at: 452, 36; anchor: right center; size: 13; weight: 700; color: aqua; family: "Space Grotesk" }
+        box { from: 28, 58; size: 424, 1; color: ink; opacity: 10% }
+
+        repeat k in 0..7 {
+            let hy = 76 + k * 62
+            group {
+                show: k < nt_history.count
+                box { from: 24, hy; size: 432, 56; corner: 12; color: ink; opacity: 4% + 6% * nt_hist_row.$k.hover }
+                box { from: 24, hy; size: 3, 56; corner: 1.5; color: if(nt_history.$k.urgent, alert, aqua); opacity: 80% }
+                text nt_history.$k.app { at: 40, hy + 13; anchor: left center; size: 10; weight: 700; color: faint; width: 170; lines: 1; family: "Space Grotesk" }
+                text nt_history.$k.when { at: 444, hy + 13; anchor: right center; size: 10; color: faint; opacity: 70%; family: "Space Grotesk" }
+                text nt_history.$k.title { at: 40, hy + 28; anchor: left center; size: 13.5; weight: 600; color: ink; width: 390; lines: 1; family: "Space Grotesk" }
+                text nt_history.$k.body { at: 40, hy + 44; anchor: left center; size: 11.5; color: faint; width: 390; lines: 1; family: "Space Grotesk" }
+                zone box nt_hist_row.$k { from: 24, hy; size: 432, 56; corner: 12; cursor: pointer; label: nt_history.$k.title }
+                on press nt_hist_row.$k { emit ui_sound; emit nt_history_act(k) }
+            }
+        }
+        text "No notifications yet." { at: 240, 300; anchor: center; size: 14; color: faint; show: nt_history.count < 1 }
+
+        box { from: 24, 592; size: 104, 30; corner: 15; color: ink; opacity: 6% + 8% * nt_dnd_btn.hover }
+        text "DND" { at: 76, 607; anchor: center; size: 11; weight: 700; color: faint; show: not nt_dnd; family: "Space Grotesk" }
+        text "DND ON" { at: 76, 607; anchor: center; size: 11; weight: 700; color: alert; show: nt_dnd; family: "Space Grotesk" }
+        zone box nt_dnd_btn { from: 24, 592; size: 104, 30; corner: 15; cursor: pointer; label: "Do Not Disturb" }
+        on press nt_dnd_btn { emit ui_sound; emit nt_dnd_toggle }
+
+        box { from: 138, 592; size: 104, 30; corner: 15; color: ink; opacity: 6% + 8% * nt_clear_btn.hover }
+        text "Clear" { at: 190, 607; anchor: center; size: 11; weight: 700; color: faint; family: "Space Grotesk" }
+        zone box nt_clear_btn { from: 138, 592; size: 104, 30; corner: 15; cursor: pointer; label: "Clear notifications" }
+        on press nt_clear_btn { emit ui_sound; emit nt_clear }
+
+        box { from: 252, 592; size: 104, 30; corner: 15; color: ink; opacity: 6% + 8% * nt_snd_btn.hover }
+        text "Sounds" { at: 304, 607; anchor: center; size: 11; weight: 700; color: faint; family: "Space Grotesk" }
+        zone box nt_snd_btn { from: 252, 592; size: 104, 30; corner: 15; cursor: pointer; label: "Notification sound settings" }
+        on press nt_snd_btn { emit ui_sound; emit nt_settings }
+
+        box { from: 366, 592; size: 90, 30; corner: 15; color: ink; opacity: 6% + 8% * nt_close_btn.hover }
+        text "Close" { at: 411, 607; anchor: center; size: 11; weight: 700; color: faint; family: "Space Grotesk" }
+        zone box nt_close_btn { from: 366, 592; size: 90, 30; corner: 15; cursor: pointer; label: "Close notifications" }
+        on press nt_close_btn { emit ui_sound; nt_center = false }
+        }
+
+        on key Escape while nt_center { nt_center = false }
+    }
+}

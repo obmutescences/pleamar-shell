@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Apply the idle timers: lock after N minutes, power the monitors off after N.
+# Zero means never.  There is deliberately no suspend timer.
+set -euo pipefail
+
+root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+lock_min="${1:-0}"
+off_min="${2:-0}"
+runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+pidfile="$runtime/pleamar-idle.pid"
+log="/tmp/pleamar-idle.log"
+
+mkdir -p "$runtime"
+if [[ -r "$pidfile" ]]; then
+    old="$(cat "$pidfile" 2>/dev/null || true)"
+    if [[ -n "$old" ]] && kill -0 "$old" 2>/dev/null; then
+        kill "$old" 2>/dev/null || true
+        for _ in $(seq 1 20); do kill -0 "$old" 2>/dev/null || break; sleep 0.05; done
+    fi
+    rm -f "$pidfile"
+fi
+
+if [[ "$lock_min" -le 0 && "$off_min" -le 0 ]]; then
+    exit 0
+fi
+command -v swayidle >/dev/null 2>&1 || { echo "swayidle not found" >&2; exit 3; }
+
+args=(swayidle -w)
+if [[ "$lock_min" -gt 0 ]]; then
+    args+=(timeout $((lock_min * 60)) "$root/bin/pleamar-ipc lock")
+fi
+if [[ "$off_min" -gt 0 ]]; then
+    args+=(
+        timeout $((off_min * 60)) "niri msg action power-off-monitors"
+        resume "niri msg action power-on-monitors"
+    )
+fi
+setsid "${args[@]}" >"$log" 2>&1 &
+echo $! >"$pidfile"

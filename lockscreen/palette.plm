@@ -1,0 +1,39 @@
+//  Lock screen palette.  The logic reads the wallpaper palette into these facts.
+library LockPalette {
+    fact pal_ink_r: number = 0.9373
+    fact pal_ink_g: number = 0.9451
+    fact pal_ink_b: number = 0.9412
+    fact pal_faint_r: number = 0.6392
+    fact pal_faint_g: number = 0.7216
+    fact pal_faint_b: number = 0.6941
+    fact pal_mint_r: number = 0.2392
+    fact pal_mint_g: number = 0.9216
+    fact pal_mint_b: number = 0.7020
+    fact pal_mintlo_r: number = 0.0902
+    fact pal_mintlo_g: number = 0.8706
+    fact pal_mintlo_b: number = 0.6196
+    fact pal_minthi_r: number = 0.5294
+    fact pal_minthi_g: number = 0.9529
+    fact pal_minthi_b: number = 0.8157
+    fact pal_panel_r: number = 0.0824
+    fact pal_panel_g: number = 0.1490
+    fact pal_panel_b: number = 0.1255
+    fact pal_deep_r: number = 0.0275
+    fact pal_deep_g: number = 0.0431
+    fact pal_deep_b: number = 0.0392
+    fact pal_tint_r: number = 0.0510
+    fact pal_tint_g: number = 0.0980
+    fact pal_tint_b: number = 0.0824
+    fact pal_off_r: number = 0.2471
+    fact pal_off_g: number = 0.2863
+    fact pal_off_b: number = 0.2706
+    let ink = rgb(pal_ink_r, pal_ink_g, pal_ink_b)
+    let faint = rgb(pal_faint_r, pal_faint_g, pal_faint_b)
+    let mint = rgb(pal_mint_r, pal_mint_g, pal_mint_b)
+    let mintlo = rgb(pal_mintlo_r, pal_mintlo_g, pal_mintlo_b)
+    let minthi = rgb(pal_minthi_r, pal_minthi_g, pal_minthi_b)
+    let panel = rgb(pal_panel_r, pal_panel_g, pal_panel_b)
+    let deep = rgb(pal_deep_r, pal_deep_g, pal_deep_b)
+    let tint = rgb(pal_tint_r, pal_tint_g, pal_tint_b)
+    let off = rgb(pal_off_r, pal_off_g, pal_off_b)
+}

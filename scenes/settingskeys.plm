@@ -1,0 +1,30 @@
+language 0.4
+//  A one-surface keyboard helper for the settings panel.  The main scene has
+//  several layer surfaces and does not receive layer keyboard focus; this
+//  helper is a separate single-surface process with an invisible input field,
+//  so the city and font fields can be typed through it.
+scene SettingsKeys {
+    permissions {
+        run: "sh"
+        services: "say:*"
+    }
+    fact ready = false
+    text buffer = ""
+    event key_ping ->
+    surface keys {
+        size: 8, 8
+        anchor: top_left
+        level: overlay
+        open: true
+        keyboard: exclusive
+        input buffer {
+            at: 0, 0
+            width: 8
+            size: 6
+            opacity: 0
+            color: #000000
+        }
+        zone box hit { from: 0, 0; size: 8, 8; label: "Settings keys" }
+    }
+    on change ready while ready { focus buffer }
+}

@@ -1,0 +1,117 @@
+part Launcher {
+    //  Search: one glass panel in the middle of the screen.  The first try
+    //  attached it to the Island bar, but two layer surfaces cannot merge
+    //  without a seam; the fallback is the clean centred panel, with the same
+    //  field, prefix hints and rows as Vitreus's launcher.
+    let la.card = rgb(pal_panel_r, pal_panel_g, pal_panel_b)
+    let la.row = mix(tint, ink, 0.04)
+    let la.search = mix(tint, ink, 0.08)
+    let la.x = 20
+    let la.w = 620
+    let la.top = 20
+    let la.h = 600
+    prop la_p = 0 ~gentle
+    follow la_p = launch_open
+    //  A delayed focus loan: the surface has to be mapped before its field
+    //  can take the keyboard, exactly as Vitreus does for its launcher.
+    prop la_focus = 0 ~quick
+
+    surface launcher {
+        size: 660, 640
+        anchor: center
+        level: overlay
+        open: launch_open or la_p > 0.01
+        rate: 120, 30 while quiet
+        //  Set unconditionally: the layer surface only exists while open, and
+        //  Pleamar applies a keyboard change when the surface is created.
+        keyboard: exclusive
+
+        zone box la_shield { from: la.x, la.top; size: la.w, la.h; active: launch_open; label: "Search" }
+        on press la_shield { launch_open = launch_open }
+
+        PanelPop(search_fx, la_p, 660, 640) {
+            body {
+                color: la.card
+                glass: if(glass_on, 100%, 0%)
+                opacity: 1% * max(glass_tint, 82)
+                lens: glass_on and glass_bend
+                frost: glass_frost / 100
+                refraction: glass_refr
+                dispersion: glass_disp
+                dome: glass_dome
+                milk: glass_milk
+                rim: 1% * glass_edge
+                shine: pointer
+                box { from: la.x, la.top; size: la.w, la.h; corner: 24 }
+            }
+            box { from: la.x, la.top; size: la.w, la.h; corner: 24; stroke: 1; color: ink; opacity: 8% }
+
+            text "SEARCH" { at: la.x + 20, la.top + 24; anchor: left center; size: 10; weight: 700; color: faint; opacity: 70%; family: "Space Grotesk" }
+            text la_mode { at: la.x + la.w - 20, la.top + 24; anchor: right center; size: 11; weight: 700; color: aqua; family: "Space Grotesk" }
+
+            box { from: la.x + 16, la.top + 42; size: la.w - 32, 42; corner: 21; color: la.search; opacity: 92% }
+            box { from: la.x + 16, la.top + 42; size: la.w - 32, 42; corner: 21; stroke: 1; color: ink; opacity: 6% }
+            ellipse { at: la.x + 38, la.top + 60; radius: 5.5; stroke: 1.5; color: aqua; opacity: 90% }
+            line { from: la.x + 42, la.top + 64; to: la.x + 47, la.top + 69; width: 1.6; color: aqua; opacity: 90% }
+            input query {
+                at: la.x + 58, la.top + 52
+                width: la.w - 120
+                size: 18
+                color: ink
+                family: "Space Grotesk"
+                placeholder: "Search apps, files, commands…"
+            }
+
+            line { from: la.x + la.w - 46, la.top + 50; to: la.x + la.w - 36, la.top + 60; width: 1.5; color: ink; opacity: 55% + 45% * la_close.hover }
+            line { from: la.x + la.w - 36, la.top + 50; to: la.x + la.w - 46, la.top + 60; width: 1.5; color: ink; opacity: 55% + 45% * la_close.hover }
+            zone box la_close { from: la.x + la.w - 54, la.top + 42; size: 28, 28; corner: 14; cursor: pointer; label: "Close search" }
+            on press la_close { emit ui_sound; launch_open = false }
+
+            repeat i in 0..4 {
+                let hx = la.x + 16 + i * 118
+                let hy = la.top + 94
+                box { from: hx, hy; size: 112, 20; corner: 10; color: ink; opacity: 4% + 8% * lhint_hit.$i.hover }
+                text pick(i, "#", ">", ":", "^", "~") { at: hx + 10, hy + 10; anchor: left center; size: 13; weight: 700; color: aqua; family: "Space Grotesk" }
+                text pick(i, "files", "commands", "emoji", "clipboard", "wallpapers") { at: hx + 24, hy + 10; anchor: left center; size: 11.5; color: faint; family: "Space Grotesk" }
+                zone box lhint_hit.$i { from: hx, hy; size: 112, 20; corner: 10; cursor: pointer; label: pick(i, "Search files", "Search commands", "Search emoji", "Search clipboard", "Search wallpapers") }
+                on press lhint_hit.$i { emit ui_sound; emit la_hint(i) }
+            }
+            repeat j in 0..4 {
+                let hx = la.x + 16 + j * 118
+                let hy = la.top + 116
+                box { from: hx, hy; size: 112, 20; corner: 10; color: ink; opacity: 4% + 8% * lhint2_hit.$j.hover }
+                text pick(j, "@", "?", "!", "=", "+") { at: hx + 10, hy + 10; anchor: left center; size: 13; weight: 700; color: aqua; family: "Space Grotesk" }
+                text pick(j, "windows", "web", "bang", "calc", "more") { at: hx + 24, hy + 10; anchor: left center; size: 11.5; color: faint; family: "Space Grotesk" }
+                zone box lhint2_hit.$j { from: hx, hy; size: 112, 20; corner: 10; cursor: pointer; label: pick(j, "Search windows", "Search the web", "Web with a bang", "Calculate", "More") }
+                on press lhint2_hit.$j { emit ui_sound; emit la_hint(j + 5) }
+            }
+
+            repeat k in 0..7 {
+                let la.y = la.top + 150 + k * 42
+                group {
+                    show: k < la_apps.count
+                    box { from: la.x + 10, la.y; size: la.w - 20, 38; corner: 12; color: if(la_sel == k, cp.mint, ink); opacity: if(la_sel == k, 13%, 3% + 7% * la_row.$k.hover) }
+                    image la_apps.$k.icon { at: la.x + 22, la.y + 8; size: 22, 22; show: not la_apps.$k.has_glyph }
+                    text la_apps.$k.glyph { at: la.x + 33, la.y + 19; anchor: center; size: 16; color: aqua; show: la_apps.$k.has_glyph; family: "Space Grotesk" }
+                    text la_apps.$k.name { at: la.x + 56, la.y + 12; anchor: left center; size: 14.5; weight: 600; color: ink; width: la.w - 150; lines: 1; family: "Space Grotesk" }
+                    text la_apps.$k.sub { at: la.x + 56, la.y + 28; anchor: left center; size: 11; color: faint; width: la.w - 150; lines: 1; family: "Space Grotesk" }
+                    text la_apps.$k.kind { at: la.x + la.w - 18, la.y + 19; anchor: right center; size: 9.5; color: faint; opacity: 70%; family: "Space Grotesk" }
+                    zone box la_row.$k { from: la.x + 10, la.y; size: la.w - 20, 38; corner: 12; cursor: pointer; label: la_apps.$k.name }
+                    on press la_row.$k { emit ui_sound; emit launch(k) }
+                }
+            }
+            text "Nothing matches." { at: la.x + la.w / 2, la.top + 280; anchor: center; size: 14; color: faint; show: la_apps.count < 1 }
+            text la_hint { at: la.x + 14, la.top + la.h - 18; anchor: left center; size: 11; color: faint; opacity: 75%; width: la.w - 28; lines: 1; family: "Space Grotesk" }
+        }
+
+        on change launch_open while launch_open { la_focus: 1 after 220ms }
+        on change launch_open while not launch_open { la_focus: 0 }
+        on change la_focus > 0.05 while launch_open { focus query }
+        on key Escape while launch_open { launch_open = false }
+        on key Down while launch_open { emit la_move(1) }
+        on key Up while launch_open { emit la_move(-1) }
+        on key Tab while launch_open { emit la_move(1) }
+        on key Ctrl+n while launch_open { emit la_move(1) }
+        on key Ctrl+p while launch_open { emit la_move(-1) }
+    }
+}

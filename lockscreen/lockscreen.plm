@@ -1,0 +1,481 @@
+language 0.1
+import "palette.plm"
+import "pencil-glyphs.plm"
+
+//  The lock screen: the wallpaper arrives sharp and blurs into place under a ring
+//  of liquid that leaves the centre, then the clock, the avatar and the password bar rise in one after
+//  another. The password is never shown: every key you type becomes a random shape.
+//
+//  Lock it with   pleamar --say lockscreen "fact locked true"
+//  It unlocks itself when `auth.check` says the password is yours.
+
+scene Lockscreen {
+    //  The scene needs a surface of its own; the lock surface below is the one that matters.
+    surface { size: 1, 1; anchor: top_left; level: background }
+
+    permissions {
+        services: "clock", "clock.seconds", "battery", "media", "media.*", "auth", "files", "files.write", "session.*"
+        run: "cat", "magick", "getent", "mkdir", "rm", "ls", "cp", "printenv", "niri"
+    }
+
+    service clock as now { hour: number }
+    service battery as batt { present: bool; percent: number; charging: bool }
+    service media as med { playing: bool; title: text; artist: text }
+
+    //  ── what the logic reports ───────────────────────────────────────────────
+    fact safe = false              // true while testing a lock: Esc on an empty box, or a minute, opens it. Off: only the password does
+    fact locked = false            // set from outside to lock; the logic clears it after a good password
+    fact settled = false           // the entrance is over: nothing reads `time` any more
+    fact authing = false           // PAM is thinking
+    fact wrong = false             // the last try failed
+    fact right = false             // the last try worked
+    fact has_media = false
+    fact cfg_blur = 36             // the settings (lockscreen.json), as the shell's Settings page reads and sets them: see lockscreen.luau
+    fact cfg_12h = true
+    text cfg_monitor = "all"       // the chosen monitor ("all" or a name): the lock's `screens:` line follows it, see lockscreen.luau
+    fact cfg_ampm = true
+    fact cfg_media = true
+    fact cfg_secs = false
+    text cfg_date = "long"
+    fact mask_style: msk_shapes | msk_dots | msk_stars | msk_special = msk_shapes   // what a typed character becomes (settings: mask_style)
+    fact mask_pal: mp_vibrant | mp_accent | mp_neon | mp_pastel | mp_mono = mp_accent   // the colours they are drawn in (settings: shape_palette)
+    fact clock_px = 200            // the clock's size: 100, 150 or 200 (settings: clock_size); the card below it follows. A text's `size` can only be a plain number, so there is
+                                   // one clock for each size, and the one that is chosen is shown
+    fact show_power = true         // the sleep, restart and power off buttons (settings: show_power)
+    fact ph_s0 = 0                 // when a power button was pressed (`time`), and whether it is being held
+    fact ph_d0 = false
+    prop ph_p0 = 0 ~80ms
+    follow ph_p0 = if(ph_d0, clamp((time - ph_s0) / 1, 0, 1), 0)
+    fact ph_s1 = 0
+    fact ph_d1 = false
+    prop ph_p1 = 0 ~80ms
+    follow ph_p1 = if(ph_d1, clamp((time - ph_s1) / 1, 0, 1), 0)
+    fact ph_s2 = 0
+    fact ph_d2 = false
+    prop ph_p2 = 0 ~80ms
+    follow ph_p2 = if(ph_d2, clamp((time - ph_s2) / 1, 0, 1), 0)
+    event lock_power ->            // 0 sleep, 1 restart, 2 power off: after a second's hold
+    fact show_ampm = true          // the AM/PM pill beside the clock (settings: a 12 hour clock, and show_am_pm)
+    fact has_avatar = false
+    fact has_wall = false
+    fact pw_len = 0
+    fact t0 = 0                    // `time` when the lock closed
+    //  Our own clock, in seconds, which runs only while the screen is locked. The built-in `time` keeps a scene painting for as
+    //  long as it is named anywhere, even with nothing on screen (this scene, unlocked, cost 3% of a core for that); a clock that
+    //  is spun by a condition lets it go idle. It is called `time` so that everything below reads it as before.
+    prop time = 0
+    let lkf = floor(time * 8)                 // the pencil icons' frame (pencil-glyphs.plm): the hovered ones boil on it
+    spin time by if(locked, 1, 0)
+    text password = ""
+    text status = "System Locked"
+    text realname = "User"
+    text avatar_path = ""
+    text wp_sharp = ""
+    text wp_blur = ""
+    text clock_time = "12:00"
+    text clock_ampm = "AM"
+    text clock_date = ""
+    text clock_h = "12"
+    text clock_m = "00"
+    model shapes max 40 { idx: number; rot: number; outline: bool; ci: number; sym: text; life: number; last: bool }   // `life`: 1 while it is there, down to 0 as it is taken back (see lockscreen.luau)
+    event tryauth ->
+    event clear ->
+    event media_prev ->
+    event media_play ->
+    event media_next ->
+
+    image avatar = from avatar_path, 200, 200
+    image wall_sharp = from wp_sharp, 1280, 720
+    image wall_blur = from wp_blur, 960, 540
+    figure shp = file "shapes.svg"
+    shader lockwave = file "lockwave.wgsl"
+    shader glow = file "glow.wgsl"
+    shader blob = file "blob.wgsl"
+    spring wobble = 520, 11
+    spring pop = 420, 14
+    measure ck_w
+
+    //  ── springs of the small things ──────────────────────────────────────────
+    prop pop = 1 ~pop                       // the newest shape, popping past where it lands
+    prop shake = 0 ~wobble                  // the bar, shoved sideways on a wrong password
+    prop err_t = 0 ~150ms
+    prop ok_t = 0 ~150ms
+    prop typed_t = 0 ~150ms                 // the bar has something in it
+    prop media_in = 0 ~calm
+    prop exit_f = 1 ~150ms
+    prop lock_hot = 0 ~120ms
+    prop clr_hot = 0 ~120ms
+    prop go_hot = 0 ~120ms
+    prop prev_hot = 0 ~120ms
+    prop play_hot = 0 ~120ms
+    prop next_hot = 0 ~120ms
+
+    follow err_t = if(wrong, 1, 0)
+    follow ok_t = if(right, 1, 0)
+    follow typed_t = if(pw_len > 0, 1, 0)
+    follow media_in = if(has_media, 1, 0)
+    follow exit_f = if(right, 0, 1)
+
+    on change pw_len while pw_len > 0 { pop: 0 ~0ms }
+    on change pw_len while pw_len > 0 { pop: 1 after 16ms }
+    on change wrong while wrong { impulse shake 520 }
+    on change locked while locked { t0 = time }
+
+    on key Escape while pw_len > 0 { emit clear }
+    //  The seatbelts of a lock that is still being tried, as Marea's are: Esc on an empty box opens it, and
+    //  so does a minute of nothing. Turn `safe` off once it has been trusted.
+    on key Escape while locked and safe and pw_len == 0 { locked = false }
+    on still locked for 60s while locked and safe { locked = false }
+    on key Ctrl+u { emit clear }
+    on submit password { emit tryauth }
+
+    //  ── the lock ─────────────────────────────────────────────────────────────
+    surface lk {
+        kind: lock
+        screens: "all"
+        size: 640, 440
+        open: locked
+
+        //  A lock surface is a box centred on each monitor, and what lies around it shows too: everything is
+        //  laid out around the centre of that box, and the backdrop is painted from where the monitor's own
+        //  corner falls (ox, oy), the way Marea does hers.
+        let w = lk.width
+        let h = lk.height
+        let cx = 320
+        let cy = 220
+        let ox = floor(cx - w / 2 + 0.5)
+        let oy = floor(cy - h / 2 + 0.5)
+
+        //  The entrance, 0..1 over 2.2 s, in a straight line: the easing lives in each element, because an
+        //  eased driver would bunch every stagger window up near the start.
+        let e = if(settled, 1, clamp((time - t0) / 2.2, 0, 1))
+
+        //  Slices of it, one per element: `ph_*` the window, `ease_*` an ease-out (never past its target),
+        //  `spr_*` an underdamped spring, and `st_*` the stretch that follows its speed. Volume-preserving,
+        //  capped at 7 %, and zero once the window is over so the element rests exactly.
+        let ph_w = clamp(e / 1.0, 0, 1)
+        let ease_w = 1 - pow(1 - ph_w, 3)
+        let ph_b = clamp(e / 0.92, 0, 1)
+        let spr_b = if(ph_b >= 1, 1, 1 - exp(-9 * ph_b) * cos(688 * ph_b))
+        let ph_t = clamp((e - 0.10) / 0.40, 0, 1)
+        let ease_t = 1 - pow(1 - ph_t, 3)
+        let spr_t = if(ph_t >= 1, 1, 1 - exp(-5 * ph_t) * cos(688 * ph_t))
+        let vel_t = if(ph_t >= 1, 0, exp(-5 * ph_t) * (5 * cos(688 * ph_t) + 12 * sin(688 * ph_t)) / 0.40)
+        let st_t = 1 + min(abs(-22 * vel_t) * 0.000119, 0.07)
+        let ph_c = clamp((e - 0.35) / 0.50, 0, 1)
+        let ease_c = 1 - pow(1 - ph_c, 3)
+        let spr_c = if(ph_c >= 1, 1, 1 - exp(-5 * ph_c) * cos(688 * ph_c))
+        let vel_c = if(ph_c >= 1, 0, exp(-5 * ph_c) * (5 * cos(688 * ph_c) + 12 * sin(688 * ph_c)) / 0.50)
+        let st_c = 1 + min(abs(34 * vel_c) * 0.000119, 0.07)
+
+        //  The centre card, laid out from its top: clock, avatar, name and status, the bar, the media pill.
+        let dsh = 200 - clock_px                      // how much shorter the card is with a smaller clock
+        let card_h = 651 - dsh + 76 * media_in
+        let ct = floor(cy - card_h / 2 + 0.5)       // whole pixels: 651 / 2 would put every line of the card half a pixel down, and soft
+        let cb = ct - dsh                             // the lines below the clock: `cb + 263` is where `cb + 263` was with the full clock
+        let ckc = ct + 122 - dsh / 2                  // the clock's middle, and its pill's
+        let bar_y = cb + 622
+        let acc = mint
+
+        //  What gives way to the exit fade: everything but the compositor's own black.
+        box { from: -4000, -4000; size: 12000, 12000; color: #000000 }
+
+        group {
+            opacity: exit_f
+
+            //  1. THE WALLPAPER: sharp, cross-fading into its blur, under a ring that leaves the centre, with the
+            //  accent glow behind the clock. All in one group so its shader can darken and dither the lot in one go
+            //  (see lockwave.wgsl): 0.42 is the light left after 58 % black.
+            group {
+                pivot: cx, cy
+                scale: 1.06 - 0.06 * ease_w
+                group {
+                    shader: lockwave, e, 0.035, 2.2, 0.42
+                    image wall_sharp { at: ox, oy; size: w, h; opacity: 1 - clamp(spr_b, 0, 1) }
+                    image wall_blur { at: ox, oy; size: w, h; opacity: clamp(spr_b, 0, 1) }
+                    box { from: ox, oy; size: w, h; color: deep; opacity: 1 - has_wall }
+                    shader glow { at: ox, oy; size: w, h; colors: acc }
+                }
+            }
+
+            //  2. THE TOP STATUS BAR: chrome, so it arrives first and from above.
+            group {
+                pivot: cx, oy + 24
+                opacity: ease_t
+                move: 0, -22 * (1 - spr_t)
+                scale: 1 / st_t, st_t
+
+                group {
+                    show: batt.present
+                    GBattery(ox + 34, oy + 24, if(batt.charging, 0, batt.percent / 100), 18 / 24, if(batt.percent <= 20, #ef4444, acc), 1, 0)
+                    group { show: batt.charging; GBolt(ox + 34, oy + 24, 13 / 24, acc, 1, 0) }
+                    text number(batt.percent, 0, "%") { at: ox + 50, oy + 24; anchor: left center; size: 12; weight: 700; color: ink; family: "Space Grotesk" }
+                }
+                body {
+                    color: panel
+                    glass: 100%
+                    opacity: 70%
+                    refraction: 90%
+                    frost: 70%
+                    box { at: ox + w - 24 - 46, oy + 24; size: 92, 24; corner: 12 }
+                }
+                GLock(ox + w - 24 - 46 - 32, oy + 24, 12 / 24, acc, 1, 0)
+                text "PLEAMAR" { at: ox + w - 24 - 46 + 8, oy + 24; anchor: center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
+            }
+
+            //  3. THE CENTRE CARD: last and slowest, rising into place.
+            group {
+                pivot: cx, cy
+                opacity: ease_c
+                move: 0, 34 * (1 - spr_c)
+                scale: 1 / st_c, st_c
+
+                //  The clock, with its glow, and the AM/PM pill beside it.
+                //  The clock is in the middle of the screen whether or not there is a pill: the pill hangs off its right edge and does not count.
+                let ck_x = cx
+                group {
+                    glow: 18, 70%, acc
+                    //  Bold beyond the font's heaviest weight: the same text again around it, 3 px out in twelve directions. (A text
+                    //  `outline` did the same but left rough notches on the glyphs.) They are only there once the card has landed
+                    //  (the entrance passes 85 % when its last spring ends): while it moves, twelve copies each snapped to the pixel
+                    //  their own way show as lines between them.
+                    repeat i in 0..12 {
+                        text clock_time { at: ck_x + 3 * cos(i * 30), ckc + 3 * sin(i * 30); anchor: center; size: 200; weight: 700; color: ink; family: "Space Grotesk"; opacity: clamp((e - 0.85) / 0.1, 0, 1); show: e > 0.85 and clock_px >= 175 }
+                    }
+                    text clock_time { at: ck_x, ckc; anchor: center; size: 200; weight: 700; color: ink; family: "Space Grotesk"; letter_scale: 1 + 1.1 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_move: 0, 50 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_opacity: (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3)); show: clock_px >= 175 }
+                    repeat i in 0..12 {
+                        text clock_time { at: ck_x + 2.2 * cos(i * 30), ckc + 2.2 * sin(i * 30); anchor: center; size: 150; weight: 700; color: ink; family: "Space Grotesk"; opacity: clamp((e - 0.85) / 0.1, 0, 1); show: e > 0.85 and clock_px >= 125 and clock_px < 175 }
+                    }
+                    text clock_time { at: ck_x, ckc; anchor: center; size: 150; weight: 700; color: ink; family: "Space Grotesk"; letter_scale: 1 + 1.1 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_move: 0, 50 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_opacity: (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3)); show: clock_px >= 125 and clock_px < 175 }
+                    repeat i in 0..12 {
+                        text clock_time { at: ck_x + 1.5 * cos(i * 30), ckc + 1.5 * sin(i * 30); anchor: center; size: 100; weight: 700; color: ink; family: "Space Grotesk"; opacity: clamp((e - 0.85) / 0.1, 0, 1); show: e > 0.85 and clock_px < 125 }
+                    }
+                    text clock_time { at: ck_x, ckc; anchor: center; size: 100; weight: 700; color: ink; family: "Space Grotesk"; letter_scale: 1 + 1.1 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_move: 0, 50 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_opacity: (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3)); show: clock_px < 125 }
+                    //  Its width, measured at 200 and not seen: the pill goes where the clock ends, whichever size is shown.
+                    text clock_time { at: ck_x, ckc; anchor: center; size: 200; weight: 700; color: ink; family: "Space Grotesk"; measure: ck_w; opacity: 0 }
+                }
+                let ap_x = floor(cx + ck_w.width * clock_px / 400 + 32 + 0.5)
+                box { at: ap_x, ckc; size: 48, 28; corner: 14; color: acc; opacity: 18%; show: show_ampm }
+                box { at: ap_x, ckc; size: 48, 28; corner: 14; color: acc; opacity: 0%; stroke: 1; show: show_ampm }
+                text clock_ampm { at: ap_x, ckc; anchor: center; size: 11; weight: 700; color: acc; family: "Space Grotesk"; show: show_ampm }
+                text clock_date { at: cx, cb + 263; anchor: center; size: 21; weight: 500; color: faint; family: "Space Grotesk"; letter_scale: 1 + 0.6 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.012) / 0.3, 0, 1), 3))); letter_move: 0, 16 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.012) / 0.3, 0, 1), 3))); letter_opacity: (1 - pow(1 - clamp((e - 0.35 - letter * 0.012) / 0.3, 0, 1), 3)) }
+
+                //  The avatar: a 200 px disc inside a morphing aurora blob (blob.wgsl).
+                shader blob { at: cx - 130, cb + 270; size: 260, 260; values: 1; colors: mintlo, minthi }
+                //  Glass: the lock paints its own wallpaper, so the glass bends that picture (pleamar sees what the scene painted under it), with
+                //  nothing to capture from the compositor and nothing to pay while the lock is not up.
+                body {
+                    color: panel
+                    glass: 100%
+                    opacity: 80%
+                    refraction: 140%
+                    dispersion: 90%
+                    frost: 60%
+                    vivid: 115%
+                    shine: pointer
+                    ellipse { at: cx, cb + 400; radius: 100 }
+                }
+                group {
+                    clip inset 5 ellipse { at: cx, cb + 400; radius: 100 }
+                    image avatar { at: cx - 95, cb + 305; size: 190, 190; show: has_avatar }
+                }
+                group { show: not has_avatar; GPerson(cx, cb + 400, 104 / 24, acc, 1, 0) }
+                text realname { at: cx, cb + 527; anchor: center; size: 21; weight: 700; color: ink; family: "Space Grotesk"; letter_scale: 1 + 0.6 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.012) / 0.3, 0, 1), 3))); letter_move: 0, 16 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.012) / 0.3, 0, 1), 3))); letter_opacity: (1 - pow(1 - clamp((e - 0.35 - letter * 0.012) / 0.3, 0, 1), 3)) }
+                text "Esc to exit · test lock" { at: cx, cb + 583; anchor: center; size: 11; color: acc; opacity: 80%; family: "Space Grotesk"; show: safe and pw_len == 0 }
+                text status { at: cx, cb + 562; anchor: center; size: 12; color: mix(mix(faint, #ef4444, err_t), #10b981, ok_t); family: "Space Grotesk" }
+
+                //  4. THE PASSWORD BAR
+                group {
+                    move: shake, 0
+                    body {
+                        color: panel
+                        glass: 100%
+                        opacity: 72%
+                        refraction: 120%
+                        dispersion: 80%
+                        frost: 80%
+                        vivid: 115%
+                        shine: pointer
+                        border: 1.5, mix(mix(mix(#ffffff, mint, typed_t), #ef4444, err_t), #10b981, ok_t)
+                        shadow: 0, 0, 10 + 8 * (err_t + ok_t), 30% + 30% * (err_t + ok_t), mix(mix(mint, #ef4444, err_t), #10b981, ok_t)
+                        box { at: cx, bar_y; size: 520, 58; corner: 29 }
+                    }
+                    //  the lock, its disc tinted by how the last try went
+                    ellipse { at: cx - 226, bar_y; radius: 18; color: mix(mix(#ffffff, #ef4444, err_t * 0.9), #10b981, ok_t * 0.9); opacity: 8% + 10% * (err_t + ok_t) }
+                    group { show: not right and not wrong; GLock(cx - 226, bar_y, 20 / 24, acc, 1, 0) }
+                    group { show: right; GLockOpen(cx - 226, bar_y, 20 / 24, #10b981, 1, 0) }
+                    group { show: wrong and not right; GRetry(cx - 226, bar_y, 20 / 24, #ef4444, 1, 0) }
+
+                    //  what has been typed: a blinking caret and a hint while empty, shapes after
+                    box { at: cx - 197, bar_y; size: 2, 20; corner: 1; color: acc; opacity: (1 - typed_t) * (50% + 50% * sin(time * 340)); show: pw_len == 0 }
+                    text "Enter password..." { at: cx - 186, bar_y; anchor: left center; size: 14; color: faint; opacity: 70% * (1 - typed_t); family: "Space Grotesk" }
+                    input password { at: cx - 198, bar_y - 9; width: 340; size: 14; color: ink; opacity: 0; secret: true; family: "Space Grotesk" }
+
+                    group {
+                        clip box { from: cx - 198, bar_y - 29; size: 358, 58 }
+                        row shape_row {
+                            at: cx - 198 - max(0, shape_row.width - 356), bar_y - 13
+                            gap: 8
+                            for s in shapes {
+                                //  A character that is taken back is not dropped: it is rewound, the way it came, shrinking and turning back as it goes while the rest close up
+                                //  (so a held Backspace unsays them one after another). The logic eases `s.life` from 1 to 0.
+                                group {
+                                    size: 26 * clamp(s.life, 0, 1), 26
+                                    let newest = s.last
+                                    let grow_t = if(newest, clamp(pop, 0, 2), 1) * clamp(s.life, 0, 1)
+                                    //  Each character has a colour of its own, picked at random from the palette (`s.ci`, 0 to 59, so that the palettes of
+                                    //  five and of four colours are both even): vibrant, neon and pastel are sets, accent is the accent, mono is white.
+                                    let gc5 = mod(s.ci, 5)
+                                    let gc4 = mod(s.ci, 4)
+                                    let gv = mix(mix(mix(mix(#00f0ff, #7000ff, if(gc5 == 1, 1, 0)), #ff0055, if(gc5 == 2, 1, 0)), #00ff66, if(gc5 == 3, 1, 0)), #ffcc00, if(gc5 == 4, 1, 0))
+                                    let gn = mix(mix(mix(#ff0055, #00ffff, if(gc4 == 1, 1, 0)), #ffff00, if(gc4 == 2, 1, 0)), #ff00ff, if(gc4 == 3, 1, 0))
+                                    let gp = mix(mix(mix(#c4b5fd, #93c5fd, if(gc4 == 1, 1, 0)), #fbcfe8, if(gc4 == 2, 1, 0)), #fed7aa, if(gc4 == 3, 1, 0))
+                                    let gcol = mix(mix(mix(mix(gv, acc, if(mask_pal == mp_accent, 1, 0)), gn, if(mask_pal == mp_neon, 1, 0)), gp, if(mask_pal == mp_pastel, 1, 0)), #ffffff, if(mask_pal == mp_mono, 1, 0))
+                                    let tint = mix(mix(gcol, #ef4444, err_t), #10b981, ok_t)
+                                    //  Squashed the way the Unsaid Word Rewind squashes its letters: thinner as it goes (or comes), and taller, never shorter, until it has gone.
+                                    group {
+                                        show: mask_style == msk_shapes
+                                        pivot: 13, 13
+                                        scale: clamp(grow_t, 0, 2), if(grow_t < 1, 1 + (1 - clamp(grow_t, 0, 1)) * 0.6, grow_t)
+                                        figure shp.s0 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; opacity: clamp(grow_t, 0, 1); show: s.idx == 0 and not s.outline }
+                                        figure shp.s0 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; stroke: 2.5; opacity: clamp(grow_t, 0, 1); show: s.idx == 0 and s.outline }
+                                        figure shp.s1 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; opacity: clamp(grow_t, 0, 1); show: s.idx == 1 and not s.outline }
+                                        figure shp.s1 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; stroke: 2.5; opacity: clamp(grow_t, 0, 1); show: s.idx == 1 and s.outline }
+                                        figure shp.s2 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; opacity: clamp(grow_t, 0, 1); show: s.idx == 2 and not s.outline }
+                                        figure shp.s2 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; stroke: 2.5; opacity: clamp(grow_t, 0, 1); show: s.idx == 2 and s.outline }
+                                        figure shp.s3 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; opacity: clamp(grow_t, 0, 1); show: s.idx == 3 and not s.outline }
+                                        figure shp.s3 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; stroke: 2.5; opacity: clamp(grow_t, 0, 1); show: s.idx == 3 and s.outline }
+                                        figure shp.s4 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; opacity: clamp(grow_t, 0, 1); show: s.idx == 4 and not s.outline }
+                                        figure shp.s4 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; stroke: 2.5; opacity: clamp(grow_t, 0, 1); show: s.idx == 4 and s.outline }
+                                        figure shp.s5 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; opacity: clamp(grow_t, 0, 1); show: s.idx == 5 and not s.outline }
+                                        figure shp.s5 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; stroke: 2.5; opacity: clamp(grow_t, 0, 1); show: s.idx == 5 and s.outline }
+                                        figure shp.s6 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; opacity: clamp(grow_t, 0, 1); show: s.idx == 6 and not s.outline }
+                                        figure shp.s6 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; stroke: 2.5; opacity: clamp(grow_t, 0, 1); show: s.idx == 6 and s.outline }
+                                        figure shp.s7 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; opacity: clamp(grow_t, 0, 1); show: s.idx == 7 and not s.outline }
+                                        figure shp.s7 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; stroke: 2.5; opacity: clamp(grow_t, 0, 1); show: s.idx == 7 and s.outline }
+                                        figure shp.s8 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; opacity: clamp(grow_t, 0, 1); show: s.idx == 8 and not s.outline }
+                                        figure shp.s8 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; stroke: 2.5; opacity: clamp(grow_t, 0, 1); show: s.idx == 8 and s.outline }
+                                        figure shp.s9 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; opacity: clamp(grow_t, 0, 1); show: s.idx == 9 and not s.outline }
+                                        figure shp.s9 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; stroke: 2.5; opacity: clamp(grow_t, 0, 1); show: s.idx == 9 and s.outline }
+                                        figure shp.s10 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; opacity: clamp(grow_t, 0, 1); show: s.idx == 10 and not s.outline }
+                                        figure shp.s10 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; stroke: 2.5; opacity: clamp(grow_t, 0, 1); show: s.idx == 10 and s.outline }
+                                        figure shp.s11 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; opacity: clamp(grow_t, 0, 1); show: s.idx == 11 and not s.outline }
+                                        figure shp.s11 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; stroke: 2.5; opacity: clamp(grow_t, 0, 1); show: s.idx == 11 and s.outline }
+                                        figure shp.s12 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; opacity: clamp(grow_t, 0, 1); show: s.idx == 12 and not s.outline }
+                                        figure shp.s12 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; stroke: 2.5; opacity: clamp(grow_t, 0, 1); show: s.idx == 12 and s.outline }
+                                        figure shp.s13 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; opacity: clamp(grow_t, 0, 1); show: s.idx == 13 and not s.outline }
+                                        figure shp.s13 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; stroke: 2.5; opacity: clamp(grow_t, 0, 1); show: s.idx == 13 and s.outline }
+                                        figure shp.s14 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; opacity: clamp(grow_t, 0, 1); show: s.idx == 14 and not s.outline }
+                                        figure shp.s14 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; stroke: 2.5; opacity: clamp(grow_t, 0, 1); show: s.idx == 14 and s.outline }
+                                        figure shp.s15 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; opacity: clamp(grow_t, 0, 1); show: s.idx == 15 and not s.outline }
+                                        figure shp.s15 { at: 13, 13; size: 20, 20; rotate: (s.rot - 60 * (1 - clamp(grow_t, 0, 1))) * 1deg; color: tint; stroke: 2.5; opacity: clamp(grow_t, 0, 1); show: s.idx == 15 and s.outline }
+                                    }
+                                    //  The other styles: a disc (or a ring), an asterisk, and a symbol.
+                                    ellipse { at: 13, 13; radius: 5.5 * grow_t; color: tint; opacity: clamp(grow_t, 0, 1); show: mask_style == msk_dots and not s.outline }
+                                    ellipse { at: 13, 13; radius: 5 * grow_t; stroke: 2; color: tint; opacity: clamp(grow_t, 0, 1); show: mask_style == msk_dots and s.outline }
+                                    group {
+                                        show: mask_style == msk_stars
+                                        line { from: 13 - 8 * grow_t, 13; to: 13 + 8 * grow_t, 13; width: 2.4; color: tint; opacity: clamp(grow_t, 0, 1) }
+                                        line { from: 13 - 4 * grow_t, 13 - 6.93 * grow_t; to: 13 + 4 * grow_t, 13 + 6.93 * grow_t; width: 2.4; color: tint; opacity: clamp(grow_t, 0, 1) }
+                                        line { from: 13 + 4 * grow_t, 13 - 6.93 * grow_t; to: 13 - 4 * grow_t, 13 + 6.93 * grow_t; width: 2.4; color: tint; opacity: clamp(grow_t, 0, 1) }
+                                    }
+                                    text s.sym { at: 13, 13; anchor: center; align: center; size: 20; weight: 700; color: tint; opacity: clamp(grow_t, 0, 1); family: "Space Grotesk"; show: mask_style == msk_special }
+                                }
+                            }
+                        }
+                    }
+
+                    //  clear, and the submit disc
+                    group {
+                        show: pw_len > 0 and not authing
+                        ellipse { at: cx + 184, bar_y; radius: 16; color: mix(#ffffff, #ef4444, clr_hot); opacity: 8% + 12% * clr_hot }
+                        GCancel(cx + 184, bar_y, 18 / 24, mix(faint, #ef4444, clr_hot), 1, if(clr_hot > 0.5, lkf, 0))
+                    }
+                    ellipse { at: cx + 230, bar_y; radius: 20; color: mix(#ffffff, acc, typed_t); opacity: 8% + 77% * typed_t + 15% * go_hot * typed_t }
+                    group { show: not authing; GArrow(cx + 230, bar_y, 22 / 24, mix(faint, deep, typed_t), 1, 0) }
+                    group { pivot: cx + 230, bar_y; rotate: time * 450; show: authing
+                        GSpinner(cx + 230, bar_y, 0, 22 / 24, deep, 1, 0)
+                    }
+
+                    zone box bar_hit { at: cx - 30, bar_y; size: 440, 58; cursor: text }
+                    zone box clr_z { at: cx + 184, bar_y; size: 32, 32; corner: 16; cursor: pointer; active: pw_len > 0 and not authing }
+                    zone box go_z { at: cx + 230, bar_y; size: 40, 40; corner: 20; cursor: pointer; active: pw_len > 0 and not authing }
+                    follow clr_hot = if(clr_z.hover > 0.5, 1, 0)
+                    follow go_hot = if(go_z.hover > 0.5, 1, 0)
+                }
+
+                //  5. THE MEDIA PILL, only while a player exists.
+                group {
+                    opacity: media_in
+                    show: media_in > 0.01
+                    box { at: cx, cb + 701; size: 380, 52; corner: 26; color: panel; opacity: 60% }
+                    box { at: cx, cb + 701; size: 380, 52; corner: 26; color: #ffffff; opacity: 0%; stroke: 1 }
+                    ellipse { at: cx - 190 + 14 + 16, cb + 701; radius: 16; color: acc; opacity: 20% }
+                    GNote(cx - 190 + 14 + 16, cb + 701, 18 / 24, acc, 1, 0)
+                    text med.title { at: cx - 190 + 62, cb + 693; anchor: left center; size: 12; weight: 700; width: 190; lines: 1; color: ink; family: "Space Grotesk" }
+                    text med.artist { at: cx - 190 + 62, cb + 710; anchor: left center; size: 11; width: 190; lines: 1; color: faint; family: "Space Grotesk" }
+                    ellipse { at: cx + 190 - 14 - 28 - 4 - 32 - 4 - 14, cb + 701; radius: 14; color: #ffffff; opacity: 15% * prev_hot }
+                    GSkip(cx + 190 - 14 - 28 - 4 - 32 - 4 - 14, cb + 701, 1, 18 / 24, ink, 1, 0)
+                    ellipse { at: cx + 190 - 14 - 28 - 4 - 16, cb + 701; radius: 16; color: mix(#ffffff, acc, play_hot); opacity: 12% + 88% * play_hot }
+                    group { show: med.playing; GPause(cx + 190 - 14 - 28 - 4 - 16, cb + 701, 20 / 24, mix(ink, deep, play_hot), 1, if(play_hot > 0.5, lkf, 0)) }
+                    group { show: not med.playing; GPlay(cx + 190 - 14 - 28 - 4 - 16, cb + 701, 20 / 24, mix(ink, deep, play_hot), 1, if(play_hot > 0.5, lkf, 0)) }
+                    ellipse { at: cx + 190 - 14 - 14, cb + 701; radius: 14; color: #ffffff; opacity: 15% * next_hot }
+                    GSkip(cx + 190 - 14 - 14, cb + 701, -1, 18 / 24, ink, 1, 0)
+                    zone box prev_z { at: cx + 190 - 14 - 28 - 4 - 32 - 4 - 14, cb + 701; size: 28, 28; corner: 14; cursor: pointer; active: media_in > 0.9 }
+                    zone box play_z { at: cx + 190 - 14 - 28 - 4 - 16, cb + 701; size: 32, 32; corner: 16; cursor: pointer; active: media_in > 0.9 }
+                    zone box next_z { at: cx + 190 - 14 - 14, cb + 701; size: 28, 28; corner: 14; cursor: pointer; active: media_in > 0.9 }
+                    follow prev_hot = if(prev_z.hover > 0.5, 1, 0)
+                    follow play_hot = if(play_z.hover > 0.5, 1, 0)
+                    follow next_hot = if(next_z.hover > 0.5, 1, 0)
+                }
+
+                //  The bar is the one big target: a click anywhere else asks for the keyboard again.
+            }
+
+            //  6. THE POWER BUTTONS: sleep, restart and power off, on a pill at the bottom of the screen. Each is held for a second, and fills
+            //  while it is held and lets go if you do: none of them can be undone.
+            group {
+                show: show_power
+                opacity: ease_c
+                let py = oy + h - 64
+                box { at: cx, py; size: 164, 48; corner: 24; color: panel; opacity: 60% }
+                box { at: cx, py; size: 164, 48; corner: 24; color: #ffffff; opacity: 0%; stroke: 1 }
+                ellipse { at: cx - 48, py; radius: 18 * clamp(ph_p0 * 1.2, 0, 1); color: acc; opacity: 30% }
+                ellipse { at: cx - 48, py; radius: 18; color: #ffffff; opacity: 14% * pz0.hover }
+                GMoon(cx - 48, py, 20 / 24, mix(faint, acc, max(pz0.hover, clamp(ph_p0 * 3, 0, 1))), 1, if(pz0.hover > 0.5, lkf, 0))
+                text "Hold to sleep" { at: cx, py - 40; anchor: center; size: 12; weight: 700; color: ink; family: "Space Grotesk"; show: ph_d0 }
+                zone box pz0 { at: cx - 48, py; size: 36, 36; corner: 18; cursor: pointer; active: show_power }
+                on press pz0 { ph_s0 = time; ph_d0 = true }
+                on release pz0 { ph_d0 = false }
+                on hold pz0 for 1000ms { ph_d0 = false; emit lock_power(0) }
+                ellipse { at: cx + 0, py; radius: 18 * clamp(ph_p1 * 1.2, 0, 1); color: acc; opacity: 30% }
+                ellipse { at: cx + 0, py; radius: 18; color: #ffffff; opacity: 14% * pz1.hover }
+                GRetry(cx + 0, py, 20 / 24, mix(faint, acc, max(pz1.hover, clamp(ph_p1 * 3, 0, 1))), 1, if(pz1.hover > 0.5, lkf, 0))
+                text "Hold to restart" { at: cx, py - 40; anchor: center; size: 12; weight: 700; color: ink; family: "Space Grotesk"; show: ph_d1 }
+                zone box pz1 { at: cx + 0, py; size: 36, 36; corner: 18; cursor: pointer; active: show_power }
+                on press pz1 { ph_s1 = time; ph_d1 = true }
+                on release pz1 { ph_d1 = false }
+                on hold pz1 for 1000ms { ph_d1 = false; emit lock_power(1) }
+                ellipse { at: cx + 48, py; radius: 18 * clamp(ph_p2 * 1.2, 0, 1); color: acc; opacity: 30% }
+                ellipse { at: cx + 48, py; radius: 18; color: #ffffff; opacity: 14% * pz2.hover }
+                GPower(cx + 48, py, 20 / 24, mix(faint, acc, max(pz2.hover, clamp(ph_p2 * 3, 0, 1))), 1, if(pz2.hover > 0.5, lkf, 0))
+                text "Hold to power off" { at: cx, py - 40; anchor: center; size: 12; weight: 700; color: ink; family: "Space Grotesk"; show: ph_d2 }
+                zone box pz2 { at: cx + 48, py; size: 36, 36; corner: 18; cursor: pointer; active: show_power }
+                on press pz2 { ph_s2 = time; ph_d2 = true }
+                on release pz2 { ph_d2 = false }
+                on hold pz2 for 1000ms { ph_d2 = false; emit lock_power(2) }
+            }
+        }
+
+        //  the box takes the keyboard as soon as the compositor confirms the lock, so the password can be
+        //  typed straight away instead of after a click (`focus` also has the compositor lend the keyboard
+        //  to this surface). On `lock.held`, not on `locked`: the surface does not exist before that.
+        on change lock.held while lock.held { focus password }
+        on press bar_hit { focus password }
+        on press clr_z { emit clear }
+        on press go_z { emit tryauth }
+        on press prev_z { emit media_prev }
+        on press play_z { emit media_play }
+        on press next_z { emit media_next }
+    }
+}

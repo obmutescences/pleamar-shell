@@ -1,0 +1,31 @@
+library Motion {
+    //  Shared popup motion for every card: the same five poses as iNiR's
+    //  centre panel, expressed with the transforms a layer surface can do.
+    //  effect: 0 fade · 1 spin · 2 unfold · 3 drop · 4 aperture
+    //
+    //  The glass body and all of its children go inside the caller's copy;
+    //  the surface keeps `open` true while p is still settling, so the close
+    //  path is the exact reverse of the open path instead of a pop.
+    component PanelPop(effect: number, p: number, w: number, h: number) {
+        let sx = if(effect == 1, 0.24 + 0.76 * p,
+                 if(effect == 0, 0.96 + 0.04 * p,
+                 if(effect == 4, 0.82 + 0.18 * p, 1)))
+        let sy = if(effect == 1, 0.24 + 0.76 * p,
+                 if(effect == 2, 0.02 + 0.98 * p,
+                 if(effect == 4, 0.02 + 0.98 * p, 1)))
+        group {
+            //  Unfold grows from its bottom edge like a book standing up;
+            //  every other pose breathes from the middle.
+            pivot: w / 2, if(effect == 2, h, h / 2)
+            opacity: if(effect == 2, min(1, p * 2.5),
+                      if(effect == 3, min(1, p * 3), p))
+            scale: sx, sy
+            //  iNiR spins a full turn from -100°; this surface is only the
+            //  card, so a gentler -30° keeps the corners inside it.
+            rotate: if(effect == 1, -30deg * (1 - p), 0deg)
+            move: 0, if(effect == 0, 18 * (1 - p),
+                     if(effect == 3, -(h + 120) * (1 - p), 0))
+            children
+        }
+    }
+}

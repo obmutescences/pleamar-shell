@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Lock the running session, starting the lock scene first if it is not up.
+#   pleamar-lock ensure   start the scene without locking
+#   pleamar-lock lock     start it and lock
+#   pleamar-lock test     lock in safe mode (Esc on an empty bar opens it)
+#   pleamar-lock sync     push config.json's lock settings into a running scene
+set -euo pipefail
+
+root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+bin="$("$root/bin/pleamar-shell" --path)"
+scene="$root/lockscreen/lockscreen.plm"
+cfg="${XDG_CONFIG_HOME:-$HOME/.config}/pleamar-shell/config.json"
+
+running() { pgrep -f -- "pleamar --scene .*/lockscreen/lockscreen.plm" >/dev/null 2>&1; }
+
+ready() {
+    for _ in $(seq 1 60); do
+        if "$bin" --say lockscreen "get locked" >/dev/null 2>&1; then return 0; fi
+        sleep 0.1
+    done
+    return 1
+}
+
+ensure() {
+    running && return 0
+    setsid -f "$root/bin/pleamar-shell" lock >/tmp/pleamar-lock.log 2>&1
+    for _ in $(seq 1 30); do running && break; sleep 0.1; done
+    running || return 1
+    ready
+}
+
+say() { "$bin" --say lockscreen "$1" >/dev/null 2>&1 || true; }
+
+sync() {
+    running || return 0
+    [[ -r "$cfg" ]] || return 0
+    val() { jq -r --arg k "$1" '.[$k] // empty' "$cfg" 2>/dev/null; }
+    local blur date mask pal
+    blur="$(val lock_blur)"; date="$(val lock_date)"; mask="$(val lock_mask)"; pal="$(val lock_pal)"
+    say "fact cfg_blur ${blur:-36}"
+    say "fact cfg_12h $(val lock_12h | grep -qx true && echo true || echo false)"
+    say "fact cfg_ampm $(val lock_ampm | grep -qx true && echo true || echo false)"
+    say "fact cfg_media $(val lock_media | grep -qx true && echo true || echo false)"
+    say "fact cfg_secs $(val lock_secs | grep -qx true && echo true || echo false)"
+    say "fact show_power $(val lock_power | grep -qx true && echo true || echo false)"
+    px="$(val lock_px)"; say "fact clock_px ${px:-200}"
+    case "${date:-0}" in
+        1) date=standard ;; 2) date=dayFirst ;; 3) date=iso ;; *) date=long ;;
+    esac
+    case "${mask:-0}" in
+        1) mask=msk_dots ;; 2) mask=msk_stars ;; 3) mask=msk_special ;; *) mask=msk_shapes ;;
+    esac
+    case "${pal:-1}" in
+        0) pal=mp_vibrant ;; 2) pal=mp_neon ;; 3) pal=mp_pastel ;; 4) pal=mp_mono ;; *) pal=mp_accent ;;
+    esac
+    say "text cfg_date $date"
+    say "fact mask_style $mask"
+    say "fact mask_pal $pal"
+}
+
+case "${1:-lock}" in
+    ensure) ensure ;;
+    sync) sync ;;
+    lock) ensure; sync; say "fact locked true" ;;
+    test) ensure; sync; say "fact safe true"; say "fact locked true" ;;
+    *) echo "usage: $0 ensure|lock|test|sync" >&2; exit 2 ;;
+esac
