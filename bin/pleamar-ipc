@@ -2,7 +2,7 @@
 # Open a pleamar-shell panel from a terminal.
 #   pleamar-ipc search
 #   pleamar-ipc settings [0..9]
-#   pleamar-ipc center [0..6]
+#   pleamar-ipc center [toggle|0..6]
 #   pleamar-ipc notifications
 #   pleamar-ipc lock
 # The running scene is discovered; use PLEAMAR_SCENE=frame when both run.
@@ -21,7 +21,7 @@ fi
 case "$action" in
     search|settings|center|notifications|lock) ;;
     *)
-        echo "usage: $0 search | settings [0..9] | center [0..6] | notifications | lock" >&2
+        echo "usage: $0 search | settings [0..9] | center [toggle|0..6] | notifications | lock" >&2
         exit 2
         ;;
 esac
@@ -54,12 +54,22 @@ case "$action" in
         ;;
     center)
         tab="${2:-}"
-        if [[ -n "$tab" ]]; then
-            [[ "$tab" =~ ^[0-6]$ ]] || { echo "center tab must be 0..6" >&2; exit 2; }
-            command="emit ipc_open_center $tab"
-        else
-            command="emit ipc_open_center"
-        fi
+        case "$tab" in
+            ""|toggle)
+                # No tab (or explicit `toggle`): close an open centre, otherwise
+                # open it on the last-used tab.
+                command="emit center_toggle"
+                ;;
+            [0-6])
+                # An explicit tab always opens/switches, even if the centre is
+                # already visible.
+                command="emit ipc_open_center $tab"
+                ;;
+            *)
+                echo "center must be toggle or a tab 0..6" >&2
+                exit 2
+                ;;
+        esac
         ;;
     notifications) command="emit ipc_open_notifications" ;;
 esac

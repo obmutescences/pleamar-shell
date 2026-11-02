@@ -77,7 +77,7 @@
 | 搜索 | `pleamar-ipc search` |
 | 设置（保持当前页） | `pleamar-ipc settings` |
 | 设置指定页 | `pleamar-ipc settings 2` |
-| 中心面板 | `pleamar-ipc center` |
+| 中心面板 toggle | `pleamar-ipc center` / `pleamar-ipc center toggle` |
 | 中心面板指定 tab | `pleamar-ipc center 3` |
 | 通知中心 | `pleamar-ipc notifications` |
 | 锁屏 | `pleamar-ipc lock` |
@@ -94,8 +94,9 @@
 pleamar --say island "emit ipc_open_search"
 pleamar --say island "emit ipc_open_settings"
 pleamar --say island "emit ipc_open_settings 2"
-pleamar --say island "emit ipc_open_center"
-pleamar --say island "emit ipc_open_center 3"
+pleamar --say island "emit center_toggle"        # 打开 / 关闭
+pleamar --say island "emit ipc_open_center"      # 只打开（保持打开）
+pleamar --say island "emit ipc_open_center 3"    # 打开并切到 tab 3
 pleamar --say island "emit ipc_open_notifications"
 ```
 
