@@ -293,8 +293,11 @@ rows + sliders + switches。当前保留十页，原来的临时小面板已删�
   Frame 布局不再显示这条 bar。
 - **LOCK**：锁屏外观。Blur（Light/Medium/Heavy）、12/24 小时与秒、
   Clock size、日期格式、密码遮罩（Shapes/Dots/Stars/Special）、遮罩调色板、
-  Media pill / Power buttons；`Lock now` 与 `Test lock`。锁屏是独立的
-  `lockscreen/lockscreen.plm` 场景，用 compositor 的 `ext-session-lock`
+  Media pill / Power buttons；`Lock now` 与 `Test lock`。Mask colour 只控制
+  输入密码时遮罩符号的颜色；时间、日期、状态和面板颜色来自壁纸 palette。
+  锁屏是独立的
+  `lockscreen/lockscreen.plm` 场景，用 compositor 的 `ext-session-lock`；
+  `pleamar-lock sync` 会在每次上锁前把当前 `palette.json` 推给已预热的锁屏
   和 PAM 验证密码；Ctrl+U 清空，测试锁可用 Esc 空栏或 1 分钟退出。
 - **IDLE**：`Lock after` / `Screen off after`，步进 0（Never）、1、2、3、5、
   7、10、15、20、30、45、60、90、120 分钟。由 `swayidle` 执行：锁屏调用

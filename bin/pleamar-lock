@@ -33,6 +33,9 @@ say() { "$bin" --say lockscreen "$1" >/dev/null 2>&1 || true; }
 
 sync() {
     running || return 0
+    # The lock scene is started early, but the wallpaper palette can change
+    # afterwards.  Push it before every lock so time/faint/panel colours match.
+    say "emit palette_sync"
     [[ -r "$cfg" ]] || return 0
     val() { jq -r --arg k "$1" '.[$k] // empty' "$cfg" 2>/dev/null; }
     local blur date mask pal

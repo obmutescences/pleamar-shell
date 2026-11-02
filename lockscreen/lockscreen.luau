@@ -149,6 +149,32 @@ end)
 
 -- ── Who is locked in ─────────────────────────────────────────────────────────────────────────────────
 local home, user = "", ""
+
+-- The lock scene is warmed at shell startup, but wallpaper colours can change
+-- afterwards.  Keep the palette in a function so `pleamar-lock sync` can push
+-- the current wallpaper colours before every lock.
+local function push_palette()
+    if home == "" then return end
+    run("cat", { home .. "/.config/pleamar-shell/palette.json" }, function(out)
+        local ok, pal = pcall(json.decode, out or "")
+        if not ok or type(pal) ~= "table" then return end
+        local function put(name, key)
+            local hx = pal[key]
+            if type(hx) ~= "string" then return end
+            local r, g, b = hx:match("^#(%x%x)(%x%x)(%x%x)$")
+            if not r then return end
+            fact["LockPalette.pal_" .. name .. "_r"] = tonumber(r, 16) / 255
+            fact["LockPalette.pal_" .. name .. "_g"] = tonumber(g, 16) / 255
+            fact["LockPalette.pal_" .. name .. "_b"] = tonumber(b, 16) / 255
+        end
+        for _, key in ipairs({ "ink", "faint", "mint", "mintlo", "minthi", "panel", "deep", "tint", "off" }) do
+            put(key, key)
+        end
+    end)
+end
+
+on("palette_sync", push_palette)
+
 run("printenv", { "HOME" }, function(out)
     home = (out or ""):gsub("%s+$", "")
     run("printenv", { "USER" }, function(uout)
@@ -157,22 +183,7 @@ run("printenv", { "HOME" }, function(out)
         if user ~= "" then text.realname = user end
         -- The shell's palette is generated from the wallpaper.  These facts
         -- are imported by palette.plm, so the lock matches the bar and panels.
-        run("cat", { home .. "/.config/pleamar-shell/palette.json" }, function(out)
-            local ok, pal = pcall(json.decode, out or "")
-            if not ok or type(pal) ~= "table" then return end
-            local function put(name, key)
-                local hx = pal[key]
-                if type(hx) ~= "string" then return end
-                local r, g, b = hx:match("^#(%x%x)(%x%x)(%x%x)$")
-                if not r then return end
-                fact["LockPalette.pal_" .. name .. "_r"] = tonumber(r, 16) / 255
-                fact["LockPalette.pal_" .. name .. "_g"] = tonumber(g, 16) / 255
-                fact["LockPalette.pal_" .. name .. "_b"] = tonumber(b, 16) / 255
-            end
-            for _, key in ipairs({ "ink", "faint", "mint", "mintlo", "minthi", "panel", "deep", "tint", "off" }) do
-                put(key, key)
-            end
-        end)
+        push_palette()
         run("getent", { "passwd", user }, function(line)
             -- name:x:uid:gid:GECOS:home:shell, and the real name is the first of GECOS's comma-separated parts
             local gecos = (line or ""):match("^[^:]*:[^:]*:[^:]*:[^:]*:([^:]*):")
