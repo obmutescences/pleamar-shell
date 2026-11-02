@@ -83,6 +83,7 @@ scene Lockscreen {
     event media_prev ->
     event media_play ->
     event media_next ->
+    event palette_sync ->
 
     image avatar = from avatar_path, 200, 200
     image wall_sharp = from wp_sharp, 1280, 720
