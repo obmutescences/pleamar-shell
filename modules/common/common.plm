@@ -256,6 +256,13 @@ part Common {
     event nt_settings ->
     fact wall_minutes: number = 5
     fact wall_remain: number = 0
+    //  skwd-wall's transition index (0 is "off") and duration.  The catalog
+    //  itself lives in scenes/lib/shell.luau; the settings row only needs the
+    //  current name.
+    fact wall_transition: number = 5
+    fact wall_transition_ms: number = 650
+    fact wall_transition_count: number = 41
+    text wall_transition_name = "crossfade"
     text wall_next = "Auto rotation off"
     model wp_rows max 9 { thumb: image 176, 99; name: text; path: text; cur: bool }
     event wall_apply ->

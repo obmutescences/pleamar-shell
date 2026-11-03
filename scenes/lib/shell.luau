@@ -23,6 +23,55 @@ end
 function M.start(layout)
     text.layout = layout
 
+    --  skwd-wall v2's shader names, in its own catalog order.  Index 0 is
+    --  "off"; the shell sends the selected name with every wallpaper apply.
+    --  Keep this list in step with wall-proto's transition catalog.
+    local WALL_TRANSITIONS = {
+        "off",
+        "random",
+        "chromatic-bloom",
+        "circle-crop",
+        "colour-distance",
+        "crossfade",
+        "crosswarp",
+        "crosshatch",
+        "directional",
+        "directional-scaled",
+        "directional-wipe",
+        "fadecolor",
+        "glitch",
+        "glitch-displace",
+        "heat-melt",
+        "ink-splash",
+        "inkwell-drop",
+        "iris",
+        "morph",
+        "mosaic-tumble",
+        "parametric-glitch",
+        "perlin",
+        "pixelate",
+        "pixelfade-wave",
+        "plasma-flow",
+        "polka-dots-curtain",
+        "puzzle-right",
+        "randomsquares",
+        "sand-bloom",
+        "sand-donut",
+        "sand-galaxy",
+        "sand-globe",
+        "sand-helix",
+        "sand-maelstrom",
+        "sand-mobius",
+        "sand-murmuration",
+        "sand-tornado",
+        "smoke",
+        "soft-warp-fade",
+        "voronoi-shatter",
+        "zoom-blur-pull",
+    }
+    local WALL_TRANSITION_DEFAULT = 5          -- crossfade
+    local WALL_TRANSITION_MS = 650
+
     --  ── config ──────────────────────────────────────────────────────────
     --  One shared file for both layouts: ~/.config/pleamar-shell/config.json.
     --  The file service is sandboxed to the scene's data folder, so the config
@@ -35,6 +84,8 @@ function M.start(layout)
         wallpaper_dir = "",
         wallpaper_auto = false,
         wallpaper_minutes = 5,
+        wallpaper_transition = WALL_TRANSITION_DEFAULT,
+        wallpaper_transition_ms = WALL_TRANSITION_MS,
         snd_on = true,
         nt_pos = 1,
         nt_snd_on = true,
@@ -151,6 +202,10 @@ function M.start(layout)
         if type(saved.wallpaper_dir) == "string" then cfg.wallpaper_dir = saved.wallpaper_dir end
         if type(saved.wallpaper_auto) == "boolean" then cfg.wallpaper_auto = saved.wallpaper_auto end
         cfg.wallpaper_minutes = clamp(number(saved.wallpaper_minutes, cfg.wallpaper_minutes), 1, 60)
+        cfg.wallpaper_transition = math.floor(clamp(
+            number(saved.wallpaper_transition, cfg.wallpaper_transition), 0, #WALL_TRANSITIONS - 1))
+        cfg.wallpaper_transition_ms = math.floor(clamp(
+            number(saved.wallpaper_transition_ms, cfg.wallpaper_transition_ms), 50, 2000))
         if type(saved.snd_on) == "boolean" then cfg.snd_on = saved.snd_on end
         cfg.nt_pos = clamp(number(saved.nt_pos, cfg.nt_pos), 0, 1)
         if type(saved.nt_snd_on) == "boolean" then cfg.nt_snd_on = saved.nt_snd_on end
@@ -215,6 +270,10 @@ function M.start(layout)
         text.wall_name = cfg.wallpaper:match("([^/]+)$") or ""
         fact.wall_auto = cfg.wallpaper_auto
         fact.wall_minutes = cfg.wallpaper_minutes
+        fact.wall_transition = cfg.wallpaper_transition
+        fact.wall_transition_ms = cfg.wallpaper_transition_ms
+        fact.wall_transition_count = #WALL_TRANSITIONS
+        text.wall_transition_name = WALL_TRANSITIONS[cfg.wallpaper_transition + 1] or "off"
         fact.snd_on = cfg.snd_on
         fact.nt_pos = cfg.nt_pos
         fact.nt_snd_on = cfg.nt_snd_on
@@ -279,6 +338,8 @@ function M.start(layout)
             wallpaper_dir = tostring(text.wallpaper_dir or ""),
             wallpaper_auto = truthy(fact.wall_auto),
             wallpaper_minutes = number(fact.wall_minutes, 5),
+            wallpaper_transition = number(fact.wall_transition, WALL_TRANSITION_DEFAULT),
+            wallpaper_transition_ms = number(fact.wall_transition_ms, WALL_TRANSITION_MS),
             snd_on = truthy(fact.snd_on),
             nt_pos = number(fact.nt_pos, 1),
             nt_snd_on = truthy(fact.nt_snd_on),
@@ -526,8 +587,10 @@ function M.start(layout)
 
     local wall_files = {}
     local wall_token, thumb_token, color_token = 0, 0, 0
+    local wall_sync_running, wall_sync_hold_until = false, 0
     local show_wall_page, refresh_wallpapers, set_wallpaper, recolor
     local reset_wall_countdown, update_wall_next, start_wallpaper
+    local adopt_wallpaper, sync_wallpaper
 
     local THUMB_SCRIPT = table.concat({
         'cache="$HOME/.cache/pleamar-shell/wallpapers"',
@@ -610,24 +673,81 @@ function M.start(layout)
             return
         end
         local helper = shell_root .. "/bin/pleamar-wall"
-        run("sh", { "-c", shq(helper) .. " " .. shq(path) }, function(_, code)
+        local at = math.floor(clamp(cfg.wallpaper_transition, 0, #WALL_TRANSITIONS - 1))
+        local shader = at > 0 and WALL_TRANSITIONS[at + 1] or ""
+        local ms = math.floor(clamp(cfg.wallpaper_transition_ms, 50, 2000))
+        local cmd = "PLEAMAR_WALL_SHADER=" .. shq(shader)
+            .. " PLEAMAR_WALL_TRANSITION_MS=" .. tostring(ms)
+            .. " " .. shq(helper) .. " " .. shq(path)
+        run("sh", { "-c", cmd }, function(_, code)
             if tostring(text.wallpaper or "") ~= path then return end
-            if code ~= 0 then log("swaybg could not start; wallpaper unchanged") end
+            if code ~= 0 then
+                log("wallpaper backend could not start; wallpaper unchanged")
+                return
+            end
+            --  Do not recolour the shell for a picture the backend rejected:
+            --  that left the settings/panel palette ahead of the desktop.
+            recolor(path)
         end)
     end
 
     set_wallpaper = function(path, persist)
         path = tostring(path or "")
         if path == "" then return end
+        --  A transition can lag `wall.outputs` by a frame or two.  Do not let
+        --  the sync watcher mistake the old picture for an external change
+        --  while our own apply is in flight.
+        wall_sync_hold_until = os.time() + 3
         text.wallpaper = path
         text.wall_name = basename(path)
         cfg.wallpaper = path
         if persist then save() end
         show_wall_page()
-        recolor(path)
         if truthy(fact.wall_auto) and reset_wall_countdown then reset_wall_countdown() end
         start_wallpaper(path)
     end
+
+    --  A picture chosen in skwd's own picker (or applied by skwd-helm) is an
+    --  external change: adopt it into the same state the settings grid reads,
+    --  persist it, and run the one colour job.  Never apply it again here.
+    adopt_wallpaper = function(path)
+        path = tostring(path or "")
+        if path == "" or path == tostring(text.wallpaper or "") then return end
+        text.wallpaper = path
+        text.wall_name = basename(path)
+        cfg.wallpaper = path
+        save()
+        show_wall_page()
+        recolor(path)
+        if truthy(fact.wall_auto) and reset_wall_countdown then reset_wall_countdown() end
+    end
+
+    --  Poll the backend rather than subscribing to skwd events: the shell's
+    --  process model already uses short `sh` commands, and a missed event must
+    --  not leave the settings page showing a different picture forever.
+    sync_wallpaper = function()
+        if shell_root == "" or wall_sync_running then return end
+        if os.time() < wall_sync_hold_until then return end
+        wall_sync_running = true
+        local helper = shell_root .. "/bin/pleamar-wall"
+        run("sh", { "-c", shq(helper) .. " current 2>/dev/null" }, function(out, code)
+            if code ~= 0 then wall_sync_running = false; return end
+            local path = tostring(out or ""):gsub("%s+$", "")
+            if path == "" or path == tostring(text.wallpaper or "") then
+                wall_sync_running = false
+                return
+            end
+            --  An external skwd apply does not go through our apply path:
+            --  drop the old swaybg layer before the colours and settings move.
+            run("sh", { "-c", shq(helper) .. " stop-swaybg 2>/dev/null" }, function()
+                wall_sync_running = false
+                if path == tostring(text.wallpaper or "") then return end
+                adopt_wallpaper(path)
+            end)
+        end)
+    end
+    after(1000, sync_wallpaper)
+    every(5000, sync_wallpaper)
 
     refresh_wallpapers = function()
         wall_token = wall_token + 1
@@ -1690,6 +1810,19 @@ function M.start(layout)
         if fact.wall_minutes ~= v then fact.wall_minutes = v end
         cfg.wallpaper_minutes = v
         if truthy(fact.wall_auto) then reset_wall_countdown() end
+        save()
+    end)
+    on("fact:wall_transition", function()
+        local v = math.floor(clamp(number(fact.wall_transition, WALL_TRANSITION_DEFAULT), 0, #WALL_TRANSITIONS - 1))
+        if fact.wall_transition ~= v then fact.wall_transition = v end
+        cfg.wallpaper_transition = v
+        text.wall_transition_name = WALL_TRANSITIONS[v + 1] or "off"
+        save()
+    end)
+    on("fact:wall_transition_ms", function()
+        local v = math.floor(clamp(number(fact.wall_transition_ms, WALL_TRANSITION_MS), 50, 2000))
+        if fact.wall_transition_ms ~= v then fact.wall_transition_ms = v end
+        cfg.wallpaper_transition_ms = v
         save()
     end)
     on("wall_apply", function()

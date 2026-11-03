@@ -10,16 +10,28 @@
       url = "github:k4ditano/pleamar";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    #  The released skwd-wall v2 binaries.  Its daemon owns the background
+    #  layer and the shader transitions; Pleamar keeps the picker and colours.
+    skwdWall = {
+      url = "github:liixini/skwd-wall/nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, pleamar }:
+  outputs = { self, nixpkgs, pleamar, skwdWall }:
     let
       systems = [ "x86_64-linux" "aarch64-linux" ];
       forAll = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
+      #  The release channel ships x86_64 binaries only.  Keep the aarch64
+      #  package evaluable with the swaybg-only fallback.
+      skwdFor = pkgs: if pkgs.stdenv.hostPlatform.system == "x86_64-linux"
+        then skwdWall.packages.x86_64-linux.default
+        else null;
     in {
       nixosModules.default = { config, lib, pkgs, ... }: import ./nix/nixos-module.nix {
         inherit config lib pkgs;
         pleamar = pleamar.packages.${pkgs.stdenv.hostPlatform.system}.default;
+        skwdWall = skwdFor pkgs;
       };
 
       packages = forAll (pkgs: let
@@ -29,6 +41,7 @@
         default = pkgs.callPackage ./nix/package.nix {
           swaybg = swaybg-pleamar;
           pleamar = pleamar.packages.${pkgs.stdenv.hostPlatform.system}.default;
+          skwdWall = skwdFor pkgs;
         };
       });
 

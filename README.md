@@ -37,10 +37,10 @@
 | launcher | 660×640 | center | 搜索（居中面板；IPC 可开） | 无 |
 | notif centre | 480×650 | bar 下方中间 | 通知历史 / DND / clear（IPC 可开） | 无 |
 | toast | 294×112 | bar 下方中间或右侧 | 通知 toast + 主色倒计时（原 420×160 的 70%） | 无 |
-| wallpaper | full | background | swaybg（独立进程，不是 Pleamar surface） | 无 |
+| wallpaper | full | background | skwd-wall v2（Nix 默认）/ swaybg 回退；独立进程，不是 Pleamar surface | 无 |
 
-- 永远不要常驻 2560×1440 的 Pleamar surface。壁纸交给 swaybg 的
-  background layer；面板只在打开时存在。
+- 永远不要常驻 2560×1440 的 Pleamar surface。壁纸交给 skwd-wall v2
+  （或回退的 swaybg）的 background layer；面板只在打开时存在。
 - 波形优先用 shader：一条边一个 shader 画整条；不要 24 根 blend 玻璃柱（实测 compose 17.3ms）。
 - bar 的点击区留在 bar 所在的条里；面板的点击区在面板 surface 里；只通过 fact/event 通信。
 - 各 surface 的 `rate`：bar 静态时低 rate，波形 60-120；不要所有条都 480。
@@ -80,6 +80,8 @@
 | 中心面板 toggle | `pleamar-ipc center` / `pleamar-ipc center toggle` |
 | 中心面板指定 tab | `pleamar-ipc center 3` |
 | 通知中心 | `pleamar-ipc notifications` |
+| 换壁纸 | `pleamar-ipc wallpaper /path/to/image.png` |
+| 打开官方 picker | `pleamar-ipc picker` |
 | 锁屏 | `pleamar-ipc lock` |
 
 页号：`0 FRAME / 1 GLASS / 2 BAR / 3 FONT / 4 WALLPAPER / 5 ALERTS / 6 MOTION / 7 LOCK / 8 IDLE / 9 WEATHER`。
@@ -119,7 +121,7 @@ nix build .#default
 
 `nix build` 会把 `pleamar-ipc`、Pleamar 本体（flake input
 `github:k4ditano/pleamar`，从 Git 源码构建；flake.lock 锁当前最新 rev）和所有
-运行依赖（cava、fontconfig、jq、niri、swaybg 等）装进 package。wrapper 设置
+运行依赖（cava、fontconfig、jq、niri、skwd-wall v2、swaybg 回退等）装进 package。wrapper 设置
 `PLEAMAR` 并把它放在 PATH 前面，所以运行时不会退回系统里的 0.4.31。
 拉最新源码：`nix flake update pleamar`，再 `nix build` / rebuild。直接用
 `./bin/pleamar-shell` 跑仓库脚本时才走本地发现逻辑，可用
@@ -161,8 +163,9 @@ sudo nixos-rebuild switch --flake .#niri
 
 包安装 `pleamar-shell`（启动 shell）和 `pleamar-ipc`（发 IPC），并把
 Pleamar（flake input `github:k4ditano/pleamar`，从 Git 构建，锁当前最新
-rev）、cava、fontconfig、jq、niri、swayidle、swaybg 等运行依赖放进自己的
-PATH。wrapper 设置 `PLEAMAR` 指向它；系统里不再需要预装 Pleamar 0.4.x。
+rev）、cava、fontconfig、jq、niri、swayidle、skwd-wall v2、swaybg 回退等运行
+依赖放进自己的 PATH。wrapper 设置 `PLEAMAR` 指向它；系统里不再需要预装
+Pleamar 0.4.x。
 更新引擎：`nix flake update pleamar`，再 rebuild；NixOS 的 `pleamar-shell`
 input 会带上这个 transitive input。
 
@@ -179,7 +182,18 @@ imports = [
 services.pleamar-shell = {
   enable = true;
   layout = "island"; # 或 "frame"
+  # x86_64 默认启用；它会额外启动 skwd-walld.service，
+  # 并把 PLEAMAR_WALL_BACKEND=skwd 传给 shell。
+  skwdWall = true;
 };
+```
+
+`skwdWall` 使用 flake input `github:liixini/skwd-wall/nix` 的发布二进制。
+它只提供 x86_64-linux 包；aarch64 上该选项默认关闭并回退 swaybg。
+关闭后 `bin/pleamar-wall` 仍可正常使用 swaybg：
+
+```nix
+services.pleamar-shell.skwdWall = false;
 ```
 
 然后 **删掉** niri 里原来的：
@@ -207,6 +221,7 @@ binds {
     Mod+Shift+S   { spawn "pleamar-ipc" "settings"; }
     Mod+Shift+C   { spawn "pleamar-ipc" "center"; }
     Mod+Shift+N   { spawn "pleamar-ipc" "notifications"; }
+    Mod+W         { spawn "pleamar-ipc" "picker"; }
     Mod+L         { spawn "pleamar-ipc" "lock"; }
 }
 ```
@@ -360,9 +375,13 @@ rows + sliders + switches。当前保留十页，原来的临时小面板已删�
   `anim_*`，下一次打开生效，关闭动画保持同一姿势。
 - **WALLPAPER**：`~/Pictures/Wallpapers` 的壁纸网格，3×3 一页，缩略图
   缓存在 `~/.cache/pleamar-shell/wallpapers`；点一张立即换壁纸，当前壁纸
-  有主色描边。Auto rotate 按文件夹排序逐张切换，间隔 1–60 分钟；默认关，
-  倒计时显示 `Next in N min`。页面右侧的空位也属于面板，不会点穿到后面
-  的窗口（`cp_shield` / `la_shield`）。
+  有主色描边。顶部 **Random** 一键把转场设为 `random`；底部 **Transition**
+  行仍可循环 skwd 的 41 个转场（含 Off，默认 `crossfade`），下一次换图生效。
+  Auto rotate 按文件夹排序逐张切换，间隔 1–60 分钟；默认关，倒计时显示
+  `Next in N min`。到点换图沿用当前 Transition，所以选中 `random` 后每次
+  自动换图都是随机动画。skwd 自己的 picker 换图时，shell 会在 5 秒内同步
+  当前项和颜色。页面右侧的空位也属于面板，不会点穿到后面的窗口
+  （`cp_shield` / `la_shield`）。
 - **FONT**：全局字体。搜索 `fc-list` 返回的已安装字体，点一行选
   Selected，Apply 后写入 `font_family` 并由 systemd user service 重启
   整个 shell。重启时 `bin/pleamar-fonts` 直接按 Vitreus 的做法，把所选
@@ -517,12 +536,31 @@ Overview 的天气由 `bin/pleamar-weather` 获取：先通过 Nominatim 把设�
 
 这个 checkout 没有 awww / Iris，也不把颜色工作交给外部调色器：
 
-- 壁纸由 **swaybg** 画在 compositor 的 background layer，和 Vitreus 让 awww
-  画壁纸是同一个分工；Pleamar 不常驻 2560×1440 surface（见性能一节）。
-  `bin/pleamar-wall` 管理唯一的 swaybg 进程：同一路径不重启，换图 kill/start
-  一次，并在 `$XDG_RUNTIME_DIR/pleamar-swaybg.path` 记录当前图。swaybg 用
-  本项目 patch 过的 build，layer namespace 是
-  `pleamar-shell-wallpaper`（`niri msg layers` 里可见）。
+- 壁纸由 **skwd-wall v2**（Nix 默认）或 **swaybg**（回退）画在 compositor
+  的 background layer；Pleamar 不常驻 2560×1440 surface（见性能一节）。
+  `bin/pleamar-wall` 是唯一入口：`PLEAMAR_WALL_BACKEND=auto` 在 skwd socket
+  存在时选 skwd，否则选 swaybg；NixOS service 默认显式选 skwd。
+  `bin/pleamar-wall-skwd` 通过
+  `$XDG_RUNTIME_DIR/skwd-wall-v2/wall.sock` 发送 `wall.apply` /
+  `wall.outputs`，不依赖 skwd 的 GUI。
+- skwd 的转场在 Settings → Wallpaper 的 **Transition** 行选择（41 个条目，
+  包含 Off；默认 `crossfade`）。`wall.apply` 带
+  `transition_shader` / `transition_duration_ms`，默认 650 ms。
+  `bin/pleamar-wall` 只有在 skwd 接受后才停掉旧 swaybg，避免两个背景层。
+- `pleamar-ipc picker` 打开官方 `skwd-wall-v2` 前端；如果它已经运行，先用
+  `skwd-helm ui show` 唤起，不会重复启动。官方 picker 的打开淡入、Slices /
+  Geometric / Wall / Sandy 视图和转场预览都由 skwd 自己绘制，不是 Pleamar
+  重画。picker 里选图后仍由 5 秒同步更新 Pleamar 设置和 palette。
+  官方 picker 内部的转场/动画由它自己的 Motion 设置控制；Pleamar 的
+  **Transition** 行控制 Pleamar 网格和 Auto rotate 触发的 `wall.apply`。
+- 从 skwd 自己的 picker 或 `skwd-helm apply` 换图时，shell 每 5 秒读一次
+  `wall.outputs`；路径变化会先停掉旧 swaybg 层，再走 `adopt_wallpaper()`，
+  更新设置页当前项、页码、`config.json`，并触发现有
+  `bin/pleamar-colors`。不重复调用后端。自动 apply 也只在后端接受后才
+  更新 palette，避免“颜色变了但桌面没变”。
+- 回退 swaybg 时仍使用本项目 patch 过的 build，layer namespace 是
+  `pleamar-shell-wallpaper`（`niri msg layers` 里可见）；同一路径不重启，
+  换图 kill/start 一次，并在 `$XDG_RUNTIME_DIR/pleamar-swaybg.path` 记录当前图。
 - `bin/pleamar-colors` 用 ImageMagick 把壁纸缩到 128×128、取 24 色直方图，
   选出**主色**（present + saturated 评分最高）、避开主色相位的**副色**和
   **三级色**；再生成暗色玻璃表面 `tint / panel`、可读的 `ink / faint`，

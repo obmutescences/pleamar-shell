@@ -4,8 +4,11 @@
 #   pleamar-ipc settings [0..9]
 #   pleamar-ipc center [toggle|0..6]
 #   pleamar-ipc notifications
+#   pleamar-ipc wallpaper /path/to/image.png
+#   pleamar-ipc picker
 #   pleamar-ipc lock
 # The running scene is discovered; use PLEAMAR_SCENE=frame when both run.
+# `picker` opens skwd-wall v2's own UI (its animations, filters and views).
 set -euo pipefail
 
 self="$(readlink -f "${BASH_SOURCE[0]}")"
@@ -19,12 +22,44 @@ if [[ "$action" == "--scene" ]]; then
     shift 2 || true
 fi
 case "$action" in
-    search|settings|center|notifications|lock) ;;
+    search|settings|center|notifications|wallpaper|picker|lock) ;;
     *)
-        echo "usage: $0 search | settings [0..9] | center [toggle|0..6] | notifications | lock" >&2
+        echo "usage: $0 search | settings [0..9] | center [toggle|0..6] | notifications | wallpaper <image> | picker | lock" >&2
         exit 2
         ;;
 esac
+
+#  The picker is a separate application.  If it is already running, its own
+#  control socket is the cheapest way to bring it forward (and unstash it);
+#  otherwise launch the official skwd-wall-v2, whose no-argument mode opens
+#  the picker with its own launch animation.
+if [[ "$action" == "picker" ]]; then
+    helm="${SKWD_HELM:-$(command -v skwd-helm 2>/dev/null || true)}"
+    if [[ -n "$helm" && -x "$helm" ]] && "$helm" ui show >/dev/null 2>&1; then
+        exit 0
+    fi
+    picker="${SKWD_WALL_V2:-$(command -v skwd-wall-v2 2>/dev/null || true)}"
+    if [[ -z "$picker" || ! -x "$picker" ]]; then
+        echo "skwd-wall-v2 not found; install the skwdWall package or set SKWD_WALL_V2" >&2
+        exit 1
+    fi
+    log="${XDG_RUNTIME_DIR:-/tmp}/pleamar-skwd-picker.log"
+    if command -v setsid >/dev/null 2>&1; then
+        setsid -f "$picker" >"$log" 2>&1
+    else
+        nohup "$picker" >"$log" 2>&1 &
+    fi
+    #  Give a cold picker time to bind its control socket; `show` is
+    #  idempotent once it is up.  If skwd-helm is unavailable, launching the
+    #  official binary is enough.
+    if [[ -n "$helm" && -x "$helm" ]]; then
+        for _ in $(seq 1 30); do
+            "$helm" ui show >/dev/null 2>&1 && exit 0
+            sleep 0.1
+        done
+    fi
+    exit 0
+fi
 
 if [[ -z "$scene" ]]; then
     if pgrep -f -- "pleamar --scene .*/scenes/island.plm" >/dev/null; then
@@ -75,4 +110,17 @@ case "$action" in
 esac
 
 bin="$("$root/bin/pleamar-shell" --path)"
+if [[ "$action" == "wallpaper" ]]; then
+    image="${2:-}"
+    [[ -n "$image" && -f "$image" ]] || {
+        echo "usage: $0 wallpaper <image>" >&2
+        exit 2
+    }
+    image="$(readlink -f -- "$image")"
+    #  Keep the path in the scene's own choice slot so it goes through the
+    #  same set_wallpaper() as a click in Settings; skwd/swaybg and the colour
+    #  job then run behind one entry point.
+    "$bin" --say "$scene" "text wall_choice $image" || exit
+    exec "$bin" --say "$scene" "emit wall_apply"
+fi
 exec "$bin" --say "$scene" "$command"

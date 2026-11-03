@@ -1,28 +1,129 @@
 #!/usr/bin/env bash
-# Show a wallpaper behind the windows.  Vitreus drives awww; this checkout
-# drives the much smaller swaybg with the same idea: the shell owns the image,
-# and the compositor (not a full-screen pleamar surface) paints it.
+# Show a wallpaper behind the windows.
+#
+# Two backends share this one entry point:
+#   swaybg  the small background-layer daemon used until now;
+#   skwd    skwd-wall v2's daemon, which draws through its GPU renderer and
+#           can run the shader transitions from Settings > Wallpaper.
+#
+# PLEAMAR_WALL_BACKEND=auto (default) picks skwd when its socket and helper are
+# present, otherwise swaybg.  The shell only ever calls this file; the selected
+# backend is an implementation detail.
+#
+#   pleamar-wall <image>
+#   pleamar-wall current
+#   pleamar-wall backend
+#   pleamar-wall stop-swaybg
 set -euo pipefail
 
-path="${1:-}"
-[[ -n "$path" && -f "$path" ]] || { echo "usage: $0 <image>" >&2; exit 2; }
-
-swaybg="${SWAYBG:-}"
-if [[ -z "$swaybg" ]]; then
-    #  The patched build's layer namespace is pleamar-shell-wallpaper.  Check
-    #  the store before PATH: a stock swaybg earlier in PATH must not win.
-    swaybg="$(ls -d /nix/store/*-swaybg-pleamar-*/bin/swaybg 2>/dev/null | sort -V | tail -1)"
-fi
-if [[ -z "$swaybg" ]]; then
-    swaybg="$(command -v swaybg 2>/dev/null || true)"
-fi
-if [[ -z "$swaybg" ]]; then
-    swaybg="$(ls -d /nix/store/*-swaybg-*/bin/swaybg 2>/dev/null | sort -V | tail -1)"
-fi
-[[ -n "$swaybg" && -x "$swaybg" ]] || { echo "swaybg not found" >&2; exit 3; }
-
+self="$(readlink -f "${BASH_SOURCE[0]}")"
+dir="$(dirname -- "$self")"
 runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+sock="${SKWD_WALL_V2_SOCK:-$runtime/skwd-wall-v2/wall.sock}"
+skwd_helper="$dir/pleamar-wall-skwd"
 marker="$runtime/pleamar-swaybg.path"
+command="${1:-}"
+
+find_swaybg() {
+    local found="${SWAYBG:-}"
+    [[ -n "$found" && -x "$found" ]] || found=""
+    if [[ -z "$found" ]]; then
+        #  The patched build's layer namespace is pleamar-shell-wallpaper.  Check
+        #  the store before PATH: a stock swaybg earlier in PATH must not win.
+        found="$(ls -d /nix/store/*-swaybg-pleamar-*/bin/swaybg 2>/dev/null | sort -V | tail -1)"
+    fi
+    if [[ -z "$found" ]]; then
+        found="$(command -v swaybg 2>/dev/null || true)"
+    fi
+    if [[ -z "$found" ]]; then
+        found="$(ls -d /nix/store/*-swaybg-*/bin/swaybg 2>/dev/null | sort -V | tail -1)"
+    fi
+    printf '%s' "$found"
+}
+
+stop_swaybg() {
+    local swaybg
+    swaybg="$(find_swaybg)"
+    [[ -n "$swaybg" ]] || return 0
+    pkill -TERM -f -- "$swaybg" >/dev/null 2>&1 || true
+    for _ in $(seq 1 40); do
+        pgrep -f -- "$swaybg" >/dev/null 2>&1 || break
+        sleep 0.05
+    done
+    pkill -KILL -f -- "$swaybg" >/dev/null 2>&1 || true
+}
+
+requested="${PLEAMAR_WALL_BACKEND:-auto}"
+backend="$requested"
+if [[ "$backend" == "auto" ]]; then
+    if [[ -S "$sock" && -x "$skwd_helper" ]]; then
+        backend=skwd
+    else
+        backend=swaybg
+    fi
+fi
+case "$backend" in
+    skwd|swaybg) ;;
+    *) echo "unknown PLEAMAR_WALL_BACKEND: $backend" >&2; exit 2 ;;
+esac
+
+if [[ "$command" == "backend" ]]; then
+    printf '%s\n' "$backend"
+    exit 0
+fi
+
+if [[ "$command" == "current" ]]; then
+    if [[ "$backend" == "skwd" ]]; then
+        exec "$skwd_helper" current
+    fi
+    if [[ -s "$marker" ]]; then
+        current="$(cat "$marker")"
+        [[ -f "$current" ]] && { printf '%s\n' "$current"; exit 0; }
+    fi
+    exit 1
+fi
+
+#  An external skwd change (picker or skwd-helm) bypasses the apply path.
+#  The shell asks for this once it has seen the new current path, so a stale
+#  swaybg layer cannot keep painting an old picture under the new colours.
+if [[ "$command" == "stop-swaybg" ]]; then
+    mkdir -p "$runtime"
+    [[ "$backend" == "skwd" ]] && stop_swaybg
+    exit 0
+fi
+
+path="$command"
+[[ -n "$path" && -f "$path" ]] || {
+    echo "usage: $0 <image> | current | backend" >&2
+    exit 2
+}
+mkdir -p "$runtime"
+
+if [[ "$backend" == "skwd" ]]; then
+    [[ -x "$skwd_helper" ]] || { echo "skwd helper not found: $skwd_helper" >&2; exit 3; }
+    #  On login the user service and the shell start together.  When skwd was
+    #  selected explicitly, give its socket a moment instead of silently
+    #  falling back to a second wallpaper daemon.
+    if [[ ! -S "$sock" && "$requested" == "skwd" ]]; then
+        for _ in $(seq 1 100); do
+            [[ -S "$sock" ]] && break
+            sleep 0.1
+        done
+    fi
+    [[ -S "$sock" ]] || { echo "skwd-walld is not running ($sock)" >&2; exit 3; }
+    args=(apply "$path")
+    [[ -n "${PLEAMAR_WALL_SHADER:-}" ]] && args+=(--shader "$PLEAMAR_WALL_SHADER")
+    [[ -n "${PLEAMAR_WALL_TRANSITION_MS:-}" ]] && args+=(--duration "$PLEAMAR_WALL_TRANSITION_MS")
+    [[ -n "${PLEAMAR_WALL_OUTPUT:-}" ]] && args+=(--output "$PLEAMAR_WALL_OUTPUT")
+    #  Apply first, so a rejected path or shader leaves the old swaybg picture
+    #  visible.  Once skwd has accepted the new one, remove the second
+    #  background layer: two full-screen layers double the compositing work.
+    "$skwd_helper" "${args[@]}"
+    stop_swaybg
+fi
+
+swaybg="$(find_swaybg)"
+[[ -n "$swaybg" && -x "$swaybg" ]] || { echo "swaybg not found" >&2; exit 3; }
 
 #  The same picture already up: leave the daemon alone.  This is what a
 #  scene reload (or a second shell) does, so the wallpaper does not blink.
@@ -32,13 +133,7 @@ fi
 
 #  Stop the old one and wait for it to go: starting the new swaybg while the
 #  old is still alive was leaving two full-screen layers (and twice the cost).
-pkill -TERM -f -- "$swaybg" >/dev/null 2>&1 || true
-for _ in $(seq 1 40); do
-    pgrep -f -- "$swaybg" >/dev/null 2>&1 || break
-    sleep 0.05
-done
-pkill -KILL -f -- "$swaybg" >/dev/null 2>&1 || true
-mkdir -p "$runtime"
+stop_swaybg
 printf '%s' "$path" >"$marker"
 setsid -f "$swaybg" -i "$path" -m fill >/tmp/pleamar-swaybg.log 2>&1
 for _ in $(seq 1 40); do

@@ -440,6 +440,10 @@ part ConfigPanel {
             text "Current" { at: 266, 186; anchor: left center; size: 13; weight: 700; color: faint; family: "Space Grotesk" }
             text wall_name { at: 266, 206; anchor: left center; size: 15; weight: 600; color: ink; width: 400; lines: 1; family: "Space Grotesk" }
             text wall_count { at: 820, 202; anchor: right center; size: 13; color: faint; family: "Space Grotesk" }
+            box { from: 672, 176; size: 80, 24; corner: 12; color: cp.mint; opacity: if(wall_transition == 1, 20%, 4% + 7% * wp_random_pick.hover) }
+            text "Random" { at: 712, 186; anchor: center; size: 12; weight: 700; color: if(wall_transition == 1, ink, cp.mint); family: "Space Grotesk" }
+            zone box wp_random_pick { from: 672, 176; size: 80, 24; corner: 12; cursor: pointer; label: "Random transition" }
+            on press wp_random_pick { wall_transition = 1 }
             text "Refresh" { at: 820, 186; anchor: right center; size: 12; weight: 700; color: cp.mint; family: "Space Grotesk" }
             zone box wp_refresh { from: 762, 176; size: 64, 24; corner: 12; cursor: pointer; label: "Refresh wallpapers" }
             on press wp_refresh { emit wall_refresh }
@@ -460,7 +464,22 @@ part ConfigPanel {
                 }
             }
             text "No wallpapers found." { at: 266, 260; anchor: left center; size: 15; color: faint; show: wp_rows.count < 1 }
-            text "Bar, settings and launcher take their colour from the picture." { at: 266, 730; anchor: left center; size: 13; color: faint; opacity: 78%; width: 540; lines: 1; family: "Space Grotesk" }
+
+            //  skwd-wall v2's shader transition.  The catalog is cycled here;
+            //  the shell sends the selected name with the next apply.
+            box { from: 250, 740; size: 570, 40; corner: 12; color: ink; opacity: 3% }
+            text "Transition" { at: 266, 760; anchor: left center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
+            text wall_transition_name { at: 540, 760; anchor: center; size: 12; weight: 600; color: cp.mint; width: 190; lines: 1; align: center; family: "Space Grotesk" }
+            box { from: 685, 745; size: 30, 30; corner: 15; color: ink; opacity: 4% + 7% * wp_trans_prev.hover }
+            text "‹" { at: 700, 760; anchor: center; size: 18; weight: 700; color: ink; family: "Space Grotesk" }
+            zone box wp_trans_prev { from: 685, 745; size: 30, 30; corner: 15; cursor: pointer; label: "Previous wallpaper transition" }
+            on press wp_trans_prev { wall_transition = mod(wall_transition - 1 + wall_transition_count, wall_transition_count) }
+            box { from: 775, 745; size: 30, 30; corner: 15; color: ink; opacity: 4% + 7% * wp_trans_next.hover }
+            text "›" { at: 790, 760; anchor: center; size: 18; weight: 700; color: ink; family: "Space Grotesk" }
+            zone box wp_trans_next { from: 775, 745; size: 30, 30; corner: 15; cursor: pointer; label: "Next wallpaper transition" }
+            on press wp_trans_next { wall_transition = mod(wall_transition + 1, wall_transition_count) }
+
+            text "Bar, settings and launcher take their colour from the picture." { at: 266, 800; anchor: left center; size: 13; color: faint; opacity: 78%; width: 540; lines: 1; family: "Space Grotesk" }
 
             box { from: 250, 618; size: 70, 28; corner: 14; color: ink; opacity: 4% + 6% * wp_prev.hover }
             text "‹ Prev" { at: 285, 632; anchor: center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
@@ -489,8 +508,8 @@ part ConfigPanel {
             ellipse { at: 520 + 200 * wp.min_pct, 673; radius: 6; color: cp.mint }
             text number(wall_minutes, 0, " min") { at: 820, 673; anchor: right center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
             zone box wp_min_track { from: 500, 658; size: 240, 30; cursor: pointer; label: "Minutes between wallpapers" }
-            on press wp_min_track { wall_minutes = round(1 + (pointer.x - 520) / 200 * 59) }
-            on drag wp_min_track { wall_minutes = round(1 + (pointer.x - 520) / 200 * 59) }
+            on press wp_min_track { wall_minutes = round(clamp(1 + (pointer.x - 520) / 200 * 59, 1, 60)) }
+            on drag wp_min_track { wall_minutes = round(clamp(1 + (pointer.x - 520) / 200 * 59, 1, 60)) }
 
             text wall_next { at: 266, 704; anchor: left center; size: 13; color: faint; opacity: 78%; family: "Space Grotesk" }
         }

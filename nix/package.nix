@@ -1,5 +1,14 @@
-{ lib, stdenvNoCC, makeWrapper, pleamar, bash, coreutils, findutils, imagemagick, python3, swaybg, procps, util-linux, libnotify, pipewire, xdg-utils, cliphist, wl-clipboard, cava, fontconfig, jq, niri, swayidle, curl }:
+{ lib, stdenvNoCC, makeWrapper, pleamar, bash, coreutils, findutils, imagemagick, python3, swaybg, procps, util-linux, libnotify, pipewire, xdg-utils, cliphist, wl-clipboard, cava, fontconfig, jq, niri, swayidle, curl, skwdWall ? null }:
 
+let
+  runtimePackages = [
+    bash coreutils findutils imagemagick python3 swaybg procps util-linux
+    libnotify pipewire xdg-utils cliphist wl-clipboard cava fontconfig jq niri
+    swayidle curl
+  ] ++ lib.optional (skwdWall != null) skwdWall;
+  ipcPackages = [ bash coreutils procps jq util-linux ]
+    ++ lib.optional (skwdWall != null) skwdWall;
+in
 stdenvNoCC.mkDerivation {
   pname = "pleamar-shell";
   version = "0.1.0";
@@ -20,12 +29,12 @@ stdenvNoCC.mkDerivation {
       --set PLEAMAR ${pleamar}/bin/pleamar \
       --set SWAYBG ${swaybg}/bin/swaybg \
       --prefix PATH : ${pleamar}/bin \
-      --suffix PATH : ${lib.makeBinPath [ bash coreutils findutils imagemagick python3 swaybg procps util-linux libnotify pipewire xdg-utils cliphist wl-clipboard cava fontconfig jq niri swayidle curl ]}
+      --suffix PATH : ${lib.makeBinPath runtimePackages}
     makeWrapper ${bash}/bin/bash $out/bin/pleamar-ipc \
       --add-flags "$out/share/pleamar-shell/bin/pleamar-ipc" \
       --set PLEAMAR ${pleamar}/bin/pleamar \
       --prefix PATH : ${pleamar}/bin \
-      --suffix PATH : ${lib.makeBinPath [ bash coreutils procps jq util-linux ]}
+      --suffix PATH : ${lib.makeBinPath ipcPackages}
     runHook postInstall
   '';
 
