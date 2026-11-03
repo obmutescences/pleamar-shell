@@ -47,6 +47,8 @@ function M.start(layout)
             deep = "#050c0f",
         },
         bar_height = 44,
+        panel_bg_role = 0,
+        panel_bg_tint = 0,
         glass_on = true,
         glass_bend = true,
         glass_refr = 1,
@@ -160,6 +162,8 @@ function M.start(layout)
             write_palette(saved.palette)
         end
         cfg.bar_height = clamp(number(saved.bar_height, cfg.bar_height), 32, 80)
+        cfg.panel_bg_role = math.floor(clamp(number(saved.panel_bg_role, cfg.panel_bg_role), 0, 1))
+        cfg.panel_bg_tint = clamp(number(saved.panel_bg_tint, cfg.panel_bg_tint), 0, 100)
         if type(saved.glass_on) == "boolean" then cfg.glass_on = saved.glass_on end
         if type(saved.glass_bend) == "boolean" then cfg.glass_bend = saved.glass_bend end
         cfg.glass_refr = clamp(number(saved.glass_refr, cfg.glass_refr), 0, 2)
@@ -222,6 +226,8 @@ function M.start(layout)
             and string.format("Next in %d min", cfg.wallpaper_minutes)
             or "Auto rotation off"
         fact.bar_height = cfg.bar_height
+        fact.panel_bg_role = cfg.panel_bg_role
+        fact.panel_bg_tint = cfg.panel_bg_tint
         fact.glass_on = cfg.glass_on
         fact.glass_bend = cfg.glass_bend
         fact.glass_refr = cfg.glass_refr
@@ -281,6 +287,8 @@ function M.start(layout)
             nt_secs = number(fact.nt_secs, 6),
             palette = cfg.palette,
             bar_height = number(fact.bar_height, 44),
+            panel_bg_role = number(fact.panel_bg_role, 0),
+            panel_bg_tint = number(fact.panel_bg_tint, 0),
             glass_on = truthy(fact.glass_on),
             glass_bend = truthy(fact.glass_bend),
             glass_refr = number(fact.glass_refr, 1),
@@ -1476,6 +1484,8 @@ function M.start(layout)
         recompute_quiet()
     end)
     on("fact:bar_height", function() save() end)
+    on("fact:panel_bg_role", function() save() end)
+    on("fact:panel_bg_tint", function() save() end)
     on("fact:glass_on", function() save() end)
     on("fact:glass_bend", function() save() end)
     on("fact:glass_refr", function() save() end)

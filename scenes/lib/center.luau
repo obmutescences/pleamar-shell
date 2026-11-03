@@ -300,11 +300,15 @@ local function calendar_fallback(ft, today)
             day, cur = i - lead - days, false
         end
         local is_today = cur and today.year == ft.year and today.month == ft.month and today.day == day
-        cells[i] = { day = day, cur = cur, today = is_today, label = "", lunar = "", term = "",
-            festival = "", holiday = "", off = false, work = false, anniv = "", anniv_count = 0 }
+        local hover = cur and string.format("%d月%d日", ft.month, day) or ""
+        cells[i] = { day = day, cur = cur, today = is_today, label = "", lunar = "",
+            hover = hover, term = "", festival = "", holiday = "",
+            off = false, work = false, anniv = "", anniv_count = 0 }
     end
     model.ct_days = cells
     model.ct_countdown = {}
+    text.ct_countdown_title = (ft.year == today.year and ft.month == today.month)
+        and "本月倒计时" or string.format("%d月倒计时", ft.month)
     text.ct_header_date = string.format("%d年%d月%d日 · %s", today.year, today.month, today.day, WEEKDAYS[today.wday])
     text.ct_month = string.format("%d年 %d月", ft.year, ft.month)
     text.ct_month_sub = string.format("第 %d 周", iso_week(first))
@@ -326,6 +330,7 @@ local function apply_calendar(d)
             today = truthy(c.today),
             label = tostring(c.label or ""),
             lunar = tostring(c.lunar or ""),
+            hover = tostring(c.hover or ""),
             term = tostring(c.term or ""),
             festival = tostring(c.festival or ""),
             holiday = tostring(c.holiday or ""),
@@ -348,6 +353,7 @@ local function apply_calendar(d)
         }
     end
     model.ct_countdown = cds
+    text.ct_countdown_title = tostring(d.countdown_title or "本月倒计时")
     text.ct_header_date = tostring(d.header or "")
     local mo = d.month or {}
     text.ct_month = tostring(mo.title or "")
@@ -365,6 +371,7 @@ local calendar_seq = 0
 local function calendar()
     local off = math.floor(clamp(number(fact.center_cal_off, 0), -120, 120))
     cal_off = off
+    fact.center_cal_hover = -1
     local today = os.date("*t")
     local first = os.time({ year = today.year, month = today.month + off, day = 1 })
     local ft = os.date("*t", first)

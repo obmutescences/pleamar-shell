@@ -224,9 +224,14 @@ def lunar_label(lunar):
 def build(year, month):
     today = date.today()
     view = date(year, month, 1)
-    years = {today.year, view.year}
+    years = {today.year, view.year - 1, view.year, view.year + 1}
     maps = {y: read_ccal(y) for y in years}
-    view_dates, _ = maps.get(view.year, ({}, {}))
+    #  The 42-cell grid borrows days from the neighbouring years as well as
+    #  months; merge them so hovering a leading/trailing day still knows its
+    #  lunar date.
+    view_dates = {}
+    for y in (view.year - 1, view.year, view.year + 1):
+        view_dates.update(maps.get(y, ({}, {}))[0])
     today_lunar = maps.get(today.year, ({}, {}))[0].get((today.year, today.month, today.day))
     holidays = load_holidays(view.year)
     items = load_anniversaries()
@@ -238,19 +243,28 @@ def build(year, month):
         if title and when and when.year == view.year and when.month == view.month:
             ann_by_day.setdefault(when.day, []).append(title)
 
+    #  The list follows the month on screen, not the month of today.  Dates
+    #  already gone stay in the list (marked 已过) so a month that only has
+    #  earlier anniversaries is not mistaken for an empty one.
     countdowns = []
     for item in items:
         title = anniversary_title(item)
-        when = anniversary_on(item, today.year, maps)
+        when = anniversary_on(item, view.year, maps)
         if not title or not when:
             continue
-        if when.year != today.year or when.month != today.month or when < today:
+        if when.year != view.year or when.month != view.month:
             continue
         delta = (when - today).days
+        if delta == 0:
+            when_text = "今天"
+        elif delta > 0:
+            when_text = f"还有 {delta} 天"
+        else:
+            when_text = f"已过 {-delta} 天"
         countdowns.append({
             "title": title,
             "date": f"{when.month}月{when.day}日",
-            "when": "今天" if delta == 0 else f"还有 {delta} 天",
+            "when": when_text,
             "days": delta,
         })
     countdowns.sort(key=lambda row: row["days"])
@@ -279,12 +293,20 @@ def build(year, month):
         anniv = ""
         if names:
             anniv = names[0] + (f" +{len(names) - 1}" if len(names) > 1 else "")
+        lunar_full = ""
+        if lunar:
+            lunar_full = (("闰" if lunar["leap"] else "") + lunar["month"]
+                          + LUNAR_DAYS[lunar["d"]])
+        hover = f"{day.month}月{day.day}日 {WEEKDAYS[day.weekday()]}"
+        if lunar_full:
+            hover += f" · 农历{lunar_full}"
         cells.append({
             "day": day.day,
             "cur": cur,
             "today": day == today,
             "label": festival or lunar_label(lunar),
             "lunar": lunar_label(lunar),
+            "hover": hover,
             "term": lunar["term"] if lunar else "",
             "festival": festival,
             "holiday": holiday["name"] if holiday else "",
@@ -321,6 +343,8 @@ def build(year, month):
         },
         "weekdays": WEEKDAY_SHORT,
         "days": cells,
+        "countdown_title": ("本月倒计时" if (view.year, view.month) == (today.year, today.month)
+                            else f"{view.month}月倒计时"),
         "countdowns": countdowns[:2],
     }
 

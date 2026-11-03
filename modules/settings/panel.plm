@@ -14,6 +14,7 @@ part ConfigPanel {
     let cp.slider_x = 520
     let cp.slider_w = 200
     let cp.tint_pct = clamp((glass_tint - 20) / 80, 0, 1)
+    let cp.panel_pct = clamp(panel_bg_tint / 100, 0, 1)
     let cp.frost_pct = clamp(glass_frost / 100, 0, 1)
     let cp.edge_pct = clamp(glass_edge / 100, 0, 1)
     let cp.refr_pct = clamp(glass_refr / 2, 0, 1)
@@ -53,7 +54,7 @@ part ConfigPanel {
 
         PanelPop(panel_fx, cp_p, 860, 820) {
         body {
-            color: cp.card
+            color: panel_bg
             glass: if(glass_on, 100%, 0%)
             opacity: 1% * max(glass_tint, 82)
             lens: glass_on and glass_bend
@@ -370,6 +371,32 @@ part ConfigPanel {
             box { from: 774 + 20 * snd_knob, 309; size: 16, 16; corner: 8; color: if(snd_on, cp.card, ink); opacity: 92% }
             zone box cp_snd_switch { from: 760, 296; size: 64, 38; corner: 19; cursor: pointer; label: "Panel sound" }
             on press cp_snd_switch { emit ui_sound; toggle snd_on }
+
+            text "PANEL TINT" { at: 250, 362; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
+            box { from: 250, 376; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            text "Panel colour" { at: 266, 386; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "Wallpaper role behind every panel." { at: 266, 404; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            box { from: 610, 392; size: 100, 30; corner: 15; color: cp.mint; opacity: if(panel_bg_role == 0, 18%, 4%) }
+            box { from: 610, 392; size: 100, 30; corner: 15; stroke: 1; color: if(panel_bg_role == 0, cp.mint, ink); opacity: if(panel_bg_role == 0, 55%, 10%) }
+            text "Primary" { at: 660, 407; anchor: center; size: 11; weight: 700; color: if(panel_bg_role == 0, ink, faint); family: "Space Grotesk" }
+            zone box cp_panel_role_primary { from: 610, 392; size: 100, 30; corner: 15; cursor: pointer; label: "Primary panel colour" }
+            on press cp_panel_role_primary { panel_bg_role = 0 }
+            box { from: 714, 392; size: 100, 30; corner: 15; color: cp.mint; opacity: if(panel_bg_role == 1, 18%, 4%) }
+            box { from: 714, 392; size: 100, 30; corner: 15; stroke: 1; color: if(panel_bg_role == 1, cp.mint, ink); opacity: if(panel_bg_role == 1, 55%, 10%) }
+            text "Secondary" { at: 764, 407; anchor: center; size: 11; weight: 700; color: if(panel_bg_role == 1, ink, faint); family: "Space Grotesk" }
+            zone box cp_panel_role_secondary { from: 714, 392; size: 100, 30; corner: 15; cursor: pointer; label: "Secondary panel colour" }
+            on press cp_panel_role_secondary { panel_bg_role = 1 }
+
+            box { from: 250, 442; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            text "Tint depth" { at: 266, 452; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "How much of that colour to mix in." { at: 266, 470; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            box { from: 520, 486; size: 200, 6; corner: 3; color: ink; opacity: 12% }
+            box { from: 520, 486; size: 200 * cp.panel_pct, 6; corner: 3; color: cp.mint }
+            ellipse { at: 520 + 200 * cp.panel_pct, 489; radius: 6; color: cp.mint }
+            text number(panel_bg_tint, 0, "%") { at: 820, 489; anchor: right center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_panel_tint_track { from: 510, 474; size: 240, 30; cursor: pointer; label: "Panel tint depth" }
+            on press cp_panel_tint_track { panel_bg_tint = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
+            on drag cp_panel_tint_track { panel_bg_tint = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
         }
 
         //  ── FONT ─────────────────────────────────────────────────────────
@@ -554,7 +581,7 @@ part ConfigPanel {
                     let by = ry + 8 + row * 30
                     let chosen = pick(r, anim_search, anim_panel, anim_toast, anim_center, anim_center_panel)
                     box { from: bx, by; size: 88, 24; corner: 12; color: if(chosen == k, cp.mint, ink); opacity: if(chosen == k, 20%, 5%) }
-                    text pick(k, "Fade", "Spin", "Unfold", "Drop", "Aperture", "Random") { at: bx + 44, by + 12; anchor: center; size: 9.5; weight: 600; color: if(chosen == k, cp.mint, faint); width: 84; lines: 1; family: "Space Grotesk" }
+                    text pick(k, "Fade", "Spin", "Unfold", "Drop", "Aperture", "Random") { at: bx + 44, by + 12; anchor: center; size: 9.5; weight: 600; color: if(chosen == k, cp.mint, faint); width: 84; lines: 1; align: center; family: "Space Grotesk" }
                 }
             }
             //  Static hit areas keep every chip addressable by name; the

@@ -10,7 +10,7 @@ part FrameGlass {
         rate: 120, 30 while quiet
 
         body {
-            color: tint
+            color: bar_bg
             glass: if(glass_on, 100%, 0%)
             opacity: 1% * glass_tint
             lens: glass_on and glass_bend

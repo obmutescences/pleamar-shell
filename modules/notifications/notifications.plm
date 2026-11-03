@@ -57,7 +57,7 @@ part Notifications {
                 scale: 0.7
                 pivot: 0, 0
             body {
-                color: nt.card
+                color: panel_bg
                 glass: if(glass_on, 100%, 0%)
                 opacity: 1% * max(glass_tint, 86)
                 lens: glass_on and glass_bend
@@ -169,7 +169,7 @@ part Notifications {
 
         PanelPop(center_fx, ntc_p, 480, 650) {
         body {
-            color: nt.card
+            color: panel_bg
             glass: if(glass_on, 100%, 0%)
             opacity: 1% * max(glass_tint, 84)
             lens: glass_on and glass_bend

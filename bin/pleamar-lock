@@ -12,7 +12,24 @@ scene="$root/lockscreen/lockscreen.plm"
 cfg="${XDG_CONFIG_HOME:-$HOME/.config}/pleamar-shell/config.json"
 runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 
-running() { pgrep -f -- "pleamar --scene .*/lockscreen/lockscreen.plm" >/dev/null 2>&1; }
+check="pleamar --scene .*/lockscreen/lockscreen.plm"
+running() { pgrep -f -- "$check" >/dev/null 2>&1; }
+
+#  A scene can answer on its socket long after its lock surface stopped coming
+#  up (an output was reconfigured under it, or it is from an older build).
+#  niri then accepts the lock and paints its own red fallback.  Test lock is a
+#  diagnostic, so give it a fresh scene every time instead of reusing that one.
+stop() {
+    local pids
+    pids="$(pgrep -f -- "$check" || true)"
+    [[ -n "$pids" ]] || return 0
+    kill $pids 2>/dev/null || true
+    for _ in $(seq 1 40); do
+        pgrep -f -- "$check" >/dev/null 2>&1 || return 0
+        sleep 0.05
+    done
+    kill -9 $pids 2>/dev/null || true
+}
 
 ready() {
     for _ in $(seq 1 60); do
@@ -32,6 +49,17 @@ ensure() {
     for _ in $(seq 1 30); do running && break; sleep 0.1; done
     running || return 1
     ready
+}
+
+#  Test lock is a diagnostic: a fresh scene costs a fraction of a second and
+#  cannot inherit a lock surface that stopped coming up.  Never restart one
+#  that is actually locked, or the surface would be gone for real.
+fresh() {
+    if "$bin" --say lockscreen 'get locked' 2>/dev/null | grep -qx true; then
+        return 0
+    fi
+    stop
+    ensure
 }
 
 say() { "$bin" --say lockscreen "$1" >/dev/null 2>&1 || true; }
@@ -76,6 +104,6 @@ case "${1:-lock}" in
     sync) sync ;;
     alive) alive ;;
     lock) ensure; sync; say "fact locked true" ;;
-    test) ensure; sync; say "fact safe true"; say "fact locked true" ;;
+    test) fresh; sync; say "fact safe true"; say "fact locked true" ;;
     *) echo "usage: $0 ensure|lock|test|sync|alive" >&2; exit 2 ;;
 esac

@@ -38,3 +38,53 @@ import json, sys
 row = json.load(sys.stdin)
 assert "cpu" in row and "mem" in row and "net" in row and "disk" in row
 '
+
+#  The calendar's countdown follows the month on screen, not the month of
+#  today, and keeps an anniversary that has just passed (marked 已过).  The
+#  grid also carries the full lunar date used by hover.
+python3 - "$root" "$tmp/calendar" <<'PY'
+import json, os, shutil, subprocess, sys
+from datetime import date
+from pathlib import Path
+
+root, work = Path(sys.argv[1]), Path(sys.argv[2])
+today = date.today()
+if today.month == 12:
+    next_year, next_month = today.year + 1, 1
+else:
+    next_year, next_month = today.year, today.month + 1
+conf = work / "conf" / "pleamar-shell"
+cache = work / "cache" / "pleamar-shell" / "holidays"
+conf.mkdir(parents=True)
+cache.mkdir(parents=True)
+(conf / "anniversaries.json").write_text(json.dumps([
+    {"name": "PastTest", "calendar": "solar", "month": today.month, "day": 1},
+    {"name": "NextTest", "calendar": "solar", "month": next_month, "day": 1},
+]), encoding="utf-8")
+for year in {today.year, next_year}:
+    (cache / f"{year}.json").write_text('{"days":[]}', encoding="utf-8")
+env = dict(os.environ, XDG_CONFIG_HOME=str(work / "conf"),
+           XDG_CACHE_HOME=str(work / "cache"))
+
+def build(year, month):
+    out = subprocess.run(
+        [sys.executable, str(root / "bin" / "pleamar-calendar"),
+         "--year", str(year), "--month", str(month)],
+        env=env, check=True, capture_output=True, text=True, timeout=30,
+    ).stdout
+    return json.loads(out)
+
+cur = build(today.year, today.month)
+assert cur["countdown_title"] == "本月倒计时", cur["countdown_title"]
+past = next(c for c in cur["countdowns"] if c["title"] == "PastTest")
+assert past["days"] <= 0
+assert past["when"] == "今天" or past["when"].startswith("已过"), past
+nxt = build(next_year, next_month)
+assert nxt["countdown_title"] == f"{next_month}月倒计时", nxt["countdown_title"]
+nxt_item = next(c for c in nxt["countdowns"] if c["title"] == "NextTest")
+assert nxt_item["days"] > 0
+assert len(nxt["days"]) == 42
+assert all(c["hover"] for c in nxt["days"])
+if shutil.which("ccal"):
+    assert any("农历" in c["hover"] for c in nxt["days"])
+PY

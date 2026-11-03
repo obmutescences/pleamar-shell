@@ -49,7 +49,7 @@
 
 - 搜索：居中的 660 面板，apps/files/commands/emoji/clipboard/wallpapers/windows/web/calc；打开时请求键盘。
 - 通知：Pleamar 的 notifications service；toast + 通知中心，两者都吸附在 bar 下方。
-- 设置：十页 settings panel（含锁屏、IDLE、通知音效/位置/倒计时、MOTION 动效和天气城市）。
+- 设置：十页 settings panel（含锁屏、IDLE、通知音效/位置/倒计时、MOTION 动效和天气城市）；BAR 页的 PANEL TINT 选择 wallpaper primary/secondary 及混合深度，作用于 bar、Frame、中心面板、设置、launcher、通知与 toast 的背板。
 - 搜索、设置、通知中心都可以从终端用 `pleamar-ipc` 打开，见下面“终端 IPC”。
 
 ## pleamar 的坑（这次踩过的）
@@ -335,6 +335,8 @@ rows + sliders + switches。当前保留十页，原来的临时小面板已删�
   `lockscreen/lockscreen.plm` 场景，用 compositor 的 `ext-session-lock`；
   `pleamar-lock sync` 会在每次上锁前把当前 `palette.json` 推给已预热的锁屏
   和 PAM 验证密码；Ctrl+U 清空，测试锁可用 Esc 空栏或 1 分钟退出。
+  `Test lock` 会先换一个全新的锁屏进程，避免复用到 socket 还活着但锁面已失效
+  的旧场景；正常上锁仍复用预热进程。
   锁屏用 `PLEAMAR_SWAPCHAIN=1` 启动（锁面提交兼容开关；0.4 必需，0.7.x 下
   保留；Vitreus 官方对 0.4 同样使用）；否则 niri 的 DPMS 关屏/唤醒会让
   0.4 锁屏进程收到 `Output is already locked` 后退出。watchdog 只是兜底：
@@ -421,7 +423,7 @@ toast / Notification centre / Centre panel。配置键是 `anim_search`、
 | 3 | Tray | StatusNotifier 系统托盘：三栏固定布局；左侧应用列表，悬停自动在中间玻璃卡打开动作，带 `›` 的动作在右侧子菜单卡展开；左键仍触发默认动作，右键也打开动作卡 |
 | 4 | Media | 当前 MPRIS 曲目、旋转唱片、频谱、prev/play/next |
 | 5 | Audio | PipeWire 输出/输入音量、静音、输出设备切换、cava 频谱；滑块直接调用 `wpctl`，设备列表来自 `wpctl status` |
-| 6 | Calendar | ccal 农历网格、节气/传统节日、休假/补班、纪念日倒计时、前后月；右侧 Today 显示当月最近两个纪念日 |
+| 6 | Calendar | ccal 农历网格、节气/传统节日、休假/补班、纪念日倒计时、前后月；右侧 Today 显示当前查看月份的纪念日（已过的标为已过）；悬停日期显示完整农历 |
 | 7 | Actions | Search / Settings / Notifications / Lock、四个快捷开关，以及带确认的 Log out / Restart / Shut down |
 
 系统监控的数据来自 `bin/pleamar-sysmon`（从 Vitreus 的
@@ -463,7 +465,9 @@ holiday-cn 的年度 JSON 提供休假/补班，结果缓存在
 `~/.cache/pleamar-shell/holidays/`。纪念日读取
 `~/.config/pleamar-shell/anniversaries.json`，格式与 iNiR Holiday Countdown
 相同；它必须和 `config.json` 放在同一个配置目录。`ccal` 需在系统 PATH 中，
-首次取节假日需要网络，失败时沿用已有缓存。
+首次取节假日需要网络，失败时沿用已有缓存。倒计时跟随当前查看的月份，
+当月已经过去的纪念日仍会列出并标为“已过”；悬停网格中的任意一天，
+月份标题右侧会显示该日的完整农历日期（含闰月）。
 
 Overview 的天气由 `bin/pleamar-weather` 获取：先通过 Nominatim 把设置里的城市
 解析为坐标，再请求 Open-Meteo；城市解析失败时退回 wttr.in。结果缓存十分钟，

@@ -31,7 +31,7 @@ part Launcher {
 
         PanelPop(search_fx, la_p, 660, 640) {
             body {
-                color: la.card
+                color: panel_bg
                 glass: if(glass_on, 100%, 0%)
                 opacity: 1% * max(glass_tint, 82)
                 lens: glass_on and glass_bend

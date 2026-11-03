@@ -121,7 +121,9 @@ part CenterPanel {
     text ct_today_day = ""
     text ct_today_month = ""
     text ct_today_year = ""
-    model ct_days max 42 { day: number; cur: bool; today: bool; label: text; lunar: text; term: text; festival: text; holiday: text; off: bool; work: bool; anniv: text; anniv_count: number }
+    text ct_countdown_title = "本月倒计时"
+    fact center_cal_hover = -1
+    model ct_days max 42 { day: number; cur: bool; today: bool; label: text; lunar: text; hover: text; term: text; festival: text; holiday: text; off: bool; work: bool; anniv: text; anniv_count: number }
     model ct_countdown max 2 { title: text; date: text; when: text; days: number }
 
     //  Weather for the Overview card; the city lives in settings.
@@ -205,7 +207,7 @@ part CenterPanel {
             //  shows as a square dark backing under the 30 px border.
             clip inset 0 box { from: 0, 0; size: 1120, 720; corner: 30 }
             body {
-                color: ct.card
+                color: panel_bg
                 glass: if(glass_on, 100%, 0%)
                 opacity: 1% * max(glass_tint, 84)
                 //  The centre panel follows the shell's glass switches.  It is
@@ -251,7 +253,7 @@ part CenterPanel {
 
             //  The active tab is one moving pill; its x follows ct_tab.
             box { from: ct.tab_x + ct_tab * ct.tab_w + 2, 26; size: ct.tab_w - 4, 38; corner: 19; color: ct.primary; opacity: 14% }
-            box { from: ct.tab_x + ct_tab * ct.tab_w + 8, 60; size: ct.tab_w - 16, 2; corner: 1; color: ct.secondary; opacity: 90% }
+            box { from: ct.tab_x + ct_tab * ct.tab_w + 2, 26; size: ct.tab_w - 4, 38; corner: 19; stroke: 1.5; color: ct.secondary; opacity: 90% }
 
             repeat t in 0..7 {
                 text pick(t, "OVERVIEW", "SYSTEM", "TRAY", "MEDIA", "AUDIO", "CALENDAR", "ACTIONS") { at: ct.tab_x + t * ct.tab_w + ct.tab_w / 2, 46; anchor: center; size: 10.5; weight: 700; color: if(center_tab == t, ct.primary, faint); family: "Space Grotesk" }
@@ -328,20 +330,20 @@ part CenterPanel {
                     }
                     //  Prev / play / next share one centred row: equal edge
                     //  buttons, equal gaps, and mirrored icons.
-                    box { from: 422, 420; size: 36, 36; corner: 18; color: ink; opacity: 4% }
-                    box { from: 422, 420; size: 36, 36; corner: 18; stroke: 1; color: ink; opacity: 7% }
-                    box { from: 470, 420; size: 36, 36; corner: 18; color: ct.primary; opacity: 82% }
-                    box { from: 518, 420; size: 36, 36; corner: 18; color: ink; opacity: 4% }
-                    box { from: 518, 420; size: 36, 36; corner: 18; stroke: 1; color: ink; opacity: 7% }
-                    path { at: 440, 438; stroke: 1.8; color: faint; opacity: 80%; move 4, -7; line -4, 0; line 4, 7 }
-                    path { at: 536, 438; stroke: 1.8; color: faint; opacity: 80%; move -4, -7; line 4, 0; line -4, 7 }
-                    group { show: not med.playing; path { at: 488, 438; color: ct.card; move -6, -8; line 6, 0; line -6, 8; close } }
-                    group { show: med.playing; box { from: 481, 430; size: 4, 16; corner: 2; color: ct.card }; box { from: 491, 430; size: 4, 16; corner: 2; color: ct.card } }
-                    zone box ct_med_prev { from: 422, 420; size: 36, 36; corner: 18; cursor: pointer; label: "Previous track" }
+                    box { from: 414, 454; size: 36, 36; corner: 18; color: ink; opacity: 4% }
+                    box { from: 414, 454; size: 36, 36; corner: 18; stroke: 1; color: ink; opacity: 7% }
+                    box { from: 462, 454; size: 36, 36; corner: 18; color: ct.primary; opacity: 82% }
+                    box { from: 510, 454; size: 36, 36; corner: 18; color: ink; opacity: 4% }
+                    box { from: 510, 454; size: 36, 36; corner: 18; stroke: 1; color: ink; opacity: 7% }
+                    path { at: 432, 472; stroke: 1.8; color: faint; opacity: 80%; move 4, -7; line -4, 0; line 4, 7 }
+                    path { at: 528, 472; stroke: 1.8; color: faint; opacity: 80%; move -4, -7; line 4, 0; line -4, 7 }
+                    group { show: not med.playing; path { at: 480, 472; color: ct.card; move -6, -8; line 6, 0; line -6, 8; close } }
+                    group { show: med.playing; box { from: 473, 464; size: 4, 16; corner: 2; color: ct.card }; box { from: 483, 464; size: 4, 16; corner: 2; color: ct.card } }
+                    zone box ct_med_prev { from: 414, 454; size: 36, 36; corner: 18; cursor: pointer; label: "Previous track" }
                     on press ct_med_prev { emit ui_sound; emit center_media(0) }
-                    zone box ct_med_play { from: 466, 416; size: 44, 44; corner: 22; cursor: pointer; label: "Play or pause" }
+                    zone box ct_med_play { from: 458, 450; size: 44, 44; corner: 22; cursor: pointer; label: "Play or pause" }
                     on press ct_med_play { emit ui_sound; emit center_media(1) }
-                    zone box ct_med_next { from: 518, 420; size: 36, 36; corner: 18; cursor: pointer; label: "Next track" }
+                    zone box ct_med_next { from: 510, 454; size: 36, 36; corner: 18; cursor: pointer; label: "Next track" }
                     on press ct_med_next { emit ui_sound; emit center_media(2) }
 
                     //  Network sits on the right shoulder, directly above the
@@ -741,31 +743,9 @@ part CenterPanel {
                     }
                     line { from: 500, 620; to: 1048, 620; width: 1; color: ink; opacity: 12% }
 
-                    //  Output picker: a list over the left card, one row per
-                    //  sink.  The current sink is marked; a row calls audio.default.
-                    group {
-                        show: audio_pick_open
-                        box { from: 36, 152; size: 420, 500; corner: 18; color: ct.card; opacity: 98% }
-                        box { from: 36, 152; size: 420, 500; corner: 18; stroke: 1; color: ct.primary; opacity: 26% }
-                        text "OUTPUT DEVICE" { at: 58, 178; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
-                        line { from: 58, 196; to: 434, 196; width: 1; color: ink; opacity: 10% }
-                        repeat o in 0..8 {
-                            let oy = 208 + o * 46
-                            group {
-                                show: o < audio_outputs.count
-                                box { from: 52, oy; size: 388, 38; corner: 9; color: if(audio_outputs.$o.current, ct.primary, ink); opacity: if(audio_outputs.$o.current, 12%, 3%) }
-                                ellipse { at: 70, oy + 19; radius: 4; color: if(audio_outputs.$o.current, ct.primary, faint); opacity: 80% }
-                                text audio_outputs.$o.name { at: 84, oy + 19; anchor: left center; size: 12; weight: if(audio_outputs.$o.current, 700, 500); color: if(audio_outputs.$o.current, ct.primary, ink); width: 330; lines: 1; family: "Space Grotesk" }
-                                zone box ct_audio_out.$o { from: 52, oy; size: 388, 38; corner: 9; cursor: pointer; label: audio_outputs.$o.name }
-                                on press ct_audio_out.$o { emit ui_sound; emit center_audio_default(o) }
-                            }
-                        }
-                        text "No output devices." { at: 58, 222; anchor: left center; size: 12; color: faint; show: audio_outputs.count < 1; family: "Space Grotesk" }
-                        line { from: 58, 584; to: 434, 584; width: 1; color: ink; opacity: 10% }
-                        text "Cancel" { at: 246, 608; anchor: center; size: 11; weight: 700; color: faint; family: "Space Grotesk" }
-                        zone box ct_audio_pick_close { from: 150, 590; size: 192, 36; corner: 18; cursor: pointer; label: "Close output picker" }
-                        on press ct_audio_pick_close { audio_pick_open = false }
-                    }
+                    //  Output picker opens as a popup declared at the surface
+                    //  level below, so glass can frost the page behind it.
+
                 }
 
                 //  ── 04 MEDIA ────────────────────────────────────────────────
@@ -844,6 +824,7 @@ part CenterPanel {
                     text "CALENDAR" { at: 36, 119; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
                     text ct_month { at: 36, 145; anchor: left center; size: 24; weight: 700; color: ink; family: "Noto Sans CJK SC" }
                     text ct_month_sub { at: 36, 166; anchor: left center; size: 10; weight: 700; color: faint; family: "Noto Sans CJK SC" }
+                    text "悬停日期查看农历" { at: 754, 166; anchor: right center; size: 10; weight: 600; color: faint; width: 400; lines: 1; show: center_cal_hover < 0; family: "Noto Sans CJK SC" }
 
                     box { from: 884, 128; size: 38, 34; corner: 17; color: ink; opacity: 4% }
                     text "‹" { at: 903, 145; anchor: center; size: 20; color: ink; family: "Space Grotesk" }
@@ -873,8 +854,8 @@ part CenterPanel {
                         let is_work = ct_days.$d.work
                         let is_anniv = ct_days.$d.anniv_count > 0
                         let is_today = ct_days.$d.today
-                        box { from: dx, dy; size: 92, 56; corner: 11; color: if(is_today, ct.primary, if(is_off, ct.off, if(is_work, ct.work, if(is_anniv, ct.secondary, ink)))); opacity: if(is_today, 14%, if(is_off or is_work, 8%, if(is_anniv, 5%, 2%))) }
-                        box { from: dx, dy; size: 92, 56; corner: 11; stroke: 1; color: if(is_today, ct.primary, if(is_off, ct.off, if(is_work, ct.work, if(is_anniv, ct.secondary, ink)))); opacity: if(is_today, 42%, if(is_off or is_work, 30%, if(is_anniv, 20%, 5%))) }
+                        box { from: dx, dy; size: 92, 56; corner: 11; color: if(is_today, ct.primary, if(is_off, ct.off, if(is_work, ct.work, if(is_anniv, ct.secondary, ink)))); opacity: if(is_today, 14%, if(is_off or is_work, 8%, if(is_anniv, 5%, 2%))) + 5% * ct_day_hit.$d.hover }
+                        box { from: dx, dy; size: 92, 56; corner: 11; stroke: 1; color: if(is_today, ct.primary, if(is_off, ct.off, if(is_work, ct.work, if(is_anniv, ct.secondary, ink)))); opacity: if(is_today, 42%, if(is_off or is_work, 30%, if(is_anniv, 20%, 5%))) + 14% * ct_day_hit.$d.hover }
                         text number(ct_days.$d.day, 0, "") { at: dx + 46, dy + 17; anchor: center; size: 17; weight: if(is_today, 700, 500); color: if(ct_days.$d.cur, if(is_today, ct.primary, ink), faint); opacity: if(ct_days.$d.cur, 100%, 45%); family: "Space Grotesk" }
                         ellipse { at: dx + 82, dy + 9; radius: 2.3; color: ct.primary; show: is_today }
                         text ct_days.$d.label { at: dx + 46, dy + 33; anchor: center; size: 7.5; color: if(is_today, ct.primary, if(is_off, ct.off, if(is_work, ct.work, if(is_anniv, ct.secondary, faint)))); width: 86; lines: 1; family: "Noto Sans CJK SC" }
@@ -885,6 +866,10 @@ part CenterPanel {
                         repeat a in 0..3 {
                             ellipse { at: dx + 78 + a * 6, dy + 46; radius: 2; color: ct.secondary; opacity: 82%; show: is_anniv and ct_days.$d.anniv_count > a }
                         }
+                        zone box ct_day_hit.$d { from: dx, dy; size: 92, 56; corner: 11; cursor: pointer; label: ct_days.$d.hover }
+                        on enter ct_day_hit.$d { center_cal_hover = d }
+                        on leave ct_day_hit.$d { center_cal_hover = -1 }
+                        text ct_days.$d.hover { at: 754, 166; anchor: right center; size: 10; weight: 600; color: ct.primary; width: 400; lines: 1; show: ct_day_hit.$d.hover; family: "Noto Sans CJK SC" }
                     }
 
                     box { from: 776, 184; size: 296, 460; corner: 18; color: ink; opacity: 4% }
@@ -899,20 +884,20 @@ part CenterPanel {
                     text ct_weekday { at: 800, 448; anchor: left center; size: 14; weight: 600; color: ink; width: 248; lines: 1; family: "Noto Sans CJK SC" }
                     text ct_weeknum { at: 800, 474; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Noto Sans CJK SC" }
                     line { from: 800, 496; to: 1048, 496; width: 1; color: ink; opacity: 9% }
-                    text "本月倒计时" { at: 800, 514; anchor: left center; size: 9; weight: 700; color: ct.secondary; family: "Noto Sans CJK SC" }
+                    text ct_countdown_title { at: 800, 514; anchor: left center; size: 9; weight: 700; color: ct.secondary; family: "Noto Sans CJK SC" }
                     repeat c in 0..2 {
                         let cy = 526 + c * 54
                         group {
                             show: c < ct_countdown.count
                             box { from: 800, cy; size: 248, 48; corner: 11; color: ink; opacity: 3% }
-                            box { from: 800, cy; size: 248, 48; corner: 11; stroke: 1; color: ct.secondary; opacity: if(ct_countdown.$c.days <= 7, 32%, 14%) }
-                            line { from: 800, cy + 8; to: 800, cy + 40; width: 2; color: ct.secondary; opacity: if(ct_countdown.$c.days <= 7, 90%, 55%) }
+                            box { from: 800, cy; size: 248, 48; corner: 11; stroke: 1; color: ct.secondary; opacity: if(ct_countdown.$c.days >= 0 and ct_countdown.$c.days <= 7, 32%, 14%) }
+                            line { from: 800, cy + 8; to: 800, cy + 40; width: 2; color: ct.secondary; opacity: if(ct_countdown.$c.days >= 0 and ct_countdown.$c.days <= 7, 90%, 55%) }
                             text ct_countdown.$c.title { at: 812, cy + 15; anchor: left center; size: 11; weight: 600; color: ink; width: 166; lines: 1; family: "Noto Sans CJK SC" }
-                            text ct_countdown.$c.when { at: 1036, cy + 15; anchor: right center; size: 9; weight: 700; color: if(ct_countdown.$c.days <= 7, ct.primary, faint); family: "Noto Sans CJK SC" }
+                            text ct_countdown.$c.when { at: 1036, cy + 15; anchor: right center; size: 9; weight: 700; color: if(ct_countdown.$c.days >= 0 and ct_countdown.$c.days <= 7, ct.primary, faint); family: "Noto Sans CJK SC" }
                             text ct_countdown.$c.date { at: 812, cy + 33; anchor: left center; size: 9; color: faint; family: "Noto Sans CJK SC" }
                         }
                     }
-                    text "本月暂无纪念日" { at: 800, 540; anchor: left center; size: 11; color: faint; show: ct_countdown.count < 1; family: "Noto Sans CJK SC" }
+                    text "当月暂无纪念日" { at: 800, 540; anchor: left center; size: 11; color: faint; show: ct_countdown.count < 1; family: "Noto Sans CJK SC" }
                 }
 
                 //  ── 03 SYSTEM TRAY ─────────────────────────────────────────
@@ -1158,19 +1143,6 @@ part CenterPanel {
                         show: center_power_confirm >= 0
                         zone box ct_power_shield { from: 36, 150; size: 1048, 490; corner: 16; active: center_power_confirm >= 0; label: "Power confirmation" }
                         on press ct_power_shield { emit center_power_cancel }
-                        box { from: 300, 250; size: 520, 210; corner: 22; color: ct.card2; opacity: 98% }
-                        box { from: 300, 250; size: 520, 210; corner: 22; stroke: 1; color: alert; opacity: 30% }
-                        text "SESSION ACTION" { at: 328, 276; anchor: left center; size: 9; weight: 700; color: ct.secondary; family: "Space Grotesk" }
-                        text pick(center_power_confirm, "Log out?", "Restart?", "Shut down?") { at: 328, 318; anchor: left center; size: 28; weight: 700; color: ink; family: "Space Grotesk" }
-                        text pick(center_power_confirm, "End this niri session and return to the greeter.", "Reboot the machine. Open work will be interrupted.", "Power off the machine. Open work will be interrupted.") { at: 328, 348; anchor: left top; size: 12; color: faint; width: 464; lines: 2; line_height: 1.3; family: "Space Grotesk" }
-                        box { from: 328, 404; size: 130, 34; corner: 17; color: ink; opacity: 6% + 8% * ct_power_cancel.hover }
-                        text "Cancel" { at: 393, 421; anchor: center; size: 12; weight: 700; color: ink; family: "Space Grotesk" }
-                        zone box ct_power_cancel { from: 328, 404; size: 130, 34; corner: 17; cursor: pointer; label: "Cancel power action" }
-                        on press ct_power_cancel { emit ui_sound; emit center_power_cancel }
-                        box { from: 662, 404; size: 130, 34; corner: 17; color: alert; opacity: 76% + 24% * ct_power_confirm.hover }
-                        text "Confirm" { at: 727, 421; anchor: center; size: 12; weight: 700; color: ct.card; family: "Space Grotesk" }
-                        zone box ct_power_confirm { from: 662, 404; size: 130, 34; corner: 17; cursor: pointer; label: "Confirm power action" }
-                        on press ct_power_confirm { emit ui_sound; emit center_power_do }
                     }
                 }
 
@@ -1180,6 +1152,96 @@ part CenterPanel {
             text "1–7  TABS   ·   TAB  NEXT   ·   ESC  CLOSE" { at: 36, 697; anchor: left center; size: 9; weight: 700; color: faint; opacity: 45%; family: "Space Grotesk" }
         }
 
+        //  Output picker: its own overlay surface so glass can frost the
+        //  centre panel behind it, like the session dialog.
         on key Escape while center_open { emit center_close }
+    }
+
+    //  The confirmation lives on its own layer surface: glass can only frost
+    //  what is behind the surface it belongs to, not the same surface's page.
+    surface power_confirm {
+        size: 600, 290
+        anchor: center
+        level: overlay
+        keyboard: none
+        open: center_power_confirm >= 0
+
+        zone box ct_power_body { from: 40, 40; size: 520, 210; corner: 22; active: center_power_confirm >= 0; label: "Cancel power action" }
+        on press ct_power_body { emit center_power_cancel }
+        body {
+            color: mix(ct.card2, ct.primary, 0.45)
+            opacity: if(glass_on, 1% * max(glass_tint, 76), 98%)
+            glass: if(glass_on, 100%, 0%)
+            lens: glass_on and glass_bend
+            frost: glass_frost / 100
+            refraction: glass_refr
+            dispersion: glass_disp
+            dome: glass_dome
+            milk: glass_milk
+            smoke: 18%
+            shine: pointer
+            shadow: 0, 10, 28, 24%, glass_shadow
+            box { from: 40, 40; size: 520, 210; corner: 22 }
+        }
+        box { from: 40, 40; size: 520, 210; corner: 22; stroke: 1.5; color: alert; opacity: 34% }
+        text "SESSION ACTION" { at: 68, 66; anchor: left center; size: 9; weight: 700; color: ct.secondary; family: "Space Grotesk" }
+        text pick(center_power_confirm, "Log out?", "Restart?", "Shut down?") { at: 68, 108; anchor: left center; size: 28; weight: 700; color: ink; family: "Space Grotesk" }
+        text pick(center_power_confirm, "End this niri session and return to the greeter.", "Reboot the machine. Open work will be interrupted.", "Power off the machine. Open work will be interrupted.") { at: 68, 138; anchor: left top; size: 12; color: faint; width: 464; lines: 2; line_height: 1.3; family: "Space Grotesk" }
+        box { from: 68, 194; size: 130, 34; corner: 17; color: ink; opacity: 6% + 8% * ct_power_cancel.hover }
+        text "Cancel" { at: 133, 211; anchor: center; size: 12; weight: 700; color: ink; family: "Space Grotesk" }
+        zone box ct_power_cancel { from: 68, 194; size: 130, 34; corner: 17; cursor: pointer; label: "Cancel power action" }
+        on press ct_power_cancel { emit ui_sound; emit center_power_cancel }
+        box { from: 402, 194; size: 130, 34; corner: 17; color: alert; opacity: 76% + 24% * ct_power_confirm.hover }
+        text "Confirm" { at: 467, 211; anchor: center; size: 12; weight: 700; color: ct.card; family: "Space Grotesk" }
+        zone box ct_power_confirm { from: 402, 194; size: 130, 34; corner: 17; cursor: pointer; label: "Confirm power action" }
+        on press ct_power_confirm { emit ui_sound; emit center_power_do }
+    }
+
+    //  The audio output picker is another layer surface over the centre panel,
+    //  so its glass can frost the page underneath instead of only tinting it.
+    surface audio_picker {
+        size: 1120, 720
+        anchor: center
+        level: overlay
+        keyboard: none
+        open: audio_pick_open and center_tab == 4
+
+        zone box ap_shield { from: 0, 0; size: 1120, 720; active: audio_pick_open; label: "Close output picker" }
+        on press ap_shield { audio_pick_open = false }
+        box { from: 36, 152; size: 420, 500; corner: 18; color: mix(ct.card2, ct.primary, 0.45); opacity: 92% }
+        body {
+            color: mix(ct.card2, ct.primary, 0.45)
+            opacity: if(glass_on, 1% * max(glass_tint, 76), 98%)
+            glass: if(glass_on, 100%, 0%)
+            lens: glass_on and glass_bend
+            frost: glass_frost / 100
+            refraction: glass_refr
+            dispersion: glass_disp
+            dome: glass_dome
+            milk: glass_milk
+            smoke: 80%
+            shine: pointer
+            shadow: 0, 10, 28, 24%, glass_shadow
+            box { from: 36, 152; size: 420, 500; corner: 18 }
+        }
+        box { from: 36, 152; size: 420, 500; corner: 18; stroke: 1.5; color: ct.primary; opacity: 34% }
+        text "OUTPUT DEVICE" { at: 58, 178; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
+        line { from: 58, 196; to: 434, 196; width: 1; color: ink; opacity: 10% }
+        repeat o in 0..8 {
+            let oy = 208 + o * 46
+            group {
+                show: o < audio_outputs.count
+                box { from: 52, oy; size: 388, 38; corner: 9; color: if(audio_outputs.$o.current, ct.primary, ink); opacity: if(audio_outputs.$o.current, 12%, 3%) }
+                ellipse { at: 70, oy + 19; radius: 4; color: if(audio_outputs.$o.current, ct.primary, faint); opacity: 80% }
+                text audio_outputs.$o.name { at: 84, oy + 19; anchor: left center; size: 12; weight: if(audio_outputs.$o.current, 700, 500); color: if(audio_outputs.$o.current, ct.primary, ink); width: 330; lines: 1; family: "Space Grotesk" }
+                zone box ct_audio_out.$o { from: 52, oy; size: 388, 38; corner: 9; cursor: pointer; label: audio_outputs.$o.name }
+                on press ct_audio_out.$o { emit ui_sound; emit center_audio_default(o) }
+            }
+        }
+        text "No output devices." { at: 58, 222; anchor: left center; size: 12; color: faint; show: audio_outputs.count < 1; family: "Space Grotesk" }
+        line { from: 58, 584; to: 434, 584; width: 1; color: ink; opacity: 10% }
+        text "Cancel" { at: 246, 608; anchor: center; size: 11; weight: 700; color: faint; family: "Space Grotesk" }
+        zone box ct_audio_pick_close { from: 150, 590; size: 192, 36; corner: 18; cursor: pointer; label: "Close output picker" }
+        on press ct_audio_pick_close { audio_pick_open = false }
     }
 }

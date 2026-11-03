@@ -25,7 +25,7 @@ part IslandBar {
         let isl.cx = isl.x + isl.w / 2
 
         body {
-            color: tint
+            color: bar_bg
             glass: if(glass_on, 100%, 0%)
             opacity: 1% * glass_tint
             lens: glass_on and glass_bend
