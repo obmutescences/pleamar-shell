@@ -1,7 +1,8 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, pleamar, ... }:
 
 let
   cfg = config.services.pleamar-shell;
+  swaybg-pleamar = import ./swaybg-pleamar.nix { inherit pkgs; };
 in
 {
   options.services.pleamar-shell = {
@@ -9,8 +10,11 @@ in
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.callPackage ./package.nix { swaybg = pkgs.swaybg; };
-      defaultText = lib.literalExpression "pkgs.callPackage ./package.nix { swaybg = pkgs.swaybg; }";
+      default = pkgs.callPackage ./package.nix {
+        swaybg = swaybg-pleamar;
+        inherit pleamar;
+      };
+      defaultText = lib.literalExpression "pkgs.callPackage ./package.nix { swaybg = ...; pleamar = ...; }";
       description = "Pleamar shell package (includes pleamar-shell and pleamar-ipc).";
     };
 

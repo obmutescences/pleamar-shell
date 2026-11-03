@@ -16,9 +16,30 @@
         "type": "github"
       }
     },
+    "pleamar": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793618781,
+        "narHash": "sha256-G4D4WHJ0ciCGmkeqr4M1oer5rjsTUXQhAY2qJ5GP6AA=",
+        "owner": "k4ditano",
+        "repo": "pleamar",
+        "rev": "0fdca2de2b8a6e61da7679c16be54f16fe42d4e9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "k4ditano",
+        "repo": "pleamar",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "pleamar": "pleamar"
       }
     }
   },

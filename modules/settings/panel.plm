@@ -26,8 +26,10 @@ part ConfigPanel {
     let cp.gain_pct = clamp((wave_gain - 0.8) / 1.6, 0, 1)
     let cp.rip_pct = clamp((wave_ripples - 1) / 9, 0, 1)
     let cp.blend_pct = clamp(wave_blend, 0, 1)
-    let cp.idle_lock_pct = clamp(idle_lock_i / 13, 0, 1)
-    let cp.idle_off_pct = clamp(idle_off_i / 13, 0, 1)
+    //  IDLE_STEPS in scenes/lib/shell.luau has 17 entries (0, 5 s, 10 s, 30 s,
+    //  then minutes to 2 h); the slider addresses its last index, 16.
+    let cp.idle_lock_pct = clamp(idle_lock_i / 16, 0, 1)
+    let cp.idle_off_pct = clamp(idle_off_i / 16, 0, 1)
     measure cp_parent
     let wp.min_pct = clamp((wall_minutes - 1) / 59, 0, 1)
     prop cp_p = 0 ~gentle
@@ -772,8 +774,8 @@ part ConfigPanel {
             ellipse { at: 520 + 200 * cp.idle_lock_pct, 223; radius: 6; color: cp.mint }
             text idle_lock_t { at: 820, 223; anchor: right center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_idle_lock { from: 510, 208; size: 240, 30; cursor: pointer; label: "Lock after" }
-            on press cp_idle_lock { idle_lock_i = clamp(round((pointer.x - 520) / 200 * 13), 0, 13) }
-            on drag cp_idle_lock { idle_lock_i = clamp(round((pointer.x - 520) / 200 * 13), 0, 13) }
+            on press cp_idle_lock { idle_lock_i = clamp(round((pointer.x - 520) / 200 * 16), 0, 16) }
+            on drag cp_idle_lock { idle_lock_i = clamp(round((pointer.x - 520) / 200 * 16), 0, 16) }
 
             box { from: 250, 242; size: 570, 62; corner: 12; color: ink; opacity: 3% }
             text "Screen off after" { at: 266, 252; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
@@ -783,10 +785,10 @@ part ConfigPanel {
             ellipse { at: 520 + 200 * cp.idle_off_pct, 289; radius: 6; color: cp.mint }
             text idle_off_t { at: 820, 289; anchor: right center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_idle_off { from: 510, 274; size: 240, 30; cursor: pointer; label: "Screen off after" }
-            on press cp_idle_off { idle_off_i = clamp(round((pointer.x - 520) / 200 * 13), 0, 13) }
-            on drag cp_idle_off { idle_off_i = clamp(round((pointer.x - 520) / 200 * 13), 0, 13) }
+            on press cp_idle_off { idle_off_i = clamp(round((pointer.x - 520) / 200 * 16), 0, 16) }
+            on drag cp_idle_off { idle_off_i = clamp(round((pointer.x - 520) / 200 * 16), 0, 16) }
 
-            text "Never first. Next input wakes the screen. No suspend." { at: 266, 344; anchor: left center; size: 13; color: faint; opacity: 78%; width: 540; lines: 1; family: "Space Grotesk" }
+            text "Never first. 5 seconds is the shortest. No suspend." { at: 266, 344; anchor: left center; size: 13; color: faint; opacity: 78%; width: 540; lines: 1; family: "Space Grotesk" }
         }
 
         //  ── WEATHER ───────────────────────────────────────────────────────

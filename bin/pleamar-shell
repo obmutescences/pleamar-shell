@@ -80,6 +80,15 @@ case "$mode" in
         ;;
 esac
 
+#  pleamar 0.4 commits a lock surface before its first frame; without this
+#  the compositor can kill it ("Null buffer attached"), and on niri an output
+#  hotplug after DPMS makes it request an already locked output, which ends
+#  the scene and leaves niri's red lock overlay.  Vitreus starts its lock
+#  screen with this too; it has no effect on the island/frame scenes.
+if [[ "$mode" == "lock" ]]; then
+    export PLEAMAR_SWAPCHAIN=1
+fi
+
 scene="$root/scenes/$mode.plm"
 [[ "$mode" == "lock" ]] && scene="$root/lockscreen/lockscreen.plm"
 

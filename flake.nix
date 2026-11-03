@@ -1,32 +1,42 @@
 {
   description = "pleamar-shell — Island/Frame, glass panels, cava water";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    #  The engine, built from its Git source instead of whichever pleamar
+    #  happens to be in /nix/store.  The input follows upstream main; the
+    #  lockfile pins the latest fetched revision until `nix flake update pleamar`.
+    pleamar = {
+      url = "github:k4ditano/pleamar";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
 
-  outputs = { self, nixpkgs }:
+  outputs = { self, nixpkgs, pleamar }:
     let
       systems = [ "x86_64-linux" "aarch64-linux" ];
       forAll = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
     in {
-      nixosModules.default = ./nix/nixos-module.nix;
+      nixosModules.default = { config, lib, pkgs, ... }: import ./nix/nixos-module.nix {
+        inherit config lib pkgs;
+        pleamar = pleamar.packages.${pkgs.stdenv.hostPlatform.system}.default;
+      };
 
       packages = forAll (pkgs: let
-        # swaybg hard-codes the layer-shell namespace "wallpaper".  Prefix it
-        # so `niri msg layers` shows which shell owns the background.
-        swaybg-pleamar = pkgs.swaybg.overrideAttrs (old: {
-          pname = "swaybg-pleamar";
-          postPatch = (old.postPatch or "") + ''
-            substituteInPlace main.c --replace-fail '"wallpaper"' '"pleamar-shell-wallpaper"'
-          '';
-        });
+        swaybg-pleamar = import ./nix/swaybg-pleamar.nix { inherit pkgs; };
       in {
         inherit swaybg-pleamar;
-        default = pkgs.callPackage ./nix/package.nix { swaybg = swaybg-pleamar; };
+        default = pkgs.callPackage ./nix/package.nix {
+          swaybg = swaybg-pleamar;
+          pleamar = pleamar.packages.${pkgs.stdenv.hostPlatform.system}.default;
+        };
       });
 
       devShells = forAll (pkgs: {
         default = pkgs.mkShell {
-          packages = with pkgs; [ bash coreutils findutils gnused gnugrep gawk jq imagemagick python3 swaybg swayidle procps util-linux ];
+          packages = with pkgs; [ bash coreutils findutils gnused gnugrep gawk jq imagemagick python3 swayidle procps util-linux ]
+            ++ [ (import ./nix/swaybg-pleamar.nix { inherit pkgs; }) ]
+            ++ [ pleamar.packages.${pkgs.stdenv.hostPlatform.system}.default ];
         };
       });
     };

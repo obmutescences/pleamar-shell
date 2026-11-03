@@ -1,4 +1,4 @@
-{ lib, stdenvNoCC, makeWrapper, bash, coreutils, findutils, imagemagick, python3, swaybg, procps, util-linux, libnotify, pipewire, xdg-utils, cliphist, wl-clipboard, cava, fontconfig, jq, niri, swayidle, curl }:
+{ lib, stdenvNoCC, makeWrapper, pleamar, bash, coreutils, findutils, imagemagick, python3, swaybg, procps, util-linux, libnotify, pipewire, xdg-utils, cliphist, wl-clipboard, cava, fontconfig, jq, niri, swayidle, curl }:
 
 stdenvNoCC.mkDerivation {
   pname = "pleamar-shell";
@@ -12,11 +12,19 @@ stdenvNoCC.mkDerivation {
     runHook preInstall
     mkdir -p $out/share/pleamar-shell $out/bin
     cp -r scenes modules lockscreen bin assets tests experiments README.md $out/share/pleamar-shell/
+    #  Force the engine built from the flake's Git source.  Without this the
+    #  launcher's discovery falls back to whichever pleamar is in the system
+    #  store (0.4.31 here) and the shell silently runs the old one.
     makeWrapper ${bash}/bin/bash $out/bin/pleamar-shell \
       --add-flags "$out/share/pleamar-shell/bin/pleamar-shell" \
+      --set PLEAMAR ${pleamar}/bin/pleamar \
+      --set SWAYBG ${swaybg}/bin/swaybg \
+      --prefix PATH : ${pleamar}/bin \
       --suffix PATH : ${lib.makeBinPath [ bash coreutils findutils imagemagick python3 swaybg procps util-linux libnotify pipewire xdg-utils cliphist wl-clipboard cava fontconfig jq niri swayidle curl ]}
     makeWrapper ${bash}/bin/bash $out/bin/pleamar-ipc \
       --add-flags "$out/share/pleamar-shell/bin/pleamar-ipc" \
+      --set PLEAMAR ${pleamar}/bin/pleamar \
+      --prefix PATH : ${pleamar}/bin \
       --suffix PATH : ${lib.makeBinPath [ bash coreutils procps jq util-linux ]}
     runHook postInstall
   '';

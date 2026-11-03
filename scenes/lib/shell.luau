@@ -73,8 +73,8 @@ function M.start(layout)
         lock_date = 0,
         lock_mask = 0,
         lock_pal = 1,
-        idle_lock_minutes = 0,
-        idle_off_minutes = 0,
+        idle_lock_seconds = 0,
+        idle_off_seconds = 0,
         anim_search = 0,
         anim_panel = 0,
         anim_toast = 0,
@@ -123,17 +123,22 @@ function M.start(layout)
         if not wrote then log("palette.json could not be saved: " .. tostring(err)) end
     end
 
-    local IDLE_STEPS = { 0, 1, 2, 3, 5, 7, 10, 15, 20, 30, 45, 60, 90, 120 }
-    local function idle_index(m)
+    --  Seconds, so the shortest timers are useful (0 is Never).
+    local IDLE_STEPS = { 0, 5, 10, 30, 60, 120, 180, 300, 420, 600, 900, 1200, 1800, 2700, 3600, 5400, 7200 }
+    local function idle_index(s)
         local at = 1
-        for i, v in ipairs(IDLE_STEPS) do if v <= m then at = i end end
+        for i, v in ipairs(IDLE_STEPS) do if v <= s then at = i end end
         return at - 1
     end
-    local function idle_words(m)
-        if m <= 0 then return "Never" end
+    local function idle_words(s)
+        s = math.floor(clamp(number(s, 0), 0, 7200))
+        if s == 0 then return "Never" end
+        if s < 60 then return s .. (s == 1 and " second" or " seconds") end
+        local m, rem = s // 60, s % 60
+        if rem > 0 then return m .. " min " .. rem .. " s" end
         if m < 60 then return m .. (m == 1 and " minute" or " minutes") end
-        if m % 60 == 0 then return (m // 60) .. (m == 60 and " hour" or " hours") end
-        return (m // 60) .. " h " .. (m % 60) .. " min"
+        local h = m // 60
+        return h .. (h == 1 and " hour" or " hours") .. (m % 60 > 0 and (" " .. (m % 60) .. " min") or "")
     end
 
     local function apply(saved)
@@ -181,8 +186,14 @@ function M.start(layout)
         cfg.lock_date = math.floor(clamp(number(saved.lock_date, cfg.lock_date), 0, 3))
         cfg.lock_mask = math.floor(clamp(number(saved.lock_mask, cfg.lock_mask), 0, 3))
         cfg.lock_pal = math.floor(clamp(number(saved.lock_pal, cfg.lock_pal), 0, 4))
-        cfg.idle_lock_minutes = math.floor(clamp(number(saved.idle_lock_minutes, cfg.idle_lock_minutes), 0, 120))
-        cfg.idle_off_minutes = math.floor(clamp(number(saved.idle_off_minutes, cfg.idle_off_minutes), 0, 120))
+        --  Existing configs stored whole minutes; keep those as a fallback
+        --  for one load, then write seconds.
+        local lock_s = tonumber(saved.idle_lock_seconds)
+        if lock_s == nil then lock_s = (tonumber(saved.idle_lock_minutes) or 0) * 60 end
+        local off_s = tonumber(saved.idle_off_seconds)
+        if off_s == nil then off_s = (tonumber(saved.idle_off_minutes) or 0) * 60 end
+        cfg.idle_lock_seconds = math.floor(clamp(lock_s, 0, 7200))
+        cfg.idle_off_seconds = math.floor(clamp(off_s, 0, 7200))
         cfg.anim_search = math.floor(clamp(number(saved.anim_search, cfg.anim_search), 0, 5))
         cfg.anim_panel = math.floor(clamp(number(saved.anim_panel, cfg.anim_panel), 0, 5))
         cfg.anim_toast = math.floor(clamp(number(saved.anim_toast, cfg.anim_toast), 0, 5))
@@ -237,12 +248,12 @@ function M.start(layout)
         fact.lock_date = cfg.lock_date
         fact.lock_mask = cfg.lock_mask
         fact.lock_pal = cfg.lock_pal
-        fact.idle_lock_minutes = cfg.idle_lock_minutes
-        fact.idle_off_minutes = cfg.idle_off_minutes
-        fact.idle_lock_i = idle_index(cfg.idle_lock_minutes)
-        fact.idle_off_i = idle_index(cfg.idle_off_minutes)
-        text.idle_lock_t = idle_words(cfg.idle_lock_minutes)
-        text.idle_off_t = idle_words(cfg.idle_off_minutes)
+        fact.idle_lock_seconds = cfg.idle_lock_seconds
+        fact.idle_off_seconds = cfg.idle_off_seconds
+        fact.idle_lock_i = idle_index(cfg.idle_lock_seconds)
+        fact.idle_off_i = idle_index(cfg.idle_off_seconds)
+        text.idle_lock_t = idle_words(cfg.idle_lock_seconds)
+        text.idle_off_t = idle_words(cfg.idle_off_seconds)
         fact.anim_search = cfg.anim_search
         fact.anim_panel = cfg.anim_panel
         fact.anim_toast = cfg.anim_toast
@@ -296,8 +307,8 @@ function M.start(layout)
             lock_date = number(fact.lock_date, 0),
             lock_mask = number(fact.lock_mask, 0),
             lock_pal = number(fact.lock_pal, 1),
-            idle_lock_minutes = number(fact.idle_lock_minutes, 0),
-            idle_off_minutes = number(fact.idle_off_minutes, 0),
+            idle_lock_seconds = number(fact.idle_lock_seconds, 0),
+            idle_off_seconds = number(fact.idle_off_seconds, 0),
             anim_search = number(fact.anim_search, 0),
             anim_panel = number(fact.anim_panel, 0),
             anim_toast = number(fact.anim_toast, 0),
@@ -484,8 +495,8 @@ function M.start(layout)
         local mine = idle_gen
         after(250, function()
             if mine ~= idle_gen then return end
-            local lock = math.floor(clamp(number(fact.idle_lock_minutes, 0), 0, 120))
-            local off = math.floor(clamp(number(fact.idle_off_minutes, 0), 0, 120))
+            local lock = math.floor(clamp(number(fact.idle_lock_seconds, 0), 0, 7200))
+            local off = math.floor(clamp(number(fact.idle_off_seconds, 0), 0, 7200))
             local cmd = shq(shell_root .. "/bin/pleamar-idle") .. " " .. lock .. " " .. off
             run("sh", { "-c", cmd }, function(_, code)
                 if code ~= 0 then log("idle timers could not be applied") end
@@ -1235,7 +1246,7 @@ function M.start(layout)
         { "Settings: Font", "open", open_page(3), "typeface text" },
         { "Settings: Frame music", "open", open_page(0), "wave water amplitude sensitivity" },
         { "Settings: Lock screen", "open", open_page(7), "lock password blur clock date mask" },
-        { "Settings: Idle", "open", open_page(8), "idle lock screen off timeout minutes swayidle" },
+        { "Settings: Idle", "open", open_page(8), "idle lock screen off timeout seconds swayidle" },
         { "Panel sound: toggle", "action", function() fact.snd_on = not truthy(fact.snd_on) end, "click audio mute" },
         { "Frame music: toggle", "action", function() fact.wave_on = not truthy(fact.wave_on) end, "wave water audio" },
         { "Wallpaper: next", "action", function() next_wallpaper() end, "background picture next rotate" },
@@ -1492,14 +1503,14 @@ function M.start(layout)
     on("fact:lock_pal", function() save() end)
     on("fact:idle_lock_i", function(v)
         local i = math.floor(clamp(number(v, 0), 0, #IDLE_STEPS - 1))
-        fact.idle_lock_minutes = IDLE_STEPS[i + 1]
+        fact.idle_lock_seconds = IDLE_STEPS[i + 1]
         text.idle_lock_t = idle_words(IDLE_STEPS[i + 1])
         save()
         apply_idle()
     end)
     on("fact:idle_off_i", function(v)
         local i = math.floor(clamp(number(v, 0), 0, #IDLE_STEPS - 1))
-        fact.idle_off_minutes = IDLE_STEPS[i + 1]
+        fact.idle_off_seconds = IDLE_STEPS[i + 1]
         text.idle_off_t = idle_words(IDLE_STEPS[i + 1])
         save()
         apply_idle()

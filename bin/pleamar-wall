@@ -9,12 +9,12 @@ path="${1:-}"
 
 swaybg="${SWAYBG:-}"
 if [[ -z "$swaybg" ]]; then
-    swaybg="$(command -v swaybg 2>/dev/null || true)"
+    #  The patched build's layer namespace is pleamar-shell-wallpaper.  Check
+    #  the store before PATH: a stock swaybg earlier in PATH must not win.
+    swaybg="$(ls -d /nix/store/*-swaybg-pleamar-*/bin/swaybg 2>/dev/null | sort -V | tail -1)"
 fi
 if [[ -z "$swaybg" ]]; then
-    #  Prefer the patched build (its layer namespace is pleamar-shell-wallpaper);
-    #  a plain swaybg is only the fallback.
-    swaybg="$(ls -d /nix/store/*-swaybg-pleamar-*/bin/swaybg 2>/dev/null | sort -V | tail -1)"
+    swaybg="$(command -v swaybg 2>/dev/null || true)"
 fi
 if [[ -z "$swaybg" ]]; then
     swaybg="$(ls -d /nix/store/*-swaybg-*/bin/swaybg 2>/dev/null | sort -V | tail -1)"

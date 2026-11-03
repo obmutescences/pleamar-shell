@@ -106,11 +106,11 @@ part Common {
     fact lock_mask: number = 0          // 0 shapes, 1 dots, 2 stars, 3 special
     fact lock_pal: number = 1           // 0 vibrant, 1 accent, 2 neon, 3 pastel, 4 mono
 
-    //  Idle: 0 is Never; the minutes are what swayidle waits for.
+    //  Idle: 0 is Never; the seconds are what swayidle waits for.
     fact idle_lock_i: number = 0
     fact idle_off_i: number = 0
-    fact idle_lock_minutes: number = 0
-    fact idle_off_minutes: number = 0
+    fact idle_lock_seconds: number = 0
+    fact idle_off_seconds: number = 0
     text idle_lock_t = "Never"
     text idle_off_t = "Never"
     event lock_now ->

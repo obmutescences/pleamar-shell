@@ -11,7 +11,7 @@
 - 性能：切工作区 ≥120fps，音乐开/关都要；打开 launcher/通知中心时可以瞬时掉帧，关掉后回到目标。
 - 观感：液态玻璃（每条窄条内部要融），接受跨 surface 的接缝用渐变/阴影假装。
 
-## 实测（这台机器，pleamar 0.4.31）
+## 实测（这台机器，历史数据：pleamar 0.4.31；当前 flake 用 0.7.7）
 
 | 场景 | 中位帧 | compose | late |
 |---|---|---|---|
@@ -68,9 +68,9 @@
 
 ### 终端 IPC
 
-搜索、设置、通知中心都不再依赖 bar 图标，可以直接从终端打开。Pleamar 本体
-不在 PATH 里（`bin/pleamar-shell` 是运行时从 Nix store 找它），所以用仓库里的
-`pleamar-ipc` 包装脚本；它会自动找正在运行的 Island/Frame：
+搜索、设置、通知中心都不再依赖 bar 图标，可以直接从终端打开。Nix package
+的 wrapper 会把 `PLEAMAR` 指向 flake 从 Git 构建的 0.7.7；仓库里的
+`pleamar-ipc` 包装脚本用它找正在运行的 Island/Frame：
 
 | 想打开 | 命令 |
 |---|---|
@@ -90,7 +90,7 @@
 它内部对应的原始 IPC 事件是：
 
 ```sh
-# 仅当你系统里有 Pleamar，且它已经在 PATH 里：
+# 直接调 flake 构建的 Pleamar（package wrapper 已设 PLEAMAR）：
 pleamar --say island "emit ipc_open_search"
 pleamar --say island "emit ipc_open_settings"
 pleamar --say island "emit ipc_open_settings 2"
@@ -117,9 +117,13 @@ nix build .#default
 ./result/bin/pleamar-ipc search
 ```
 
-`nix build` 会把 `pleamar-ipc` 和所有运行依赖（cava、fontconfig、jq、niri、
-swaybg 等）装进 package。Pleamar 本体仍需系统里已有 0.4.x，`bin/pleamar-shell`
-会从 PATH 或 `/nix/store/*-pleamar-*/bin/pleamar` 找到它。
+`nix build` 会把 `pleamar-ipc`、Pleamar 本体（flake input
+`github:k4ditano/pleamar`，从 Git 源码构建；flake.lock 锁当前最新 rev）和所有
+运行依赖（cava、fontconfig、jq、niri、swaybg 等）装进 package。wrapper 设置
+`PLEAMAR` 并把它放在 PATH 前面，所以运行时不会退回系统里的 0.4.31。
+拉最新源码：`nix flake update pleamar`，再 `nix build` / rebuild。直接用
+`./bin/pleamar-shell` 跑仓库脚本时才走本地发现逻辑，可用
+`PLEAMAR=/path/to/pleamar` 或 `nix develop` 指定。
 
 ## 接到 NixOS + niri
 
@@ -156,9 +160,11 @@ sudo nixos-rebuild switch --flake .#niri
 ```
 
 包安装 `pleamar-shell`（启动 shell）和 `pleamar-ipc`（发 IPC），并把
-cava、fontconfig、jq、niri、swayidle、swaybg 等运行依赖放进自己的 PATH。**前提**：
-系统里要已经有 Pleamar 0.4.x；`bin/pleamar-shell` 会从 PATH 或
-`/nix/store/*-pleamar-*/bin/pleamar` 找到它（Vitreus 用户通常已经装了）。
+Pleamar（flake input `github:k4ditano/pleamar`，从 Git 构建，锁当前最新
+rev）、cava、fontconfig、jq、niri、swayidle、swaybg 等运行依赖放进自己的
+PATH。wrapper 设置 `PLEAMAR` 指向它；系统里不再需要预装 Pleamar 0.4.x。
+更新引擎：`nix flake update pleamar`，再 rebuild；NixOS 的 `pleamar-shell`
+input 会带上这个 transitive input。
 
 ### systemd user service（推荐）
 
@@ -230,9 +236,9 @@ binds {
 ./tests/perf.sh frame
 ```
 
-`bin/pleamar-shell` 会自动挑当前 NixOS 里 Vulkan loader 较新的那个
-pleamar（旧的 0.4.31 闭包和当前 Mesa 的 glibc 不匹配）；也可以
-`PLEAMAR=/path/to/pleamar` 指定。
+Nix package 的 wrapper 直接用 flake 的 Pleamar 0.7.7（`PLEAMAR`，PATH 优先）；
+只有直接跑 `./bin/pleamar-shell` 时才会扫 `/nix/store`，并按 Vulkan loader
+版本挑选 fallback；也可以 `PLEAMAR=/path/to/pleamar` 指定。
 
 ### 目录
 
@@ -329,11 +335,15 @@ rows + sliders + switches。当前保留十页，原来的临时小面板已删�
   `lockscreen/lockscreen.plm` 场景，用 compositor 的 `ext-session-lock`；
   `pleamar-lock sync` 会在每次上锁前把当前 `palette.json` 推给已预热的锁屏
   和 PAM 验证密码；Ctrl+U 清空，测试锁可用 Esc 空栏或 1 分钟退出。
-  输出热插拔（DPMS 关屏再唤醒）可能让锁屏进程退出；shell 每 2 秒探测锁屏
-  socket，session 仍锁定时会自动拉起并重新锁定。niri 红屏时也可以按
+  锁屏用 `PLEAMAR_SWAPCHAIN=1` 启动（锁面提交兼容开关；0.4 必需，0.7.x 下
+  保留；Vitreus 官方对 0.4 同样使用）；否则 niri 的 DPMS 关屏/唤醒会让
+  0.4 锁屏进程收到 `Output is already locked` 后退出。watchdog 只是兜底：
+  shell 每 2 秒探测
+  锁屏 socket，session 仍锁定时会自动拉起并重新锁定。niri 红屏时也可以按
   `Mod+L`（已设 `allow-when-locked=true`）手动拉起新的锁屏。
-- **IDLE**：`Lock after` / `Screen off after`，步进 0（Never）、1、2、3、5、
-  7、10、15、20、30、45、60、90、120 分钟。由 `swayidle` 执行：锁屏调用
+- **IDLE**：`Lock after` / `Screen off after`，步进 0（Never）、5 秒、10 秒、
+  30 秒，然后 1、2、3、5、7、10、15、20、30、45、60、90、120 分钟（滑块
+  17 档，最短 5 秒）。由 `swayidle` 执行：锁屏调用
   `pleamar-ipc lock`，关屏调用 `niri msg action power-off-monitors`，有输入时
   自动 `power-on-monitors`；不配置 suspend。
 - **WEATHER**：城市输入框与 Apply。Open-Meteo 负责当前天气、逐小时和
@@ -613,7 +623,9 @@ Overview 的天气由 `bin/pleamar-weather` 获取：先通过 Nominatim 把设�
 
 ## 参考
 
-- pleamar 0.4.31，语言 0.4；`pleamar --docs reference`、`--docs recipes`。
+- pleamar（flake input `github:k4ditano/pleamar`，锁当前最新 rev），语言
+  0.9；`pleamar --docs reference`、`--docs recipes`。旧的 0.4.31 只作本地
+  fallback。
 - iNiR Iris（`~/projects/iNiR/modules/iris`）：`frame/IrisFrame.qml`、
   `field/IrisField.frag`、`components/IrisGlassEdge.qml`、`settings/IrisOptions.qml`
   是 Island / Frame / glass / frame music 设置的参考。IrisField 的 frame 是
