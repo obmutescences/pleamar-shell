@@ -842,6 +842,9 @@ function M.start(root_getter, fx)
 end
 
 function M.refresh_root()
+    --  The first calendar() runs before PLEAMAR_SHELL_ROOT is known, so it
+    --  falls back to a lunar-less grid.  Reload it once the root arrives.
+    calendar()
     if truthy(fact.center_open) then
         refresh_sys()
         start_keys()

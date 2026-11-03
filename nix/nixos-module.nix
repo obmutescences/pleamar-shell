@@ -80,7 +80,12 @@ in
         # the old process during shutdown, so let the retry succeed once it is gone.
         RestartSteps = 5;
         RestartMaxDelaySec = 30;
-        Environment = lib.optional skwdEnabled "PLEAMAR_WALL_BACKEND=skwd";
+        #  ccal is installed in the NixOS profile, not nixpkgs (upstream
+        #  removed it), and systemd user services do not inherit the login
+        #  PATH.  Expose the system profile so the calendar helper can find it;
+        #  the package wrapper prepends its own runtime tools after this.
+        Environment = lib.optional skwdEnabled "PLEAMAR_WALL_BACKEND=skwd"
+          ++ [ "PATH=${config.system.path}/sw/bin" ];
       };
     };
   };

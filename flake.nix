@@ -47,7 +47,7 @@
 
       devShells = forAll (pkgs: {
         default = pkgs.mkShell {
-          packages = with pkgs; [ bash coreutils findutils gnused gnugrep gawk jq imagemagick python3 swayidle procps util-linux ]
+          packages = with pkgs; [ bash coreutils findutils gnused gnugrep gawk jq imagemagick python3 wireplumber swayidle procps util-linux ]
             ++ [ (import ./nix/swaybg-pleamar.nix { inherit pkgs; }) ]
             ++ [ pleamar.packages.${pkgs.stdenv.hostPlatform.system}.default ];
         };
