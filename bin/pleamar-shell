@@ -15,16 +15,43 @@ find_pleamar() {
         return 0
     fi
 
+    #  A running scene is the best source: its executable is exactly the one
+    #  this session already uses, and /proc needs neither nix-store nor a
+    #  writable PATH.  The helper scripts (lock, IPC, keyboard) take this path
+    #  while the shell is up.  pgrep may be absent in a minimal environment.
+    local pid exe wrapper
+    for pid in $(pgrep -f -- 'pleamar --scene' 2>/dev/null || true); do
+        exe="$(readlink -f "/proc/$pid/exe" 2>/dev/null || true)"
+        if [[ -n "$exe" ]]; then
+            #  /proc/PID/exe is the real .pleamar-wrapped; its sibling wrapper
+            #  sets the Vulkan/Wayland library path that a fresh --say needs.
+            wrapper="${exe%/*}/pleamar"
+            [[ -x "$wrapper" ]] && exe="$wrapper"
+        fi
+        if [[ -n "$exe" && -x "$exe" ]]; then
+            printf '%s\n' "$exe"
+            return 0
+        fi
+    done
+
     # NixOS keeps several generations in /nix/store.  The newest Vulkan loader
     # is the one built against the running system's glibc; older pleamar
-    # closures fail to load today's Mesa ICD.  Prefer it.
-    local p store ver best="" bestver=""
+    # closures fail to load today's Mesa ICD.  Prefer it.  nix-store is not on
+    # a systemd service's PATH, so fall back to the system profile's copy; if
+    # even that is missing, every version scores 0 and the scan below still
+    # picks one instead of aborting the helper.
+    local p store ver best="" bestver="" nix_store
+    nix_store="$(command -v nix-store 2>/dev/null || true)"
+    [[ -n "$nix_store" ]] || nix_store=/run/current-system/sw/bin/nix-store
     for p in /nix/store/*-pleamar-*/bin/pleamar; do
         [[ -x "$p" ]] || continue
         store="${p%/bin/pleamar}"
-        ver="$(nix-store -q --references "$store" 2>/dev/null \
-            | sed -n 's/.*vulkan-loader-\([0-9.]*\).*/\1/p' \
-            | sort -V | tail -1)"
+        ver=""
+        if [[ -x "$nix_store" ]]; then
+            ver="$("$nix_store" -q --references "$store" 2>/dev/null \
+                | sed -n 's/.*vulkan-loader-\([0-9.]*\).*/\1/p' \
+                | sort -V | tail -1)" || ver=""
+        fi
         [[ -n "$ver" ]] || ver="0"
         if [[ -z "$best" ]] || [[ "$(printf '%s\n%s\n' "$bestver" "$ver" | sort -V | tail -1)" == "$ver" ]]; then
             best="$p"
