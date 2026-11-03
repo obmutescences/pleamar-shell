@@ -351,8 +351,10 @@ experiments/probe.plm        1×1 基线探针
   Amplitude 影响。Sensitivity 用每频段近期峰值归一化后的包络，所以
   安静和响的曲子都会跟着节拍变化，不会因为 cava 原始值顶到 1.0 就失效。
 - **GLASS**：Glass 开关；Bend what's behind 开关；Opacity 20–100%；
-  Frost 0–100%；Edge light 0–100%；Edge thickness 0–2；Rainbow fringe
-  0–2；Dome 0–1.5；Milk 0–1。
+  Blur 0–100%（lens 内部模糊，即 `glass_frost`；Bend 开启时才有
+  效果，关闭时 UI 标出 `Bend off`）；Edge light 0–100%；Edge thickness
+  0–2；Rainbow fringe 0–2；Dome 0–1.5；Milk 0–1。niri 的 compositor
+  blur 是全局 `blur {}`，不由这个 slider 控制。
 - **BAR**：Bar height 32–80px；只作用于 Island 胶囊，默认 44px。
   Frame 布局不再显示这条 bar。
 - **LOCK**：锁屏外观。Blur（Light/Medium/Heavy）、12/24 小时与秒、

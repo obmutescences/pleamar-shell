@@ -447,22 +447,23 @@ part ConfigPanel {
             on press cp_bend_switch { toggle glass_bend }
 
             CpCard(250, 308, 570, 62)
-            text "Opacity" { at: 266, 318; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "How solid; below 20% the glass would vanish." { at: 266, 336; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            CpSlider(520, 355, 200, cp.tint_pct, cp_tint_track.hover, cp.mint, ink, cp.track)
-            text number(glass_tint, 0, "%") { at: 820, 355; anchor: right center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
-            zone box cp_tint_track { from: 510, 340; size: 240, 30; cursor: pointer; label: "Opacity" }
-            on press cp_tint_track { glass_tint = clamp(20 + (pointer.x - 520) / 200 * 80, 20, 100) }
-            on drag cp_tint_track { glass_tint = clamp(20 + (pointer.x - 520) / 200 * 80, 20, 100) }
-
-            CpCard(250, 374, 570, 62)
-            text "Frost" { at: 266, 384; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "How frosted inside the edge; 0% is clear glass." { at: 266, 402; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            CpSlider(520, 421, 200, cp.frost_pct, cp_frost_track.hover, cp.mint, ink, cp.track)
-            text number(glass_frost, 0, "%") { at: 820, 421; anchor: right center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
-            zone box cp_frost_track { from: 510, 406; size: 240, 30; cursor: pointer; label: "Frost" }
+            text "Blur" { at: 266, 318; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "Lens blur inside the glass; needs Bend on. 0% is clear." { at: 266, 336; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(520, 355, 200, cp.frost_pct, cp_frost_track.hover, cp.mint, ink, cp.track)
+            text number(glass_frost, 0, "%") { at: 820, 355; anchor: right center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
+            text "Bend off" { at: 820, 336; anchor: right center; size: 11; weight: 600; color: faint; show: not glass_bend; family: "Space Grotesk" }
+            zone box cp_frost_track { from: 510, 340; size: 240, 30; cursor: pointer; label: "Blur" }
             on press cp_frost_track { glass_frost = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
             on drag cp_frost_track { glass_frost = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
+
+            CpCard(250, 374, 570, 62)
+            text "Opacity" { at: 266, 384; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "How solid; below 20% the glass would vanish." { at: 266, 402; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(520, 421, 200, cp.tint_pct, cp_tint_track.hover, cp.mint, ink, cp.track)
+            text number(glass_tint, 0, "%") { at: 820, 421; anchor: right center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_tint_track { from: 510, 406; size: 240, 30; cursor: pointer; label: "Opacity" }
+            on press cp_tint_track { glass_tint = clamp(20 + (pointer.x - 520) / 200 * 80, 20, 100) }
+            on drag cp_tint_track { glass_tint = clamp(20 + (pointer.x - 520) / 200 * 80, 20, 100) }
 
             CpCard(250, 440, 570, 62)
             text "Edge light" { at: 266, 450; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
