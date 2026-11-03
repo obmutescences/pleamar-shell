@@ -1,0 +1,250 @@
+#!/usr/bin/env python3
+"""Capture niri window thumbnails for the Pleamar window picker.
+
+niri has no file-only window screenshot: screenshot-window always puts the
+frame on the Wayland clipboard.  The picker therefore saves the user's current
+selection, captures, restores it, and removes only the temporary image entries
+that cliphist recorded for these captures.
+
+Prints one `id<TAB>path` line per preview.  Safe to call while no shell is up.
+"""
+
+from __future__ import annotations
+
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import hashlib
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+MAX_WINDOWS = 32
+THUMB_W, THUMB_H = 400, 250
+MIME_ORDER = (
+    "text/plain;charset=utf-8",
+    "text/plain",
+    "UTF8_STRING",
+    "text/uri-list",
+    "image/png",
+)
+
+
+def run(args, timeout=4.0, data=None):
+    try:
+        return subprocess.run(
+            args,
+            input=data,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=timeout,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
+def niri_windows():
+    p = run(["niri", "msg", "-j", "windows"], timeout=3)
+    if not p or p.returncode != 0:
+        return []
+    try:
+        data = json.loads(p.stdout)
+    except (ValueError, TypeError):
+        return []
+    return data if isinstance(data, list) else []
+
+
+def clipboard_mimes():
+    p = run(["wl-paste", "-l"], timeout=1.5)
+    if not p or p.returncode != 0:
+        return []
+    return [line.strip() for line in p.stdout.decode("utf-8", "replace").splitlines() if line.strip()]
+
+
+def save_clipboard(tmpdir):
+    """Return (mime, path) for the current selection, or None when empty."""
+    mimes = clipboard_mimes()
+    if not mimes:
+        return None
+    mime = next((m for m in MIME_ORDER if m in mimes), mimes[0])
+    path = tmpdir / "clipboard.bin"
+    p = run(["wl-paste", "--type", mime], timeout=2.5)
+    if not p or p.returncode != 0:
+        return None
+    path.write_bytes(p.stdout)
+    return mime, path
+
+
+def restore_clipboard(saved):
+    if saved is None:
+        run(["wl-copy", "--clear"], timeout=1.5)
+        return
+    mime, path = saved
+    if not path.exists():
+        return
+    with path.open("rb") as fh:
+        run(["wl-copy", "--type", mime], timeout=2.5, data=fh.read())
+
+
+def current_has_png():
+    return "image/png" in clipboard_mimes()
+
+
+def cliphist_ids():
+    p = run(["cliphist", "list"], timeout=2)
+    if not p or p.returncode != 0:
+        return set()
+    ids = set()
+    for line in p.stdout.decode("utf-8", "replace").splitlines():
+        head = line.split("\t", 1)[0]
+        if head.isdigit():
+            ids.add(head)
+    return ids
+
+
+def cliphist_entries():
+    p = run(["cliphist", "list"], timeout=2)
+    if not p or p.returncode != 0:
+        return []
+    return [line for line in p.stdout.decode("utf-8", "replace").splitlines() if line]
+
+
+def sha256_file(path):
+    digest = hashlib.sha256()
+    try:
+        with path.open("rb") as fh:
+            for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                digest.update(chunk)
+    except OSError:
+        return ""
+    return digest.hexdigest()
+
+
+def clean_cliphist(before_ids, captured_hashes):
+    """Remove only the new cliphist entries whose bytes are one of our captures."""
+    if not captured_hashes:
+        return
+    for _pass in range(2):
+        for entry in cliphist_entries():
+            entry_id = entry.split("\t", 1)[0]
+            if not entry_id.isdigit() or entry_id in before_ids:
+                continue
+            p = run(["cliphist", "decode"], timeout=2, data=(entry + "\n").encode())
+            if not p or p.returncode != 0:
+                continue
+            decoded_hash = hashlib.sha256(p.stdout).hexdigest()
+            if decoded_hash in captured_hashes:
+                run(["cliphist", "delete"], timeout=2, data=(entry + "\n").encode())
+        time.sleep(0.12)
+
+
+def thumbnail(source, target):
+    p = run(
+        [
+            "magick",
+            str(source),
+            "-auto-orient",
+            "-thumbnail",
+            f"{THUMB_W}x{THUMB_H}^",
+            "-gravity",
+            "center",
+            "-extent",
+            f"{THUMB_W}x{THUMB_H}",
+            "-quality",
+            "88",
+            str(target),
+        ],
+        timeout=8,
+    )
+    return bool(p and p.returncode == 0 and target.exists() and target.stat().st_size > 0)
+
+
+def capture_one(wid, tmpdir, cache):
+    raw = tmpdir / f"{wid}.png"
+    try:
+        raw.unlink(missing_ok=True)
+    except OSError:
+        pass
+    p = run(
+        ["niri", "msg", "action", "screenshot-window", "--id", str(wid), "--path", str(raw)],
+        timeout=6,
+    )
+    if not p or p.returncode != 0:
+        return None
+    # niri replies before the file has settled.
+    for _ in range(50):
+        if raw.exists() and raw.stat().st_size > 0:
+            break
+        time.sleep(0.05)
+    if not raw.exists() or raw.stat().st_size == 0:
+        return None
+    digest = sha256_file(raw)
+    target = cache / f"window-{wid}-{int(time.time() * 1000)}.png"
+    if not thumbnail(raw, target):
+        return None
+    return wid, target, digest
+
+
+def main():
+    cache = Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "pleamar-shell" / "window-previews"
+    cache.mkdir(parents=True, exist_ok=True)
+    tmpdir = cache / f".capture-{os.getpid()}"
+    tmpdir.mkdir(parents=True, exist_ok=True)
+
+    windows = niri_windows()
+    if not windows:
+        return 0
+
+    before_ids = cliphist_ids()
+    saved = save_clipboard(tmpdir)
+    captured_hashes = set()
+    outputs = []
+
+    try:
+        # Each screenshot-window is an IPC round trip plus a file settle.  A
+        # small pool keeps the first previews arriving while the reveal runs.
+        workers = min(6, max(1, len(windows[:MAX_WINDOWS])))
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = [
+                pool.submit(capture_one, window.get("id"), tmpdir, cache)
+                for window in windows[:MAX_WINDOWS]
+                if window.get("id") is not None
+            ]
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                except Exception:
+                    result = None
+                if result is None:
+                    continue
+                wid, target, digest = result
+                captured_hashes.add(digest)
+                outputs.append((wid, target))
+
+        # Put the original clipboard back only if niri still owns it with a
+        # screenshot.  If the user copied something else meanwhile, keep it.
+        if saved is not None or current_has_png():
+            restore_clipboard(saved)
+        clean_cliphist(before_ids, captured_hashes)
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+    # Keep the cache bounded; never delete a file from this run.
+    keep = {str(path) for _, path in outputs}
+    files = sorted(cache.glob("window-*.png"), key=lambda p: p.stat().st_mtime, reverse=True)
+    for path in files[48:]:
+        if str(path) not in keep:
+            try:
+                path.unlink()
+            except OSError:
+                pass
+
+    for wid, path in outputs:
+        print(f"{wid}\t{path}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

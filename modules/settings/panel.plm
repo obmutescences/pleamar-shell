@@ -112,6 +112,11 @@ part ConfigPanel {
     let cp.gain_pct = clamp((wave_gain - 0.8) / 1.6, 0, 1)
     let cp.rip_pct = clamp((wave_ripples - 1) / 9, 0, 1)
     let cp.blend_pct = clamp(wave_blend, 0, 1)
+    let cp.win_size_pct = clamp((winpicker_size - 140) / 280, 0, 1)
+    let cp.win_cols_pct = clamp((winpicker_cols - 2) / 6, 0, 1)
+    let cp.win_ms_pct = clamp((winpicker_ms - 160) / 740, 0, 1)
+    let cp.win_bg_glass_pct = clamp(winpicker_bg_glass / 100, 0, 1)
+    let cp.win_bg_blur_pct = clamp(winpicker_bg_blur / 100, 0, 1)
     //  IDLE_STEPS in scenes/lib/shell.luau has 17 entries (0, 5 s, 10 s, 30 s,
     //  then minutes to 2 h); the slider addresses its last index, 16.
     let cp.idle_lock_pct = clamp(idle_lock_i / 16, 0, 1)
@@ -122,12 +127,12 @@ part ConfigPanel {
     follow cp_p = panel_open
     //  Sidebar slot of each page, in visual order:
     //  LOOK: Wallpaper, Glass · SHELL: Bar, Frame music, Typeface, Motion,
-    //  Notifications · SCREEN: Lock, Idle · SYSTEM: Weather.
+    //  Notifications, Windows · SCREEN: Lock, Idle · SYSTEM: Weather.
     prop cp_nav = 2 ~quick
-    follow cp_nav = pick(settings_page, 5, 2, 4, 6, 1, 8, 7, 10, 11, 13)
+    follow cp_nav = pick(settings_page, 5, 2, 4, 6, 1, 8, 7, 11, 12, 14, 9)
     //  0 LOOK · 1 SHELL · 2 SCREEN · 3 SYSTEM; follows the page's parent.
     prop cp_grp = 0 ~quick
-    follow cp_grp = pick(settings_page, 1, 0, 1, 1, 0, 1, 1, 2, 2, 3)
+    follow cp_grp = pick(settings_page, 1, 0, 1, 1, 0, 1, 1, 2, 2, 3, 1)
 
     surface config_panel {
         size: 860, 820
@@ -175,9 +180,9 @@ part ConfigPanel {
 
         text "SETTINGS" { at: 76, 45; anchor: left center; size: 21; weight: 700; color: ink; family: "Space Grotesk" }
         path { at: 190, 45; stroke: 1.3; color: faint; move -2, -3.5; line 2, 0; line -2, 3.5 }
-        text pick(settings_page, "SHELL", "LOOK", "SHELL", "SHELL", "LOOK", "SHELL", "SHELL", "SCREEN", "SCREEN", "SYSTEM") { at: 202, 45; anchor: left center; size: 13.5; weight: 700; color: faint; family: "Space Grotesk"; measure: cp_parent }
+        text pick(settings_page, "SHELL", "LOOK", "SHELL", "SHELL", "LOOK", "SHELL", "SHELL", "SCREEN", "SCREEN", "SYSTEM", "SHELL") { at: 202, 45; anchor: left center; size: 13.5; weight: 700; color: faint; family: "Space Grotesk"; measure: cp_parent }
         path { at: 202 + cp_parent.width + 10, 45; stroke: 1.3; color: faint; move -2, -3.5; line 2, 0; line -2, 3.5 }
-        text pick(settings_page, "Frame music", "Glass", "Bar", "Font", "Wallpaper", "Notifications", "Motion", "Lock screen", "Idle", "Weather") { at: 202 + cp_parent.width + 22, 45; anchor: left center; size: 14.5; weight: 700; color: cp.mint; family: "Space Grotesk" }
+        text pick(settings_page, "Frame music", "Glass", "Bar", "Font", "Wallpaper", "Notifications", "Motion", "Lock screen", "Idle", "Weather", "Windows") { at: 202 + cp_parent.width + 22, 45; anchor: left center; size: 14.5; weight: 700; color: cp.mint; family: "Space Grotesk" }
 
         line { from: 824, 38; to: 834, 48; width: 1.5; color: ink; opacity: 55% + 45% * cp_close.hover }
         line { from: 834, 38; to: 824, 48; width: 1.5; color: ink; opacity: 55% + 45% * cp_close.hover }
@@ -313,13 +318,28 @@ part ConfigPanel {
             on press cp_page_nt { emit ui_sound; settings_page = 5 }
         }
 
-        text "SCREEN" { at: 44, cp.nav_y + 9 * cp.nav_step + 14; anchor: left center; size: 11.5; weight: 700; color: mix(faint, cp.mint, clamp(1 - abs(cp_grp - 2), 0, 1)); family: "Space Grotesk" }
-        zone box cp_group_screen { from: 38, cp.nav_y + 9 * cp.nav_step; size: 174, 28; corner: 9; cursor: pointer; label: "Screen settings" }
+        group {
+            let yy = cp.nav_y + 9 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 9), 0, 1)
+            let sc = mix(faint, cp.mint, sel)
+            group {
+                pivot: 54, yy + 14
+                scale: 1 + 0.10 * sel
+                box { at: 54, yy + 14; size: 16, 12; corner: 3; stroke: 1.4; color: sc }
+                box { at: 60, yy + 14; size: 7, 9; corner: 1.5; stroke: 1; color: sc; opacity: 75% }
+            }
+            text "Windows" { at: 78, yy + 14; anchor: left center; size: 15; weight: 600; color: mix(faint, cp.mint, sel); opacity: 72% + 28% * sel; family: "Space Grotesk" }
+            zone box cp_page_windows { from: 38, yy; size: 174, 28; corner: 10; cursor: pointer; label: "Window picker settings" }
+            on press cp_page_windows { emit ui_sound; settings_page = 10 }
+        }
+
+        text "SCREEN" { at: 44, cp.nav_y + 10 * cp.nav_step + 14; anchor: left center; size: 11.5; weight: 700; color: mix(faint, cp.mint, clamp(1 - abs(cp_grp - 2), 0, 1)); family: "Space Grotesk" }
+        zone box cp_group_screen { from: 38, cp.nav_y + 10 * cp.nav_step; size: 174, 28; corner: 9; cursor: pointer; label: "Screen settings" }
         on press cp_group_screen { emit ui_sound; settings_page = 7 }
 
         group {
-            let yy = cp.nav_y + 10 * cp.nav_step
-            let sel = clamp(1 - abs(cp_nav - 10), 0, 1)
+            let yy = cp.nav_y + 11 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 11), 0, 1)
             let sc = mix(faint, cp.mint, sel)
             group {
                 pivot: 54, yy + 14
@@ -333,8 +353,8 @@ part ConfigPanel {
         }
 
         group {
-            let yy = cp.nav_y + 11 * cp.nav_step
-            let sel = clamp(1 - abs(cp_nav - 11), 0, 1)
+            let yy = cp.nav_y + 12 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 12), 0, 1)
             let sc = mix(faint, cp.mint, sel)
             group {
                 pivot: 54, yy + 14
@@ -348,13 +368,13 @@ part ConfigPanel {
             on press cp_page_idle { emit ui_sound; settings_page = 8 }
         }
 
-        text "SYSTEM" { at: 44, cp.nav_y + 12 * cp.nav_step + 14; anchor: left center; size: 11.5; weight: 700; color: mix(faint, cp.mint, clamp(1 - abs(cp_grp - 3), 0, 1)); family: "Space Grotesk" }
-        zone box cp_group_system { from: 38, cp.nav_y + 12 * cp.nav_step; size: 174, 28; corner: 9; cursor: pointer; label: "System settings" }
+        text "SYSTEM" { at: 44, cp.nav_y + 13 * cp.nav_step + 14; anchor: left center; size: 11.5; weight: 700; color: mix(faint, cp.mint, clamp(1 - abs(cp_grp - 3), 0, 1)); family: "Space Grotesk" }
+        zone box cp_group_system { from: 38, cp.nav_y + 13 * cp.nav_step; size: 174, 28; corner: 9; cursor: pointer; label: "System settings" }
         on press cp_group_system { emit ui_sound; settings_page = 9 }
 
         group {
-            let yy = cp.nav_y + 13 * cp.nav_step
-            let sel = clamp(1 - abs(cp_nav - 13), 0, 1)
+            let yy = cp.nav_y + 14 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 14), 0, 1)
             let sc = mix(faint, cp.mint, sel)
             group {
                 pivot: 54, yy + 14
@@ -368,8 +388,8 @@ part ConfigPanel {
         }
 
         //  ── page header ──────────────────────────────────────────────────
-        text pick(settings_page, "Frame music", "Glass", "Bar", "Font", "Wallpaper", "Notifications", "Motion", "Lock screen", "Idle", "Weather") { at: 250, 132; anchor: left center; size: 19.5; weight: 700; color: ink; family: "Space Grotesk" }
-        text pick(settings_page, "Changes apply right away.", "Changes apply right away.", "Changes apply right away.", "Apply restarts the shell.", "Click a picture to set it.", "Position, sounds, countdown.", "One pose per panel.", "Lock appearance and a safe test.", "Lock and screen-off timers; no suspend.", "City for the centre panel.") { at: 820, 132; anchor: right center; size: 15; color: faint; opacity: 80%; family: "Space Grotesk" }
+        text pick(settings_page, "Frame music", "Glass", "Bar", "Font", "Wallpaper", "Notifications", "Motion", "Lock screen", "Idle", "Weather", "Windows") { at: 250, 132; anchor: left center; size: 19.5; weight: 700; color: ink; family: "Space Grotesk" }
+        text pick(settings_page, "Changes apply right away.", "Changes apply right away.", "Changes apply right away.", "Apply restarts the shell.", "Click a picture to set it.", "Position, sounds, countdown.", "One pose per panel.", "Lock appearance and a safe test.", "Lock and screen-off timers; no suspend.", "City for the centre panel.", "Grid, letters, reveal and duration.") { at: 820, 132; anchor: right center; size: 15; color: faint; opacity: 80%; family: "Space Grotesk" }
 
         //  ── FRAME MUSIC ──────────────────────────────────────────────────
         group {
@@ -733,6 +753,80 @@ part ConfigPanel {
             on press nt_center_btn { emit ui_sound; nt_center = true; panel_open = false }
 
             text "Sounds play through PipeWire; DND keeps the history. Urgent toasts stay until closed." { at: 266, 576; anchor: left center; size: 13; color: faint; opacity: 75%; width: 540; lines: 1; family: "Space Grotesk" }
+        }
+
+        //  ── WINDOW PICKER ────────────────────────────────────────────────
+        group {
+            show: settings_page == 10
+
+            CpCard(250, 176, 570, 62)
+            text "Thumbnail size" { at: 266, 186; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "Largest a window card may grow; the grid shrinks to fit." { at: 266, 204; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(520, 223, 200, cp.win_size_pct, cp_win_size.hover, cp.mint, ink, cp.track)
+            text number(winpicker_size, 0, " px") { at: 820, 223; anchor: right center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_win_size { from: 510, 208; size: 240, 30; corner: 15; cursor: pointer; label: "Window thumbnail size" }
+            on press cp_win_size { winpicker_size = clamp(round(140 + (pointer.x - 520) / 200 * 280), 140, 420) }
+            on drag cp_win_size { winpicker_size = clamp(round(140 + (pointer.x - 520) / 200 * 280), 140, 420) }
+
+            CpCard(250, 242, 570, 62)
+            text "Per row" { at: 266, 252; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "How many windows sit side by side; rows follow." { at: 266, 270; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(520, 289, 200, cp.win_cols_pct, cp_win_cols.hover, cp.mint, ink, cp.track)
+            text number(winpicker_cols, 0, "") { at: 820, 289; anchor: right center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_win_cols { from: 510, 274; size: 240, 30; corner: 15; cursor: pointer; label: "Windows per row" }
+            on press cp_win_cols { winpicker_cols = clamp(round(2 + (pointer.x - 520) / 200 * 6), 2, 8) }
+            on drag cp_win_cols { winpicker_cols = clamp(round(2 + (pointer.x - 520) / 200 * 6), 2, 8) }
+
+            CpCard(250, 308, 570, 70)
+            text "Reveal" { at: 266, 318; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "One motion for every card, or a different one each opening." { at: 266, 336; anchor: left center; size: 14; color: faint; width: 540; family: "Space Grotesk" }
+            repeat k in 0..5 {
+                let bx = 266 + k * 75
+                let by = 352
+                CpPill(bx, by, 70, 22, if(winpicker_mode == k, 1, 0), 0, cp.mint, ink)
+                text pick(k, "Fade", "Rise", "Zoom", "Drop", "Unfold", "Spin") { at: bx + 35, by + 11; anchor: center; size: 8.5; weight: 600; color: if(winpicker_mode == k, cp.mint, faint); width: 66; lines: 1; align: center; family: "Space Grotesk" }
+                zone box cp_win_anim.$k { from: bx, by; size: 70, 22; corner: 11; cursor: pointer; label: pick(k, "Window reveal Fade", "Window reveal Rise", "Window reveal Zoom", "Window reveal Drop", "Window reveal Unfold", "Window reveal Spin") }
+                on press cp_win_anim.$k { emit ui_sound; winpicker_mode = k }
+            }
+            CpPill(716, 352, 70, 22, if(winpicker_mode == 6, 1, 0), 0, cp.mint, ink)
+            text "Random" { at: 751, 363; anchor: center; size: 8.5; weight: 600; color: if(winpicker_mode == 6, cp.mint, faint); width: 66; lines: 1; align: center; family: "Space Grotesk" }
+            zone box cp_win_anim_6 { from: 716, 352; size: 70, 22; corner: 11; cursor: pointer; label: "Window reveal Random" }
+            on press cp_win_anim_6 { emit ui_sound; winpicker_mode = 6 }
+
+            CpCard(250, 394, 570, 62)
+            text "Duration" { at: 266, 404; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "How long the cards take to arrive and leave." { at: 266, 422; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(520, 441, 200, cp.win_ms_pct, cp_win_ms.hover, cp.mint, ink, cp.track)
+            text number(winpicker_ms, 0, " ms") { at: 820, 441; anchor: right center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_win_ms { from: 510, 426; size: 240, 30; corner: 15; cursor: pointer; label: "Window reveal duration" }
+            on press cp_win_ms { winpicker_ms = clamp(round(160 + (pointer.x - 520) / 200 * 740), 160, 900) }
+            on drag cp_win_ms { winpicker_ms = clamp(round(160 + (pointer.x - 520) / 200 * 740), 160, 900) }
+
+            CpCard(250, 460, 570, 62)
+            text "Letters" { at: 266, 470; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "Which keys may pick a window; one per card, two when needed." { at: 266, 488; anchor: left center; size: 14; color: faint; width: 234; lines: 1; family: "Space Grotesk" }
+            input winpicker_letters { at: 520, 478; width: 196; size: 14; color: ink; family: "Space Grotesk"; placeholder: "asdfghjkl" }
+            text "A–Z · unique" { at: 820, 478; anchor: right center; size: 9; color: faint; opacity: 65%; family: "Space Grotesk" }
+
+            CpCard(250, 526, 570, 62)
+            text "Background glass" { at: 266, 536; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "Glass veil behind the whole picker; 0% is a dark scrim." { at: 266, 554; anchor: left center; size: 14; color: faint; width: 540; family: "Space Grotesk" }
+            CpSlider(520, 573, 200, cp.win_bg_glass_pct, cp_win_bg_glass.hover, cp.mint, ink, cp.track)
+            text number(winpicker_bg_glass, 0, "%") { at: 820, 573; anchor: right center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_win_bg_glass { from: 510, 558; size: 240, 30; corner: 15; cursor: pointer; label: "Window picker background glass" }
+            on press cp_win_bg_glass { winpicker_bg_glass = clamp(round((pointer.x - 520) / 200 * 100), 0, 100) }
+            on drag cp_win_bg_glass { winpicker_bg_glass = clamp(round((pointer.x - 520) / 200 * 100), 0, 100) }
+
+            CpCard(250, 592, 570, 62)
+            text "Background blur" { at: 266, 602; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "How soft the backdrop is under the glass." { at: 266, 620; anchor: left center; size: 14; color: faint; width: 540; family: "Space Grotesk" }
+            CpSlider(520, 639, 200, cp.win_bg_blur_pct, cp_win_bg_blur.hover, cp.mint, ink, cp.track)
+            text number(winpicker_bg_blur, 0, "%") { at: 820, 639; anchor: right center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_win_bg_blur { from: 510, 624; size: 240, 30; corner: 15; cursor: pointer; label: "Window picker background blur" }
+            on press cp_win_bg_blur { winpicker_bg_blur = clamp(round((pointer.x - 520) / 200 * 100), 0, 100) }
+            on drag cp_win_bg_blur { winpicker_bg_blur = clamp(round((pointer.x - 520) / 200 * 100), 0, 100) }
+
+            text "Type the key(s) while the picker is open; Esc closes it. Clicking a card also jumps." { at: 266, 680; anchor: left center; size: 13; color: faint; opacity: 75%; width: 540; lines: 1; family: "Space Grotesk" }
         }
 
         //  ── MOTION ───────────────────────────────────────────────────────

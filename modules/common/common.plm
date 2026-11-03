@@ -267,6 +267,33 @@ part Common {
     model wp_rows max 9 { thumb: image 176, 99; name: text; path: text; cur: bool }
     event wall_apply ->
     event wall_refresh ->
+    //  ── window picker ───────────────────────────────────────────────────
+    //  A transient expose surface: niri windows, a letter on each card, and
+    //  a glass thumbnail.  The model is filled by shell.luau; the preview
+    //  files are made by bin/pleamar-window-previews.
+    fact winpicker_open = false
+    fact winpicker_screen_w: number = 2560
+    fact winpicker_screen_h: number = 1440
+    fact winpicker_progress: number = 0
+    fact winpicker_fx: number = 0
+    fact winpicker_count: number = 0
+    fact winpicker_size: number = 320
+    fact winpicker_cols: number = 4
+    fact winpicker_mode: number = 6
+    fact winpicker_ms: number = 460
+    fact winpicker_bg_glass: number = 62
+    fact winpicker_bg_blur: number = 52
+    text winpicker_letters = "asdfghjkl"
+    text winpicker_hint = "Type a letter to jump"
+    text winpicker_typed = ""
+    model win_cards max 32 {
+        id: text; title: text; app: text; code: text
+        active: bool; has_pic: bool; picture: image 400, 250
+    }
+    event ipc_open_windows ->
+    event winpicker_close ->
+    event winpicker_pick ->
+    event winpicker_set ->
     //  The launcher is a search, not an app list: rows carry what they need
     //  to be drawn and what the logic runs when one is picked.
     model la_apps max 8 { name: text; sub: text; exec: text; icon: image 22, 22; glyph: text; has_glyph: bool; kind: text }

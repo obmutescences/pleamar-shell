@@ -1,0 +1,178 @@
+part WindowPicker {
+    //  ── window picker ─────────────────────────────────────────────────────
+    //  The overlay is transient: `surface open` follows `winpicker_open` and
+    //  the close progress, so there is no permanent full-screen layer.
+    //  Cards are ordinary glass shapes; no per-card lens, because a screenshot
+    //  round trip per card would compete with the picker itself.
+    component WinCard(
+        x: number, y: number, w: number, h: number,
+        idx: number, code: text, title: text, app: text,
+        active: bool, has_pic: bool, picture: image
+    ) {
+        let info = 50
+        let thumb = h - info
+        prop hov = 0 ~quick
+        follow hov = hit.hover
+        let lag = min(0.16, idx * 0.012)
+        let p = clamp((winpicker_progress - lag) / max(0.01, 1 - lag), 0, 1)
+        let fx = clamp(winpicker_fx, 0, 5)
+        let hot = clamp(if(active, 0.72, 0) + 0.28 * hov, 0, 1)
+        let op = if(fx == 3, clamp(p * 1.7, 0, 1),
+                 if(fx == 1, clamp(p * 1.5, 0, 1), p))
+        let move_y = if(fx == 0, 18 * (1 - p),
+                     if(fx == 1, 64 * (1 - p),
+                     if(fx == 3, -(h + 82) * (1 - p), 0)))
+        let scale_x = if(fx == 2, 0.78 + 0.22 * p,
+                      if(fx == 5, 0.70 + 0.30 * p,
+                      if(fx == 0, 0.96 + 0.04 * p, 1)))
+        let scale_y = if(fx == 4, 0.02 + 0.98 * p, scale_x)
+        let rot = if(fx == 5, -10 * (1 - p), 0deg)
+        let lift = 6 * hov
+        zone box hit { from: x, y; size: w, h; corner: 18; cursor: pointer; active: winpicker_open; label: title }
+        group {
+            pivot: w / 2, if(fx == 4, h, h / 2)
+            opacity: op
+            scale: scale_x * (1 + 0.020 * hov), scale_y * (1 + 0.020 * hov)
+            rotate: rot
+            move: x, y + move_y - lift
+            z: 1 + 8 * hov + if(active, 4, 0)
+
+            //  Primary + secondary halo: the current window keeps a soft
+            //  iridescent background, and hover lifts the same light.
+            group {
+                show: hot > 0.01
+                glow: 40, 130% * hot, mix(primary, secondary, 0.35)
+                box { from: 2, 2; size: w - 4, h - 4; corner: 20; color: mix(primary, secondary, 0.30); opacity: 18% * hot }
+            }
+            box { from: -8, -8; size: w + 16, h + 16; corner: 26; color: mix(primary, secondary, 0.35); opacity: 22% * hot }
+            box { from: -4, -4; size: w + 8, h + 8; corner: 22; color: mix(primary, secondary, 0.25); opacity: 20% * hot }
+            box { from: -2, -2; size: w + 4, h + 4; corner: 20; stroke: 1.5; color: secondary; opacity: 90% * hot }
+            box { from: 0, 0; size: w, h; corner: 18; stroke: 1; color: primary; opacity: 62% * hot }
+
+            box {
+                from: 0, 0; size: w, h; corner: 18
+                color: mix(panel_bg, primary, 0.10 + 0.34 * hot)
+                opacity: 94%
+                glass: if(glass_on, 100%, 0%)
+                frost: glass_frost / 100
+                shine: pointer
+            }
+
+            //  The preview is the card's top face: edge to edge, with exactly
+            //  the same rounded top corners.  The key cap is outside this clip
+            //  so a third of it can hang above the card.
+            group {
+                clip inset 0 box { from: 0, 0; size: w, thumb; corner: 18 }
+                box { from: 0, 0; size: w, thumb; color: mix(panel_bg, primary, 0.16); opacity: 96% }
+                text "{upper(app)}" { at: w / 2, thumb / 2 - 4; anchor: center; size: 12; weight: 700; color: primary; opacity: 62%; width: w - 36; lines: 1; align: center; family: "Space Grotesk" }
+                text "PREVIEW" { at: w / 2, thumb / 2 + 14; anchor: center; size: 7.5; weight: 700; color: faint; opacity: 45%; family: "Space Grotesk" }
+                image picture { at: 0, 0; size: w, thumb; fit: cover; show: has_pic }
+                box { from: 0, max(0, thumb - 54); size: w, min(54, thumb); color: deep; opacity: 24% }
+                text number(idx + 1, 0) { at: 12, 14; anchor: left top; size: 8; weight: 700; color: ink; opacity: 45%; family: "Space Grotesk" }
+            }
+
+            //  The title strip picks up the same primary/secondary wash.
+            box { from: 0, thumb; size: w, h - thumb; corner: 0; color: mix(primary, secondary, 0.35); opacity: 15% * hot }
+            box { from: 0, 0; size: w, h; corner: 18; stroke: 1; color: if(active or hov > 0.5, primary, ink); opacity: if(active or hov > 0.5, 62%, 12%) }
+            box { from: 1, 1; size: max(2, w - 2), 1; corner: 0.5; color: ink; opacity: 10% }
+            box { from: 12, thumb; size: max(2, w - 24), 1; corner: 0.5; color: ink; opacity: 10% }
+            text title { at: 12, thumb + 16; anchor: left center; size: 12.5; weight: 600; color: ink; width: w - 70; lines: 1; family: "Space Grotesk" }
+            text app { at: 12, thumb + 34; anchor: left center; size: 9; color: faint; width: w - 70; lines: 1; family: "Space Grotesk" }
+
+            //  Key cap: horizontally centred, one third inside the card.
+            //  It is primary/secondary rather than the old black chip.
+            box { from: w / 2 - 22, -17; size: 44, 26; corner: 13; color: if(active, primary, mix(primary, secondary, 0.45)); opacity: 96% }
+            box { from: w / 2 - 22, -17; size: 44, 26; corner: 13; stroke: 1; color: secondary; opacity: 52% }
+            text code { at: w / 2, -4; anchor: center; size: 12; weight: 800; color: deep; family: "Space Grotesk" }
+        }
+        on press hit { emit winpicker_pick(idx) }
+    }
+
+    let wp.screen_w = winpicker_screen_w
+    let wp.screen_h = winpicker_screen_h
+    let wp.margin = 54
+    let wp.gap = 22
+    let wp.header = 196
+    let wp.info = 50
+    let wp.cols = max(2, min(8, round(winpicker_cols)))
+    let wp.rows = max(1, ceil(winpicker_count / wp.cols))
+    let wp.avail_w = max(640, wp.screen_w - wp.margin * 2)
+    let wp.avail_h = max(400, wp.screen_h - wp.margin * 2 - wp.header)
+    let wp.fit_w = (wp.avail_w - wp.gap * (wp.cols - 1)) / wp.cols
+    let wp.fit_h = ((wp.avail_h - wp.gap * (wp.rows - 1)) / wp.rows - wp.info) / 0.625
+    let wp.card_w = max(120, min(winpicker_size, min(wp.fit_w, wp.fit_h)))
+    let wp.card_h = wp.card_w * 0.625 + wp.info
+    let wp.grid_w = wp.cols * wp.card_w + wp.gap * (wp.cols - 1)
+    let wp.grid_h = wp.rows * wp.card_h + wp.gap * (wp.rows - 1)
+    let wp.gx = (wp.screen_w - wp.grid_w) / 2
+    let wp.gy = wp.margin + wp.header + max(0, (wp.avail_h - wp.grid_h) / 2)
+    prop wp_focus = 0 ~quick
+
+    surface win_picker {
+        size: full, full
+        anchor: top_left
+        level: overlay
+        open: winpicker_open or winpicker_progress > 0.01
+        rate: 120, 30 while quiet
+        //  This is the only surface of the picker and it asks for the keyboard
+        //  itself.  The field is invisible; it exists so letters, Escape and
+        //  Return reach the scene without depending on a second helper process.
+        keyboard: exclusive
+
+        input winpicker_typed {
+            at: 0, 0
+            width: 1
+            size: 1
+            opacity: 0
+            color: #000000
+        }
+
+        zone box wp_shield { from: 0, 0; size: wp.screen_w, wp.screen_h; active: winpicker_open; label: "Close window picker" }
+        on press wp_shield { emit winpicker_close }
+
+        //  The whole backdrop is glass/blur, tinted with the wallpaper palette
+        //  instead of a plain black sheet.
+        body {
+            color: mix(deep, primary, 0.16)
+            opacity: 84% * min(1, winpicker_progress * 3)
+            glass: if(glass_on, winpicker_bg_glass / 100, 0)
+            lens: glass_on and winpicker_bg_glass > 0 and winpicker_bg_blur > 0
+            frost: winpicker_bg_blur / 100
+            box { from: 0, 0; size: wp.screen_w, wp.screen_h }
+        }
+
+        box { from: 46, 114; size: wp.screen_w - 92, 64; corner: 16; color: deep; opacity: 52% }
+        group {
+            z: 100
+            opacity: min(1, winpicker_progress * 4)
+            text "WINDOWS" { at: 54, 132; anchor: left center; size: 10; weight: 700; color: primary; family: "Space Grotesk" }
+            text "Choose a window · type its letter" { at: 54, 152; anchor: left center; size: 13; color: ink; family: "Space Grotesk" }
+            text number(winpicker_count, 0, "") { at: wp.screen_w - 54, 132; anchor: right center; size: 18; weight: 700; color: primary; family: "Space Grotesk" }
+            text winpicker_hint { at: wp.screen_w - 54, 152; anchor: right center; size: 10; color: faint; family: "Space Grotesk" }
+            line { from: 54, 174; to: wp.screen_w - 54, 174; width: 1; color: ink; opacity: 10% }
+        }
+
+        repeat k in 0..31 {
+            let wx = wp.gx + mod(k, wp.cols) * (wp.card_w + wp.gap)
+            let wy = wp.gy + floor(k / wp.cols) * (wp.card_h + wp.gap)
+            group {
+                show: k < win_cards.count
+                WinCard(wx, wy, wp.card_w, wp.card_h, k,
+                        win_cards.$k.code, win_cards.$k.title, win_cards.$k.app,
+                        win_cards.$k.active, win_cards.$k.has_pic, win_cards.$k.picture)
+            }
+        }
+
+        group {
+            show: winpicker_count < 1 and winpicker_progress > 0.2
+            text "NO WINDOWS" { at: wp.screen_w / 2, wp.screen_h / 2 - 10; anchor: center; size: 12; weight: 700; color: primary; family: "Space Grotesk" }
+            text "Open an application, then ask again." { at: wp.screen_w / 2, wp.screen_h / 2 + 12; anchor: center; size: 11; color: faint; family: "Space Grotesk" }
+        }
+
+        on change winpicker_open while winpicker_open { wp_focus: 1 after 120ms }
+        on change winpicker_open while not winpicker_open { wp_focus: 0 }
+        on change wp_focus > 0.05 while winpicker_open { focus winpicker_typed }
+        on key Escape while winpicker_open { emit winpicker_close }
+        on key Return while winpicker_open { emit winpicker_close }
+    }
+}

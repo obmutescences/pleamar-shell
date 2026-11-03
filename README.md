@@ -80,11 +80,12 @@
 | 中心面板 toggle | `pleamar-ipc center` / `pleamar-ipc center toggle` |
 | 中心面板指定 tab | `pleamar-ipc center 3` |
 | 通知中心 | `pleamar-ipc notifications` |
+| 窗口 picker | `pleamar-ipc windows` |
 | 换壁纸 | `pleamar-ipc wallpaper /path/to/image.png` |
 | 打开官方 picker | `pleamar-ipc picker` |
 | 锁屏 | `pleamar-ipc lock` |
 
-页号：`0 FRAME / 1 GLASS / 2 BAR / 3 FONT / 4 WALLPAPER / 5 ALERTS / 6 MOTION / 7 LOCK / 8 IDLE / 9 WEATHER`。
+页号：`0 FRAME / 1 GLASS / 2 BAR / 3 FONT / 4 WALLPAPER / 5 ALERTS / 6 MOTION / 7 LOCK / 8 IDLE / 9 WEATHER / 10 WINDOWS`。
 `pleamar-ipc` 在 `bin/pleamar-ipc`，并已链接到 `~/.local/bin/pleamar-ipc`；
 新终端里找不到时用 `./bin/pleamar-ipc …`。两个布局都在运行时默认 Island，
 可用 `PLEAMAR_SCENE=frame pleamar-ipc settings` 指定。
@@ -275,7 +276,9 @@ modules/
   launcher/launcher.plm      Vitreus 风格全功能搜索（apps/files/commands/emoji/clipboard/wallpapers/windows/web/calc）
   notifications/notifications.plm  toast + 通知中心（吸附在 bar 下方）
   center/panel.plm                 7-tab 中心面板（center panel）
+  windows/panel.plm              全屏窗口 picker：玻璃卡片、字母、荧光与动效
   centerkeys.plm / .luau           单 surface 键盘 helper
+bin/pleamar-window-previews       niri 窗口截图、缩略图缓存与剪贴板保护
 assets/panel.wav / assets/sounds/  面板 click 与 8 种通知音
 assets/emoji.json                 搜索的 emoji 数据
   water/water.wgsl           直边水波
@@ -334,7 +337,7 @@ experiments/probe.plm        1×1 基线探针
 归属如下：
 
 - **LOOK**：Wallpaper、Glass
-- **SHELL**：Bar、Frame music、Typeface、Motion、Notifications
+- **SHELL**：Bar、Frame music、Typeface、Motion、Notifications、Windows
 - **SCREEN**：Lock screen、Idle
 - **SYSTEM**：Weather
 
@@ -342,7 +345,7 @@ experiments/probe.plm        1×1 基线探针
 环形 knob；开关是 34→38px 的胶囊轨道，22px 高，knob 17px 并在滑动时
 从圆形收成圆角方块。按钮和选项是带 hover 描边的药丸；这些只是视觉
 组件，事实、事件和页面索引保持不变。
-当前保留十页，原来的临时小面板已删除：
+当前保留十一页，原来的临时小面板已删除：
 
 - **FRAME MUSIC**：Frame music 开关；Amplitude 20–220%；Sensitivity
   80–240%；Ripples 1–10；Wave height 0–300%；Blend 0–100%。
@@ -357,6 +360,13 @@ experiments/probe.plm        1×1 基线探针
   blur 是全局 `blur {}`，不由这个 slider 控制。
 - **BAR**：Bar height 32–80px；只作用于 Island 胶囊，默认 44px。
   Frame 布局不再显示这条 bar。
+- **WINDOWS**：窗口 picker。Thumbnail size 140–420px、Per row 2–8、
+  Reveal（Fade / Rise / Zoom / Drop / Unfold / Spin / Random）、
+  Duration 160–900ms、Background glass 0–100%、Background blur 0–100%，
+  以及参与选窗的字母（A–Z、去重）。默认每个窗口一个字母；窗口数超过
+  配置字母时才切换为随机双字母；字母组合容量不足时退回 A–Z。窗口预览通过 niri `screenshot-window` 生成，
+  多张并行抓取，动画最后 8% 会等预览就绪；截图前后恢复剪贴板并在 Pleamar
+  内抑制 niri 的 “Screenshot captured” toast。
 - **LOCK**：锁屏外观。Blur（Light/Medium/Heavy）、12/24 小时与秒、
   Clock size、日期格式、密码遮罩（Shapes/Dots/Stars/Special）、遮罩调色板、
   Media pill / Power buttons；`Lock now` 与 `Test lock`。Mask colour 只控制
