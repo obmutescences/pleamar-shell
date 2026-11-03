@@ -329,6 +329,9 @@ rows + sliders + switches。当前保留十页，原来的临时小面板已删�
   `lockscreen/lockscreen.plm` 场景，用 compositor 的 `ext-session-lock`；
   `pleamar-lock sync` 会在每次上锁前把当前 `palette.json` 推给已预热的锁屏
   和 PAM 验证密码；Ctrl+U 清空，测试锁可用 Esc 空栏或 1 分钟退出。
+  输出热插拔（DPMS 关屏再唤醒）可能让锁屏进程退出；shell 每 2 秒探测锁屏
+  socket，session 仍锁定时会自动拉起并重新锁定。niri 红屏时也可以按
+  `Mod+L`（已设 `allow-when-locked=true`）手动拉起新的锁屏。
 - **IDLE**：`Lock after` / `Screen off after`，步进 0（Never）、1、2、3、5、
   7、10、15、20、30、45、60、90、120 分钟。由 `swayidle` 执行：锁屏调用
   `pleamar-ipc lock`，关屏调用 `niri msg action power-off-monitors`，有输入时

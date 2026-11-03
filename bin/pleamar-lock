@@ -10,6 +10,7 @@ root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 bin="$("$root/bin/pleamar-shell" --path)"
 scene="$root/lockscreen/lockscreen.plm"
 cfg="${XDG_CONFIG_HOME:-$HOME/.config}/pleamar-shell/config.json"
+runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 
 running() { pgrep -f -- "pleamar --scene .*/lockscreen/lockscreen.plm" >/dev/null 2>&1; }
 
@@ -23,6 +24,10 @@ ready() {
 
 ensure() {
     running && return 0
+    #  A crashed lock scene can leave its socket behind.  A new scene would
+    #  then take a numbered name, while `say` and `ready` still address
+    #  `lockscreen`, so every later command would go to the dead socket.
+    rm -f "$runtime/pleamar/lockscreen.sock" "$runtime/pleamar/lockscreen.display"
     setsid -f "$root/bin/pleamar-shell" lock >/tmp/pleamar-lock.log 2>&1
     for _ in $(seq 1 30); do running && break; sleep 0.1; done
     running || return 1
@@ -30,6 +35,11 @@ ensure() {
 }
 
 say() { "$bin" --say lockscreen "$1" >/dev/null 2>&1 || true; }
+
+#  Exit 0 only while the lock scene answers.  A crashed scene leaves the
+#  compositor locked with no client; the shell's watchdog uses this to put it
+#  back up without matching its own command line (as pgrep would).
+alive() { "$bin" --say lockscreen "get locked" >/dev/null 2>&1; }
 
 sync() {
     running || return 0
@@ -64,7 +74,8 @@ sync() {
 case "${1:-lock}" in
     ensure) ensure ;;
     sync) sync ;;
+    alive) alive ;;
     lock) ensure; sync; say "fact locked true" ;;
     test) ensure; sync; say "fact safe true"; say "fact locked true" ;;
-    *) echo "usage: $0 ensure|lock|test|sync" >&2; exit 2 ;;
+    *) echo "usage: $0 ensure|lock|test|sync|alive" >&2; exit 2 ;;
 esac

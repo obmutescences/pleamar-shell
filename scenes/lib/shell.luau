@@ -1797,6 +1797,36 @@ function M.start(layout)
         fact.nt_center = true
         fact.nt_unread = 0
     end)
+    --  ── the lock scene, kept alive ─────────────────────────────────────
+    --  Pleamar 0.4.x exits on an ext-session-lock protocol error when an output
+    --  comes back while the screen is locked (DPMS off/on hotplugs the
+    --  monitor).  niri then remains locked with no client and paints its red
+    --  overlay.  The lock scene is a separate process, so watch its socket:
+    --  `alive` costs one short-lived client and fails at once when the scene
+    --  is gone.  Re-lock only if the session is still locked; give the startup
+    --  `ensure` time to open the socket first.
+    local lock_watch_busy, lock_watch_ready = false, false
+    after(5000, function() lock_watch_ready = true end)
+    every(2000, function()
+        if shell_root == "" or not lock_watch_ready or lock_watch_busy then return end
+        lock_watch_busy = true
+        local helper = shq(shell_root .. "/bin/pleamar-lock")
+        run("sh", { "-c", helper .. " alive" }, function(_, alive)
+            if alive == 0 then
+                lock_watch_busy = false
+                return
+            end
+            local lock_hint = 'sid=${XDG_SESSION_ID:-$(loginctl list-sessions --no-legend 2>/dev/null | while read -r s uid user rest; do [ "$user" = "$USER" ] && { echo "$s"; break; }; done)}; loginctl show-session "$sid" -p LockedHint --value 2>/dev/null'
+            run("sh", { "-c", lock_hint }, function(out)
+                local locked = tostring(out or ""):lower():find("yes") ~= nil
+                log("lock scene is gone; " .. (locked and "re-locking" or "starting it again"))
+                run("sh", { "-c", helper .. (locked and " lock" or " ensure") }, function(_, code)
+                    if code ~= 0 then log("lock scene could not be restarted") end
+                    lock_watch_busy = false
+                end)
+            end)
+        end)
+    end)
     every(700, function()
         if truthy(fact.panel_open) and settings_key_helper then
             pcall(sys.call, "say", "settingskeys", "emit key_ping")
