@@ -328,8 +328,21 @@ experiments/probe.plm        1×1 基线探针
 
 `modules/settings/panel.plm` 是 Vitreus `pages/settings_panel.plm` +
 `pages/glass.plm` 的结构：居中大面板、gear 徽章、`SETTINGS` 标题和
-`SETTINGS › APPEARANCE / SYSTEM › page` 面包屑、按 APPEARANCE / SYSTEM 分组的左侧 sidebar、右侧 page 的
-rows + sliders + switches。当前保留十页，原来的临时小面板已删除：
+`SETTINGS › LOOK / SHELL / SCREEN / SYSTEM › page` 面包屑、按四组分类的
+左侧 sidebar、右侧 page 的卡片 rows + sliders + switches。侧栏高亮使用
+弹簧在 32px 槽位之间滑动；整行的选中图标会轻微放大并转向主色。父菜单
+归属如下：
+
+- **LOOK**：Wallpaper、Glass
+- **SHELL**：Bar、Frame music、Typeface、Motion、Notifications
+- **SCREEN**：Lock screen、Idle
+- **SYSTEM**：Weather
+
+滑条是 Vitreus 的 12px 双层描边药丸轨道：主色以铅笔竖线填充，末端是
+环形 knob；开关是 34→38px 的胶囊轨道，22px 高，knob 17px 并在滑动时
+从圆形收成圆角方块。按钮和选项是带 hover 描边的药丸；这些只是视觉
+组件，事实、事件和页面索引保持不变。
+当前保留十页，原来的临时小面板已删除：
 
 - **FRAME MUSIC**：Frame music 开关；Amplitude 20–220%；Sensitivity
   80–240%；Ripples 1–10；Wave height 0–300%；Blend 0–100%。

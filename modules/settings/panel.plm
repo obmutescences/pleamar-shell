@@ -13,6 +13,91 @@ part ConfigPanel {
     let cp.y0 = 176
     let cp.slider_x = 520
     let cp.slider_w = 200
+    //  Sidebar rhythm, as Vitreus's settings panel: one slot for each group
+    //  heading and one for each page.  The highlight follows the slot with a
+    //  spring, so it slides between pages instead of jumping.
+    let cp.nav_y = 108
+    let cp.nav_step = 32
+
+    //  The Control Center's slider: a pill track in a crooked double outline,
+    //  the level drawn in tight pencil columns, and a ring for the knob.  The
+    //  level follows a spring, but the outline is still, so a shut settings
+    //  page does not keep the shell awake.
+    component CpSlider(x0: number, y: number, w: number, lv: number, hot: number, accent: color, ink: color, track: color) {
+        prop p = 0 ~quick
+        follow p = lv
+        let h = 12
+        let kx = clamp(x0 + w * p, x0 + h * 0.6, x0 + w - h * 0.6)
+        let xs = x0 + h * 0.5
+        let sp = (w - h) / 40
+        box { from: x0, y - h / 2; size: w, h; corner: h / 2; color: track; opacity: 48% }
+        box { from: x0, y - h / 2; size: w, h; corner: h / 2; stroke: 1.4; color: ink; opacity: 52% + 12% * hot }
+        box { from: x0 + 0.4, y - h / 2 + 0.35; size: w - 0.8, h - 0.7; corner: (h - 0.7) / 2; stroke: 0.9; color: ink; opacity: 20% + 10% * hot }
+        box { from: x0 + 2, y - h / 2 + 2; size: max(2, kx - x0 - 2), h - 4; corner: (h - 4) / 2; color: accent; opacity: 13% }
+        repeat i in 0..40 {
+            let hx = xs + i * sp
+            line { from: hx - 1.1, y - h * 0.36; to: hx + 1.1, y + h * 0.36; width: 1.2; color: accent; opacity: if(hx <= kx, 62%, 0) }
+        }
+        repeat i in 0..20 {
+            let hx = xs + i * sp * 2 + 1.4
+            line { from: hx - 0.6, y - h * 0.28; to: hx + 0.6, y + h * 0.28; width: 0.8; color: accent; opacity: if(hx <= kx, 24%, 0) }
+        }
+        ellipse { at: kx, y; radius: h * 0.85 + 1.2 * hot; stroke: 1.5; color: ink; opacity: 88% }
+        ellipse { at: kx + 0.35, y + 0.28; radius: h * 0.7; stroke: 0.9; color: ink; opacity: 24% }
+        ellipse { at: kx, y; radius: h * 0.55; color: ink; opacity: 12% }
+    }
+
+    //  SettingsSwitch as Vitreus draws it: the right edge fixed, the track
+    //  34 px off and 38 px on, 22 px high, the knob 17 px across and turning
+    //  from a circle into a rounded square.  `knob` is the spring, `on` the
+    //  colour state; hit zones remain the caller's.
+    component CpSwitch(x: number, y: number, w: number, h: number, on: number, knob: number, hot: number, accent: color, ink: color, off: color) {
+        let cy = y + h / 2
+        let sw = 34 + 4 * knob
+        let rx = x + w
+        let scx = rx - sw / 2
+        let sl = scx - sw / 2
+        let kx = sl + 11 + knob * (sw - 22)
+        let m = clamp(4 * knob * (1 - knob), 0, 1)
+        let kw = 17 + 9 * m
+        let kh = 17 - 3 * m
+        body {
+            color: mix(off, accent, knob)
+            shadow: 0, 0, 10 * knob, 48% * knob, accent
+            rim: 16% * knob
+            box { at: scx, cy; size: sw, 22; corner: 11 - 2 * knob }
+        }
+        group {
+            clip inset 0 box { at: scx, cy; size: sw, 22; corner: 11 - 2 * knob }
+            box { from: sl - 6, cy - 18; size: sw + 12, 9; color: #000000; opacity: 26% * (1 - knob) }
+            box { from: sl, cy + 9.5; size: sw, 1.5; color: ink; opacity: 12% * (1 - knob) }
+            repeat i in 0..8 {
+                box { at: sl + 4.5 + 5 * i - (knob - 0.5) * 9, cy; size: 1.2, 9; corner: 0.6; color: ink; opacity: 24% * m }
+            }
+        }
+        box { at: scx, cy; size: sw, 22; corner: 11 - 2 * knob; stroke: 1.3; color: ink; opacity: 54% + 12% * hot }
+        box { at: scx + 0.35, cy + 0.28; size: sw - 0.7, 21.4; corner: 10.8 - 2 * knob; stroke: 0.9; color: ink; opacity: 18% + 8% * hot }
+        body {
+            color: ink
+            shadow: 0, 2, 5, 26%
+            box { at: kx, cy; size: kw, kh; corner: 8.5 - 2 * knob - 1.5 * m }
+        }
+    }
+
+    //  A pill button: a quiet ink well at rest, an accent outline and a faint
+    //  lit fill when selected or hovered.  Labels are still drawn by the page.
+    component CpPill(x: number, y: number, w: number, h: number, sel: number, hot: number, accent: color, ink: color) {
+        box { from: x, y; size: w, h; corner: h / 2; color: if(sel > 0.5, accent, ink); opacity: if(sel > 0.5, 18%, 5% + 7% * hot) }
+        box { from: x, y; size: w, h; corner: h / 2; stroke: 1; color: if(sel > 0.5, accent, ink); opacity: if(sel > 0.5, 52%, 10% + 10% * hot) }
+        box { from: x + 7, y + 2; size: w - 14, 1; corner: 0.5; color: ink; opacity: if(sel > 0.5, 10%, 5%) }
+    }
+
+    //  A row card with the hairline edge and the slightly raised plate used by
+    //  Vitreus's settings pages.
+    component CpCard(x: number, y: number, w: number, h: number) {
+        box { from: x, y; size: w, h; corner: 12; color: ink; opacity: 3% }
+        box { from: x, y; size: w, h; corner: 12; stroke: 1; color: ink; opacity: 9% }
+    }
     let cp.tint_pct = clamp((glass_tint - 20) / 80, 0, 1)
     let cp.panel_pct = clamp(panel_bg_tint / 100, 0, 1)
     let cp.frost_pct = clamp(glass_frost / 100, 0, 1)
@@ -35,6 +120,14 @@ part ConfigPanel {
     let wp.min_pct = clamp((wall_minutes - 1) / 59, 0, 1)
     prop cp_p = 0 ~gentle
     follow cp_p = panel_open
+    //  Sidebar slot of each page, in visual order:
+    //  LOOK: Wallpaper, Glass · SHELL: Bar, Frame music, Typeface, Motion,
+    //  Notifications · SCREEN: Lock, Idle · SYSTEM: Weather.
+    prop cp_nav = 2 ~quick
+    follow cp_nav = pick(settings_page, 5, 2, 4, 6, 1, 8, 7, 10, 11, 13)
+    //  0 LOOK · 1 SHELL · 2 SCREEN · 3 SYSTEM; follows the page's parent.
+    prop cp_grp = 0 ~quick
+    follow cp_grp = pick(settings_page, 1, 0, 1, 1, 0, 1, 1, 2, 2, 3)
 
     surface config_panel {
         size: 860, 820
@@ -82,7 +175,7 @@ part ConfigPanel {
 
         text "SETTINGS" { at: 76, 45; anchor: left center; size: 21; weight: 700; color: ink; family: "Space Grotesk" }
         path { at: 190, 45; stroke: 1.3; color: faint; move -2, -3.5; line 2, 0; line -2, 3.5 }
-        text pick(settings_page, "APPEARANCE", "APPEARANCE", "APPEARANCE", "APPEARANCE", "APPEARANCE", "SYSTEM", "APPEARANCE", "SYSTEM", "SYSTEM", "SYSTEM") { at: 202, 45; anchor: left center; size: 13.5; weight: 700; color: faint; family: "Space Grotesk"; measure: cp_parent }
+        text pick(settings_page, "SHELL", "LOOK", "SHELL", "SHELL", "LOOK", "SHELL", "SHELL", "SCREEN", "SCREEN", "SYSTEM") { at: 202, 45; anchor: left center; size: 13.5; weight: 700; color: faint; family: "Space Grotesk"; measure: cp_parent }
         path { at: 202 + cp_parent.width + 10, 45; stroke: 1.3; color: faint; move -2, -3.5; line 2, 0; line -2, 3.5 }
         text pick(settings_page, "Frame music", "Glass", "Bar", "Font", "Wallpaper", "Notifications", "Motion", "Lock screen", "Idle", "Weather") { at: 202 + cp_parent.width + 22, 45; anchor: left center; size: 14.5; weight: 700; color: cp.mint; family: "Space Grotesk" }
 
@@ -94,90 +187,185 @@ part ConfigPanel {
         line { from: 28, 84; to: 832, 84; width: 1; color: ink; opacity: 10% }
 
         //  ── sidebar ──────────────────────────────────────────────────────
+        //  LOOK / SHELL / SCREEN / SYSTEM: the parent group owns the page's
+        //  visual family.  Every group heading is a target for its first page.
         box { from: 28, 100; size: 194, 520; corner: 14; color: ink; opacity: 4% }
+        box { from: 28, 100; size: 194, 520; corner: 14; stroke: 1; color: ink; opacity: 9% }
 
-        //  Parent levels: Appearance and System.  The labels are also targets:
-        //  a parent opens its first child.
-        text "APPEARANCE" { at: 44, 118; anchor: left center; size: 11.5; weight: 700; color: if(settings_page == 5 or settings_page == 7 or settings_page == 8 or settings_page == 9, faint, cp.mint); family: "Space Grotesk" }
-        zone box cp_group_appearance { from: 38, 108; size: 174, 24; corner: 8; cursor: pointer; label: "Appearance settings" }
-        on press cp_group_appearance { emit ui_sound; settings_page = 0 }
+        //  The selected row: one highlight, sprung between slots.  Each page
+        //  slot is 32 px apart; the headings use the same grid so the rail keeps
+        //  its rhythm without a second layout table.
+        box { from: 38, cp.nav_y + cp_nav * cp.nav_step; size: 174, 28; corner: 10; color: cp.mint; opacity: 14% }
+        box { from: 38, cp.nav_y + cp_nav * cp.nav_step; size: 174, 28; corner: 10; stroke: 1; color: cp.mint; opacity: 26% }
 
-        box { from: 38, 132; size: 174, 40; corner: 10; color: cp.mint; opacity: if(settings_page == 0, 16%, 0%) }
-        line { from: 54, 145; to: 54, 159; width: 2; color: if(settings_page == 0, cp.mint, faint); opacity: 90% }
-        line { from: 59, 148; to: 59, 156; width: 2; color: if(settings_page == 0, cp.mint, faint); opacity: 70% }
-        line { from: 64, 142; to: 64, 162; width: 2; color: if(settings_page == 0, cp.mint, faint); opacity: 90% }
-        text "Frame music" { at: 78, 152; anchor: left center; size: 15; weight: 600; color: if(settings_page == 0, ink, faint); family: "Space Grotesk" }
-        zone box cp_page_music { from: 38, 132; size: 174, 40; corner: 10; cursor: pointer; label: "Frame music settings" }
-        on press cp_page_music { emit ui_sound; settings_page = 0 }
+        text "LOOK" { at: 44, cp.nav_y + 14; anchor: left center; size: 11.5; weight: 700; color: mix(faint, cp.mint, clamp(1 - abs(cp_grp - 0), 0, 1)); family: "Space Grotesk" }
+        zone box cp_group_look { from: 38, cp.nav_y; size: 174, 28; corner: 9; cursor: pointer; label: "Look settings" }
+        on press cp_group_look { emit ui_sound; settings_page = 4 }
 
-        box { from: 38, 178; size: 174, 40; corner: 10; color: cp.mint; opacity: if(settings_page == 1, 16%, 0%) }
-        box { from: 52, 188; size: 16, 16; corner: 4; stroke: 1.4; color: if(settings_page == 1, cp.mint, faint) }
-        line { from: 52, 192; to: 66, 198; width: 1.2; color: if(settings_page == 1, cp.mint, faint); opacity: 80% }
-        text "Glass" { at: 78, 198; anchor: left center; size: 15; weight: 600; color: if(settings_page == 1, ink, faint); family: "Space Grotesk" }
-        zone box cp_page_glass { from: 38, 178; size: 174, 40; corner: 10; cursor: pointer; label: "Glass settings" }
-        on press cp_page_glass { emit ui_sound; settings_page = 1 }
+        group {
+            let yy = cp.nav_y + 1 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 1), 0, 1)
+            let sc = mix(faint, cp.mint, sel)
+            group {
+                pivot: 54, yy + 14
+                scale: 1 + 0.10 * sel
+                box { at: 54, yy + 14; size: 16, 13; corner: 3; stroke: 1.4; color: sc }
+                box { at: 56, yy + 17; size: 8, 7; corner: 1; color: sc; opacity: 32% }
+                line { from: 52, yy + 24; to: 65, yy + 11; width: 1.2; color: sc; opacity: 70% }
+            }
+            text "Wallpaper" { at: 78, yy + 14; anchor: left center; size: 15; weight: 600; color: mix(faint, cp.mint, sel); opacity: 72% + 28% * sel; family: "Space Grotesk" }
+            zone box cp_page_wallpaper { from: 38, yy; size: 174, 28; corner: 10; cursor: pointer; label: "Wallpaper settings" }
+            on press cp_page_wallpaper { emit ui_sound; settings_page = 4 }
+        }
 
-        box { from: 38, 224; size: 174, 40; corner: 10; color: cp.mint; opacity: if(settings_page == 2, 16%, 0%) }
-        box { from: 52, 241; size: 16, 6; corner: 3; stroke: 1.4; color: if(settings_page == 2, cp.mint, faint) }
-        box { from: 58, 238; size: 4, 12; corner: 2; color: if(settings_page == 2, cp.mint, faint); opacity: 80% }
-        text "Bar" { at: 78, 244; anchor: left center; size: 15; weight: 600; color: if(settings_page == 2, ink, faint); family: "Space Grotesk" }
-        zone box cp_page_bar { from: 38, 224; size: 174, 40; corner: 10; cursor: pointer; label: "Bar settings" }
-        on press cp_page_bar { emit ui_sound; settings_page = 2 }
+        group {
+            let yy = cp.nav_y + 5 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 5), 0, 1)
+            let sc = mix(faint, cp.mint, sel)
+            group {
+                pivot: 54, yy + 14
+                scale: 1 + 0.10 * sel
+                line { from: 51, yy + 8; to: 51, yy + 20; width: 2; color: sc }
+                line { from: 56, yy + 11; to: 56, yy + 17; width: 2; color: sc; opacity: 80% }
+                line { from: 61, yy + 6; to: 61, yy + 22; width: 2; color: sc }
+            }
+            text "Frame music" { at: 78, yy + 14; anchor: left center; size: 15; weight: 600; color: mix(faint, cp.mint, sel); opacity: 72% + 28% * sel; family: "Space Grotesk" }
+            zone box cp_page_music { from: 38, yy; size: 174, 28; corner: 10; cursor: pointer; label: "Frame music settings" }
+            on press cp_page_music { emit ui_sound; settings_page = 0 }
+        }
 
-        box { from: 38, 270; size: 174, 40; corner: 10; color: cp.mint; opacity: if(settings_page == 3, 16%, 0%) }
-        text "Aa" { at: 52, 290; anchor: left center; size: 13; weight: 700; color: if(settings_page == 3, cp.mint, faint); family: "Space Grotesk" }
-        text "Typeface" { at: 78, 290; anchor: left center; size: 15; weight: 600; color: if(settings_page == 3, ink, faint); family: "Space Grotesk" }
-        zone box cp_page_font { from: 38, 270; size: 174, 40; corner: 10; cursor: pointer; label: "Font settings" }
-        on press cp_page_font { emit ui_sound; settings_page = 3 }
+        group {
+            let yy = cp.nav_y + 2 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 2), 0, 1)
+            let sc = mix(faint, cp.mint, sel)
+            group {
+                pivot: 54, yy + 14
+                scale: 1 + 0.10 * sel
+                box { at: 54, yy + 14; size: 16, 16; corner: 4; stroke: 1.4; color: sc }
+                line { from: 52, yy + 18; to: 66, yy + 24; width: 1.2; color: sc; opacity: 75% }
+            }
+            text "Glass" { at: 78, yy + 14; anchor: left center; size: 15; weight: 600; color: mix(faint, cp.mint, sel); opacity: 72% + 28% * sel; family: "Space Grotesk" }
+            zone box cp_page_glass { from: 38, yy; size: 174, 28; corner: 10; cursor: pointer; label: "Glass settings" }
+            on press cp_page_glass { emit ui_sound; settings_page = 1 }
+        }
 
-        box { from: 38, 316; size: 174, 40; corner: 10; color: cp.mint; opacity: if(settings_page == 4, 16%, 0%) }
-        box { from: 52, 326; size: 16, 16; corner: 4; stroke: 1.4; color: if(settings_page == 4, cp.mint, faint) }
-        box { from: 55, 329; size: 10, 10; corner: 2; color: if(settings_page == 4, cp.mint, faint); opacity: 35% }
-        line { from: 54, 341; to: 66, 329; width: 1.2; color: if(settings_page == 4, cp.mint, faint); opacity: 90% }
-        text "Wallpaper" { at: 78, 336; anchor: left center; size: 15; weight: 600; color: if(settings_page == 4, ink, faint); family: "Space Grotesk" }
-        zone box cp_page_wallpaper { from: 38, 316; size: 174, 40; corner: 10; cursor: pointer; label: "Wallpaper settings" }
-        on press cp_page_wallpaper { emit ui_sound; settings_page = 4 }
+        text "SHELL" { at: 44, cp.nav_y + 3 * cp.nav_step + 14; anchor: left center; size: 11.5; weight: 700; color: mix(faint, cp.mint, clamp(1 - abs(cp_grp - 1), 0, 1)); family: "Space Grotesk" }
+        zone box cp_group_shell { from: 38, cp.nav_y + 3 * cp.nav_step; size: 174, 28; corner: 9; cursor: pointer; label: "Shell settings" }
+        on press cp_group_shell { emit ui_sound; settings_page = 2 }
 
-        box { from: 38, 362; size: 174, 40; corner: 10; color: cp.mint; opacity: if(settings_page == 6, 16%, 0%) }
-        line { from: 53, 375; to: 66, 375; width: 1.4; color: if(settings_page == 6, cp.mint, faint); opacity: 90% }
-        line { from: 53, 381; to: 62, 381; width: 1.4; color: if(settings_page == 6, cp.mint, faint); opacity: 75% }
-        line { from: 53, 387; to: 69, 387; width: 1.4; color: if(settings_page == 6, cp.mint, faint); opacity: 90% }
-        text "Motion" { at: 78, 382; anchor: left center; size: 15; weight: 600; color: if(settings_page == 6, ink, faint); family: "Space Grotesk" }
-        zone box cp_page_motion { from: 38, 362; size: 174, 40; corner: 10; cursor: pointer; label: "Panel motion settings" }
-        on press cp_page_motion { emit ui_sound; settings_page = 6 }
+        group {
+            let yy = cp.nav_y + 4 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 4), 0, 1)
+            let sc = mix(faint, cp.mint, sel)
+            group {
+                pivot: 54, yy + 14
+                scale: 1 + 0.10 * sel
+                box { at: 54, yy + 14; size: 16, 6; corner: 3; stroke: 1.4; color: sc }
+                box { at: 60, yy + 11; size: 4, 12; corner: 2; color: sc; opacity: 80% }
+            }
+            text "Bar" { at: 78, yy + 14; anchor: left center; size: 15; weight: 600; color: mix(faint, cp.mint, sel); opacity: 72% + 28% * sel; family: "Space Grotesk" }
+            zone box cp_page_bar { from: 38, yy; size: 174, 28; corner: 10; cursor: pointer; label: "Bar settings" }
+            on press cp_page_bar { emit ui_sound; settings_page = 2 }
+        }
 
-        text "SYSTEM" { at: 44, 414; anchor: left center; size: 11.5; weight: 700; color: if(settings_page == 5 or settings_page == 7 or settings_page == 8 or settings_page == 9, cp.mint, faint); family: "Space Grotesk" }
-        zone box cp_group_system { from: 38, 404; size: 174, 24; corner: 8; cursor: pointer; label: "System settings" }
-        on press cp_group_system { emit ui_sound; settings_page = 5 }
+        group {
+            let yy = cp.nav_y + 6 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 6), 0, 1)
+            let sc = mix(faint, cp.mint, sel)
+            group {
+                pivot: 54, yy + 14
+                scale: 1 + 0.10 * sel
+                text "Aa" { at: 52, yy + 14; anchor: left center; size: 13; weight: 700; color: sc; family: "Space Grotesk" }
+            }
+            text "Typeface" { at: 78, yy + 14; anchor: left center; size: 15; weight: 600; color: mix(faint, cp.mint, sel); opacity: 72% + 28% * sel; family: "Space Grotesk" }
+            zone box cp_page_font { from: 38, yy; size: 174, 28; corner: 10; cursor: pointer; label: "Font settings" }
+            on press cp_page_font { emit ui_sound; settings_page = 3 }
+        }
 
-        box { from: 38, 428; size: 174, 40; corner: 10; color: cp.mint; opacity: if(settings_page == 5, 16%, 0%) }
-        path { at: 60, 448; stroke: 1.4; color: if(settings_page == 5, cp.mint, faint); move -7, 4; line -5, -1; curve -5, -7 via 0, -9; curve 5, -7 via 5, -1; line 7, 4 }
-        line { from: 53, 452; to: 67, 452; width: 1.3; color: if(settings_page == 5, cp.mint, faint); opacity: 85% }
-        text "Notifications" { at: 78, 448; anchor: left center; size: 15; weight: 600; color: if(settings_page == 5, ink, faint); family: "Space Grotesk" }
-        zone box cp_page_nt { from: 38, 428; size: 174, 40; corner: 10; cursor: pointer; label: "Notification settings" }
-        on press cp_page_nt { emit ui_sound; settings_page = 5 }
+        group {
+            let yy = cp.nav_y + 7 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 7), 0, 1)
+            let sc = mix(faint, cp.mint, sel)
+            group {
+                pivot: 54, yy + 14
+                scale: 1 + 0.10 * sel
+                line { from: 52, yy + 11; to: 66, yy + 11; width: 1.4; color: sc; opacity: 85% }
+                line { from: 52, yy + 17; to: 62, yy + 17; width: 1.4; color: sc; opacity: 70% }
+                line { from: 52, yy + 23; to: 69, yy + 23; width: 1.4; color: sc; opacity: 85% }
+            }
+            text "Motion" { at: 78, yy + 14; anchor: left center; size: 15; weight: 600; color: mix(faint, cp.mint, sel); opacity: 72% + 28% * sel; family: "Space Grotesk" }
+            zone box cp_page_motion { from: 38, yy; size: 174, 28; corner: 10; cursor: pointer; label: "Panel motion settings" }
+            on press cp_page_motion { emit ui_sound; settings_page = 6 }
+        }
 
-        box { from: 38, 474; size: 174, 40; corner: 10; color: cp.mint; opacity: if(settings_page == 7, 16%, 0%) }
-        box { from: 52, 486; size: 16, 12; corner: 3; stroke: 1.4; color: if(settings_page == 7, cp.mint, faint) }
-        path { at: 60, 486; stroke: 1.4; color: if(settings_page == 7, cp.mint, faint); move -5, 0; line -5, -4; curve -5, -7 via 0, -8; curve 5, -7 via 5, -4; line 5, 0 }
-        text "Lock" { at: 78, 494; anchor: left center; size: 15; weight: 600; color: if(settings_page == 7, ink, faint); family: "Space Grotesk" }
-        zone box cp_page_lock { from: 38, 474; size: 174, 40; corner: 10; cursor: pointer; label: "Lock screen settings" }
-        on press cp_page_lock { emit ui_sound; settings_page = 7 }
+        group {
+            let yy = cp.nav_y + 8 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 8), 0, 1)
+            let sc = mix(faint, cp.mint, sel)
+            group {
+                pivot: 54, yy + 14
+                scale: 1 + 0.10 * sel
+                path { at: 60, yy + 14; stroke: 1.4; color: sc; move -7, 4; line -5, -1; curve -5, -7 via 0, -9; curve 5, -7 via 5, -1; line 7, 4 }
+                line { from: 53, yy + 18; to: 67, yy + 18; width: 1.3; color: sc; opacity: 85% }
+            }
+            text "Notifications" { at: 78, yy + 14; anchor: left center; size: 15; weight: 600; color: mix(faint, cp.mint, sel); opacity: 72% + 28% * sel; family: "Space Grotesk" }
+            zone box cp_page_nt { from: 38, yy; size: 174, 28; corner: 10; cursor: pointer; label: "Notification settings" }
+            on press cp_page_nt { emit ui_sound; settings_page = 5 }
+        }
 
-        box { from: 38, 520; size: 174, 40; corner: 10; color: cp.mint; opacity: if(settings_page == 8, 16%, 0%) }
-        ellipse { at: 60, 538; radius: 8; stroke: 1.4; color: if(settings_page == 8, cp.mint, faint) }
-        line { from: 60, 538; to: 60, 532; width: 1.4; color: if(settings_page == 8, cp.mint, faint) }
-        line { from: 60, 538; to: 65, 541; width: 1.4; color: if(settings_page == 8, cp.mint, faint) }
-        text "Idle" { at: 78, 540; anchor: left center; size: 15; weight: 600; color: if(settings_page == 8, ink, faint); family: "Space Grotesk" }
-        zone box cp_page_idle { from: 38, 520; size: 174, 40; corner: 10; cursor: pointer; label: "Idle settings" }
-        on press cp_page_idle { emit ui_sound; settings_page = 8 }
+        text "SCREEN" { at: 44, cp.nav_y + 9 * cp.nav_step + 14; anchor: left center; size: 11.5; weight: 700; color: mix(faint, cp.mint, clamp(1 - abs(cp_grp - 2), 0, 1)); family: "Space Grotesk" }
+        zone box cp_group_screen { from: 38, cp.nav_y + 9 * cp.nav_step; size: 174, 28; corner: 9; cursor: pointer; label: "Screen settings" }
+        on press cp_group_screen { emit ui_sound; settings_page = 7 }
 
-        box { from: 38, 566; size: 174, 40; corner: 10; color: cp.mint; opacity: if(settings_page == 9, 16%, 0%) }
-        ellipse { at: 60, 586; radius: 8; stroke: 1.4; color: if(settings_page == 9, cp.mint, faint) }
-        text "☀" { at: 60, 586; anchor: center; size: 11; color: if(settings_page == 9, cp.mint, faint); family: "Noto Sans CJK SC" }
-        text "Weather" { at: 78, 586; anchor: left center; size: 15; weight: 600; color: if(settings_page == 9, ink, faint); family: "Space Grotesk" }
-        zone box cp_page_weather { from: 38, 566; size: 174, 40; corner: 10; cursor: pointer; label: "Weather settings" }
-        on press cp_page_weather { emit ui_sound; settings_page = 9 }
+        group {
+            let yy = cp.nav_y + 10 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 10), 0, 1)
+            let sc = mix(faint, cp.mint, sel)
+            group {
+                pivot: 54, yy + 14
+                scale: 1 + 0.10 * sel
+                box { at: 54, yy + 16; size: 16, 12; corner: 3; stroke: 1.4; color: sc }
+                path { at: 60, yy + 16; stroke: 1.4; color: sc; move -5, 0; line -5, -4; curve -5, -7 via 0, -8; curve 5, -7 via 5, -4; line 5, 0 }
+            }
+            text "Lock screen" { at: 78, yy + 14; anchor: left center; size: 15; weight: 600; color: mix(faint, cp.mint, sel); opacity: 72% + 28% * sel; family: "Space Grotesk" }
+            zone box cp_page_lock { from: 38, yy; size: 174, 28; corner: 10; cursor: pointer; label: "Lock screen settings" }
+            on press cp_page_lock { emit ui_sound; settings_page = 7 }
+        }
+
+        group {
+            let yy = cp.nav_y + 11 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 11), 0, 1)
+            let sc = mix(faint, cp.mint, sel)
+            group {
+                pivot: 54, yy + 14
+                scale: 1 + 0.10 * sel
+                ellipse { at: 54, yy + 14; radius: 8; stroke: 1.4; color: sc }
+                line { from: 54, yy + 14; to: 54, yy + 8; width: 1.4; color: sc }
+                line { from: 54, yy + 14; to: 59, yy + 17; width: 1.4; color: sc }
+            }
+            text "Idle" { at: 78, yy + 14; anchor: left center; size: 15; weight: 600; color: mix(faint, cp.mint, sel); opacity: 72% + 28% * sel; family: "Space Grotesk" }
+            zone box cp_page_idle { from: 38, yy; size: 174, 28; corner: 10; cursor: pointer; label: "Idle settings" }
+            on press cp_page_idle { emit ui_sound; settings_page = 8 }
+        }
+
+        text "SYSTEM" { at: 44, cp.nav_y + 12 * cp.nav_step + 14; anchor: left center; size: 11.5; weight: 700; color: mix(faint, cp.mint, clamp(1 - abs(cp_grp - 3), 0, 1)); family: "Space Grotesk" }
+        zone box cp_group_system { from: 38, cp.nav_y + 12 * cp.nav_step; size: 174, 28; corner: 9; cursor: pointer; label: "System settings" }
+        on press cp_group_system { emit ui_sound; settings_page = 9 }
+
+        group {
+            let yy = cp.nav_y + 13 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 13), 0, 1)
+            let sc = mix(faint, cp.mint, sel)
+            group {
+                pivot: 54, yy + 14
+                scale: 1 + 0.10 * sel
+                ellipse { at: 54, yy + 14; radius: 8; stroke: 1.4; color: sc }
+                text "☀" { at: 54, yy + 14; anchor: center; size: 10; color: sc; family: "Noto Sans CJK SC" }
+            }
+            text "Weather" { at: 78, yy + 14; anchor: left center; size: 15; weight: 600; color: mix(faint, cp.mint, sel); opacity: 72% + 28% * sel; family: "Space Grotesk" }
+            zone box cp_page_weather { from: 38, yy; size: 174, 28; corner: 10; cursor: pointer; label: "Weather settings" }
+            on press cp_page_weather { emit ui_sound; settings_page = 9 }
+        }
 
         //  ── page header ──────────────────────────────────────────────────
         text pick(settings_page, "Frame music", "Glass", "Bar", "Font", "Wallpaper", "Notifications", "Motion", "Lock screen", "Idle", "Weather") { at: 250, 132; anchor: left center; size: 19.5; weight: 700; color: ink; family: "Space Grotesk" }
@@ -187,64 +375,53 @@ part ConfigPanel {
         group {
             show: settings_page == 0
 
-            box { from: 250, 176; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 176, 570, 62)
             text "Frame music" { at: 266, 186; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "Let the four-edge wave follow the system sink." { at: 266, 204; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 770, 195; size: 44, 24; corner: 12; color: mix(cp.track, cp.mint, wave_on); opacity: 90% }
-            box { from: 774 + 20 * cfg_knob, 199; size: 16, 16; corner: 8; color: if(wave_on, cp.card, ink); opacity: 92% }
+            CpSwitch(770, 195, 44, 24, if(wave_on, 1, 0), cfg_knob, cp_music_switch.hover, cp.mint, ink, cp.track)
             zone box cp_music_switch { from: 760, 186; size: 64, 38; corner: 19; cursor: pointer; label: "Frame music" }
             on press cp_music_switch { emit ui_sound; toggle wave_on }
 
-            box { from: 250, 242; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 242, 570, 62)
             text "Amplitude" { at: 266, 252; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "How far the wave reaches into the screen." { at: 266, 270; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 520, 286; size: 200, 6; corner: 3; color: ink; opacity: 12% }
-            box { from: 520, 286; size: 200 * cp.amp_pct, 6; corner: 3; color: cp.mint }
-            ellipse { at: 520 + 200 * cp.amp_pct, 289; radius: 6; color: cp.mint }
+            CpSlider(520, 289, 200, cp.amp_pct, cp_amp_track.hover, cp.mint, ink, cp.track)
             text number(wave_amp * 100, 0, "%") { at: 820, 289; anchor: right center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_amp_track { from: 510, 274; size: 240, 30; cursor: pointer; label: "Amplitude" }
             on press cp_amp_track { wave_amp = clamp(0.2 + (pointer.x - 520) / 200 * 2.0, 0.2, 2.2) }
             on drag cp_amp_track { wave_amp = clamp(0.2 + (pointer.x - 520) / 200 * 2.0, 0.2, 2.2) }
 
-            box { from: 250, 308; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 308, 570, 62)
             text "Sensitivity" { at: 266, 318; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "How strongly quiet passages move the wave." { at: 266, 336; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 520, 352; size: 200, 6; corner: 3; color: ink; opacity: 12% }
-            box { from: 520, 352; size: 200 * cp.gain_pct, 6; corner: 3; color: cp.mint }
-            ellipse { at: 520 + 200 * cp.gain_pct, 355; radius: 6; color: cp.mint }
+            CpSlider(520, 355, 200, cp.gain_pct, cp_gain_track.hover, cp.mint, ink, cp.track)
             text number(wave_gain * 100, 0, "%") { at: 820, 355; anchor: right center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_gain_track { from: 510, 340; size: 240, 30; cursor: pointer; label: "Sensitivity" }
             on press cp_gain_track { wave_gain = clamp(0.8 + (pointer.x - 520) / 200 * 1.6, 0.8, 2.4) }
             on drag cp_gain_track { wave_gain = clamp(0.8 + (pointer.x - 520) / 200 * 1.6, 0.8, 2.4) }
 
-            box { from: 250, 374; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 374, 570, 62)
             text "Ripples" { at: 266, 384; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "One long wave, or up to ten finer trains." { at: 266, 402; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 520, 418; size: 200, 6; corner: 3; color: ink; opacity: 12% }
-            box { from: 520, 418; size: 200 * cp.rip_pct, 6; corner: 3; color: cp.mint }
-            ellipse { at: 520 + 200 * cp.rip_pct, 421; radius: 6; color: cp.mint }
+            CpSlider(520, 421, 200, cp.rip_pct, cp_rip_track.hover, cp.mint, ink, cp.track)
             text number(wave_ripples, 0, "") { at: 820, 421; anchor: right center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_rip_track { from: 510, 406; size: 240, 30; cursor: pointer; label: "Ripples" }
             on press cp_rip_track { wave_ripples = clamp(round(1 + (pointer.x - 520) / 200 * 9), 1, 10) }
             on drag cp_rip_track { wave_ripples = clamp(round(1 + (pointer.x - 520) / 200 * 9), 1, 10) }
 
-            box { from: 250, 440; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 440, 570, 62)
             text "Wave height" { at: 266, 450; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "How tall each ripple rises; higher is less smooth." { at: 266, 468; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 520, 484; size: 200, 6; corner: 3; color: ink; opacity: 12% }
-            box { from: 520, 484; size: 200 * cp.height_pct, 6; corner: 3; color: cp.mint }
-            ellipse { at: 520 + 200 * cp.height_pct, 487; radius: 6; color: cp.mint }
+            CpSlider(520, 487, 200, cp.height_pct, cp_height_track.hover, cp.mint, ink, cp.track)
             text number(wave_height * 100, 0, "%") { at: 820, 487; anchor: right center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_height_track { from: 510, 472; size: 240, 30; cursor: pointer; label: "Wave height" }
             on press cp_height_track { wave_height = clamp((pointer.x - 520) / 200 * 3, 0, 3) }
             on drag cp_height_track { wave_height = clamp((pointer.x - 520) / 200 * 3, 0, 3) }
 
-            box { from: 250, 506; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 506, 570, 62)
             text "Blend" { at: 266, 516; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "How much the bands melt into each other." { at: 266, 534; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 520, 550; size: 200, 6; corner: 3; color: ink; opacity: 12% }
-            box { from: 520, 550; size: 200 * cp.blend_pct, 6; corner: 3; color: cp.mint }
-            ellipse { at: 520 + 200 * cp.blend_pct, 553; radius: 6; color: cp.mint }
+            CpSlider(520, 553, 200, cp.blend_pct, cp_blend_track.hover, cp.mint, ink, cp.track)
             text number(wave_blend * 100, 0, "%") { at: 820, 553; anchor: right center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_blend_track { from: 510, 538; size: 240, 30; cursor: pointer; label: "Blend" }
             on press cp_blend_track { wave_blend = clamp((pointer.x - 520) / 200, 0, 1) }
@@ -255,94 +432,78 @@ part ConfigPanel {
         group {
             show: settings_page == 1
 
-            box { from: 250, 176; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 176, 570, 62)
             text "Glass" { at: 266, 186; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "Off for a solid tint, with no glass at all." { at: 266, 204; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 770, 195; size: 44, 24; corner: 12; color: mix(cp.track, cp.mint, glass_on); opacity: 90% }
-            box { from: 774 + 20 * glass_knob, 199; size: 16, 16; corner: 8; color: if(glass_on, cp.card, ink); opacity: 92% }
+            CpSwitch(770, 195, 44, 24, if(glass_on, 1, 0), glass_knob, cp_glass_switch.hover, cp.mint, ink, cp.track)
             zone box cp_glass_switch { from: 760, 186; size: 64, 38; corner: 19; cursor: pointer; label: "Glass" }
             on press cp_glass_switch { toggle glass_on }
 
-            box { from: 250, 242; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 242, 570, 62)
             text "Bend what's behind" { at: 266, 252; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "Lens: bends the background. Off uses the compositor's blur." { at: 266, 270; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 770, 261; size: 44, 24; corner: 12; color: mix(cp.track, cp.mint, glass_bend); opacity: 90% }
-            box { from: 774 + 20 * bend_knob, 265; size: 16, 16; corner: 8; color: if(glass_bend, cp.card, ink); opacity: 92% }
+            CpSwitch(770, 261, 44, 24, if(glass_bend, 1, 0), bend_knob, cp_bend_switch.hover, cp.mint, ink, cp.track)
             zone box cp_bend_switch { from: 760, 252; size: 64, 38; corner: 19; cursor: pointer; label: "Bend what's behind" }
             on press cp_bend_switch { toggle glass_bend }
 
-            box { from: 250, 308; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 308, 570, 62)
             text "Opacity" { at: 266, 318; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "How solid; below 20% the glass would vanish." { at: 266, 336; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 520, 352; size: 200, 6; corner: 3; color: ink; opacity: 12% }
-            box { from: 520, 352; size: 200 * cp.tint_pct, 6; corner: 3; color: cp.mint }
-            ellipse { at: 520 + 200 * cp.tint_pct, 355; radius: 6; color: cp.mint }
+            CpSlider(520, 355, 200, cp.tint_pct, cp_tint_track.hover, cp.mint, ink, cp.track)
             text number(glass_tint, 0, "%") { at: 820, 355; anchor: right center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_tint_track { from: 510, 340; size: 240, 30; cursor: pointer; label: "Opacity" }
             on press cp_tint_track { glass_tint = clamp(20 + (pointer.x - 520) / 200 * 80, 20, 100) }
             on drag cp_tint_track { glass_tint = clamp(20 + (pointer.x - 520) / 200 * 80, 20, 100) }
 
-            box { from: 250, 374; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 374, 570, 62)
             text "Frost" { at: 266, 384; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "How frosted inside the edge; 0% is clear glass." { at: 266, 402; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 520, 418; size: 200, 6; corner: 3; color: ink; opacity: 12% }
-            box { from: 520, 418; size: 200 * cp.frost_pct, 6; corner: 3; color: cp.mint }
-            ellipse { at: 520 + 200 * cp.frost_pct, 421; radius: 6; color: cp.mint }
+            CpSlider(520, 421, 200, cp.frost_pct, cp_frost_track.hover, cp.mint, ink, cp.track)
             text number(glass_frost, 0, "%") { at: 820, 421; anchor: right center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_frost_track { from: 510, 406; size: 240, 30; cursor: pointer; label: "Frost" }
             on press cp_frost_track { glass_frost = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
             on drag cp_frost_track { glass_frost = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
 
-            box { from: 250, 440; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 440, 570, 62)
             text "Edge light" { at: 266, 450; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "How bright the light along the glass edge is." { at: 266, 468; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 520, 484; size: 200, 6; corner: 3; color: ink; opacity: 12% }
-            box { from: 520, 484; size: 200 * cp.edge_pct, 6; corner: 3; color: cp.mint }
-            ellipse { at: 520 + 200 * cp.edge_pct, 487; radius: 6; color: cp.mint }
+            CpSlider(520, 487, 200, cp.edge_pct, cp_edge_track.hover, cp.mint, ink, cp.track)
             text number(glass_edge, 0, "%") { at: 820, 487; anchor: right center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_edge_track { from: 510, 472; size: 240, 30; cursor: pointer; label: "Edge light" }
             on press cp_edge_track { glass_edge = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
             on drag cp_edge_track { glass_edge = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
 
-            box { from: 250, 506; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 506, 570, 62)
             text "Edge thickness" { at: 266, 516; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "How much the edge bends what is behind it." { at: 266, 534; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 520, 550; size: 200, 6; corner: 3; color: ink; opacity: 12% }
-            box { from: 520, 550; size: 200 * cp.refr_pct, 6; corner: 3; color: cp.mint }
-            ellipse { at: 520 + 200 * cp.refr_pct, 553; radius: 6; color: cp.mint }
+            CpSlider(520, 553, 200, cp.refr_pct, cp_refr_track.hover, cp.mint, ink, cp.track)
             text number(glass_refr, 1, "") { at: 820, 553; anchor: right center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_refr_track { from: 510, 538; size: 240, 30; cursor: pointer; label: "Edge thickness" }
             on press cp_refr_track { glass_refr = clamp((pointer.x - 520) / 200 * 2, 0, 2) }
             on drag cp_refr_track { glass_refr = clamp((pointer.x - 520) / 200 * 2, 0, 2) }
 
-            box { from: 250, 572; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 572, 570, 62)
             text "Rainbow fringe" { at: 266, 582; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "How far red, green and blue split at the edge." { at: 266, 600; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 520, 616; size: 200, 6; corner: 3; color: ink; opacity: 12% }
-            box { from: 520, 616; size: 200 * cp.disp_pct, 6; corner: 3; color: cp.mint }
-            ellipse { at: 520 + 200 * cp.disp_pct, 619; radius: 6; color: cp.mint }
+            CpSlider(520, 619, 200, cp.disp_pct, cp_disp_track.hover, cp.mint, ink, cp.track)
             text number(glass_disp, 1, "") { at: 820, 619; anchor: right center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_disp_track { from: 510, 604; size: 240, 30; cursor: pointer; label: "Rainbow fringe" }
             on press cp_disp_track { glass_disp = clamp((pointer.x - 520) / 200 * 2, 0, 2) }
             on drag cp_disp_track { glass_disp = clamp((pointer.x - 520) / 200 * 2, 0, 2) }
 
-            box { from: 250, 638; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 638, 570, 62)
             text "Dome" { at: 266, 648; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "Magnifies what is behind, towards the middle." { at: 266, 666; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 520, 682; size: 200, 6; corner: 3; color: ink; opacity: 12% }
-            box { from: 520, 682; size: 200 * cp.dome_pct, 6; corner: 3; color: cp.mint }
-            ellipse { at: 520 + 200 * cp.dome_pct, 685; radius: 6; color: cp.mint }
+            CpSlider(520, 685, 200, cp.dome_pct, cp_dome_track.hover, cp.mint, ink, cp.track)
             text number(glass_dome, 1, "") { at: 820, 685; anchor: right center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_dome_track { from: 510, 670; size: 240, 30; cursor: pointer; label: "Dome" }
             on press cp_dome_track { glass_dome = clamp((pointer.x - 520) / 200 * 1.5, 0, 1.5) }
             on drag cp_dome_track { glass_dome = clamp((pointer.x - 520) / 200 * 1.5, 0, 1.5) }
 
-            box { from: 250, 704; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 704, 570, 62)
             text "Milk" { at: 266, 714; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "A milky veil inside the glass." { at: 266, 732; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 520, 748; size: 200, 6; corner: 3; color: ink; opacity: 12% }
-            box { from: 520, 748; size: 200 * cp.milk_pct, 6; corner: 3; color: cp.mint }
-            ellipse { at: 520 + 200 * cp.milk_pct, 751; radius: 6; color: cp.mint }
+            CpSlider(520, 751, 200, cp.milk_pct, cp_milk_track.hover, cp.mint, ink, cp.track)
             text number(glass_milk, 1, "") { at: 820, 751; anchor: right center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_milk_track { from: 510, 736; size: 240, 30; cursor: pointer; label: "Milk" }
             on press cp_milk_track { glass_milk = clamp((pointer.x - 520) / 200, 0, 1) }
@@ -353,46 +514,39 @@ part ConfigPanel {
         group {
             show: settings_page == 2
 
-            box { from: 250, 176; size: 570, 94; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 176, 570, 94)
             text "Height" { at: 266, 186; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "Height of the floating island bar." { at: 266, 204; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 520, 240; size: 200, 6; corner: 3; color: ink; opacity: 12% }
-            box { from: 520, 240; size: 200 * cp.bar_pct, 6; corner: 3; color: cp.mint }
-            ellipse { at: 520 + 200 * cp.bar_pct, 243; radius: 6; color: cp.mint }
+            CpSlider(520, 243, 200, cp.bar_pct, cp_bar_track.hover, cp.mint, ink, cp.track)
             text number(bar_height, 0, "px") { at: 820, 243; anchor: right center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_bar_track { from: 510, 228; size: 240, 30; cursor: pointer; label: "Bar height" }
             on press cp_bar_track { bar_height = clamp(32 + (pointer.x - 520) / 200 * 48, 32, 80) }
             on drag cp_bar_track { bar_height = clamp(32 + (pointer.x - 520) / 200 * 48, 32, 80) }
 
-            box { from: 250, 286; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 286, 570, 62)
             text "Panel sound" { at: 266, 296; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "A small click when the bar or a panel is pressed." { at: 266, 314; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 770, 305; size: 44, 24; corner: 12; color: mix(cp.track, cp.mint, snd_on); opacity: 90% }
-            box { from: 774 + 20 * snd_knob, 309; size: 16, 16; corner: 8; color: if(snd_on, cp.card, ink); opacity: 92% }
+            CpSwitch(770, 305, 44, 24, if(snd_on, 1, 0), snd_knob, cp_snd_switch.hover, cp.mint, ink, cp.track)
             zone box cp_snd_switch { from: 760, 296; size: 64, 38; corner: 19; cursor: pointer; label: "Panel sound" }
             on press cp_snd_switch { emit ui_sound; toggle snd_on }
 
             text "PANEL TINT" { at: 250, 362; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
-            box { from: 250, 376; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 376, 570, 62)
             text "Panel colour" { at: 266, 386; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "Wallpaper role behind every panel." { at: 266, 404; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 610, 392; size: 100, 30; corner: 15; color: cp.mint; opacity: if(panel_bg_role == 0, 18%, 4%) }
-            box { from: 610, 392; size: 100, 30; corner: 15; stroke: 1; color: if(panel_bg_role == 0, cp.mint, ink); opacity: if(panel_bg_role == 0, 55%, 10%) }
-            text "Primary" { at: 660, 407; anchor: center; size: 11; weight: 700; color: if(panel_bg_role == 0, ink, faint); family: "Space Grotesk" }
+            CpPill(610, 392, 100, 30, if(panel_bg_role == 0, 1, 0), 0, cp.mint, ink)
+            text "Primary" { at: 660, 407; anchor: center; size: 11; weight: 700; color: if(panel_bg_role == 0, cp.mint, faint); family: "Space Grotesk" }
             zone box cp_panel_role_primary { from: 610, 392; size: 100, 30; corner: 15; cursor: pointer; label: "Primary panel colour" }
             on press cp_panel_role_primary { panel_bg_role = 0 }
-            box { from: 714, 392; size: 100, 30; corner: 15; color: cp.mint; opacity: if(panel_bg_role == 1, 18%, 4%) }
-            box { from: 714, 392; size: 100, 30; corner: 15; stroke: 1; color: if(panel_bg_role == 1, cp.mint, ink); opacity: if(panel_bg_role == 1, 55%, 10%) }
-            text "Secondary" { at: 764, 407; anchor: center; size: 11; weight: 700; color: if(panel_bg_role == 1, ink, faint); family: "Space Grotesk" }
+            CpPill(714, 392, 100, 30, if(panel_bg_role == 1, 1, 0), 0, cp.mint, ink)
+            text "Secondary" { at: 764, 407; anchor: center; size: 11; weight: 700; color: if(panel_bg_role == 1, cp.mint, faint); family: "Space Grotesk" }
             zone box cp_panel_role_secondary { from: 714, 392; size: 100, 30; corner: 15; cursor: pointer; label: "Secondary panel colour" }
             on press cp_panel_role_secondary { panel_bg_role = 1 }
 
-            box { from: 250, 442; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 442, 570, 62)
             text "Tint depth" { at: 266, 452; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "How much of that colour to mix in." { at: 266, 470; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 520, 486; size: 200, 6; corner: 3; color: ink; opacity: 12% }
-            box { from: 520, 486; size: 200 * cp.panel_pct, 6; corner: 3; color: cp.mint }
-            ellipse { at: 520 + 200 * cp.panel_pct, 489; radius: 6; color: cp.mint }
+            CpSlider(520, 489, 200, cp.panel_pct, cp_panel_tint_track.hover, cp.mint, ink, cp.track)
             text number(panel_bg_tint, 0, "%") { at: 820, 489; anchor: right center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_panel_tint_track { from: 510, 474; size: 240, 30; cursor: pointer; label: "Panel tint depth" }
             on press cp_panel_tint_track { panel_bg_tint = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
@@ -403,13 +557,13 @@ part ConfigPanel {
         group {
             show: settings_page == 3
 
-            box { from: 250, 176; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 176, 570, 62)
             text "Current" { at: 266, 186; anchor: left center; size: 13; weight: 700; color: faint; family: "Space Grotesk" }
             text font_family { at: 266, 208; anchor: left center; size: 15; weight: 600; color: ink; width: 200; lines: 1; family: "Space Grotesk" }
             text "Selected" { at: 480, 186; anchor: left center; size: 13; weight: 700; color: faint; family: "Space Grotesk" }
             text font_choice { at: 480, 208; anchor: left center; size: 15; weight: 600; color: cp.mint; width: 250; lines: 1; family: "Space Grotesk" }
-            box { from: 750, 188; size: 80, 28; corner: 14; color: cp.mint; opacity: 80% + 20% * cp_font_apply.hover }
-            text "Apply" { at: 790, 202; anchor: center; size: 14; weight: 700; color: cp.card; family: "Space Grotesk" }
+            CpPill(750, 188, 80, 28, 1, cp_font_apply.hover, cp.mint, ink)
+            text "Apply" { at: 790, 202; anchor: center; size: 14; weight: 700; color: cp.mint; family: "Space Grotesk" }
             zone box cp_font_apply { from: 750, 188; size: 80, 28; corner: 14; cursor: pointer; label: "Apply font and restart" }
             on press cp_font_apply { emit ui_sound; emit font_apply }
 
@@ -436,15 +590,16 @@ part ConfigPanel {
         group {
             show: settings_page == 4
 
-            box { from: 250, 176; size: 570, 52; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 176, 570, 52)
             text "Current" { at: 266, 186; anchor: left center; size: 13; weight: 700; color: faint; family: "Space Grotesk" }
             text wall_name { at: 266, 206; anchor: left center; size: 15; weight: 600; color: ink; width: 400; lines: 1; family: "Space Grotesk" }
             text wall_count { at: 820, 202; anchor: right center; size: 13; color: faint; family: "Space Grotesk" }
-            box { from: 672, 176; size: 80, 24; corner: 12; color: cp.mint; opacity: if(wall_transition == 1, 20%, 4% + 7% * wp_random_pick.hover) }
-            text "Random" { at: 712, 186; anchor: center; size: 12; weight: 700; color: if(wall_transition == 1, ink, cp.mint); family: "Space Grotesk" }
+            CpPill(672, 176, 80, 24, if(wall_transition == 1, 1, 0), wp_random_pick.hover, cp.mint, ink)
+            text "Random" { at: 712, 186; anchor: center; size: 12; weight: 700; color: if(wall_transition == 1, cp.mint, ink); family: "Space Grotesk" }
             zone box wp_random_pick { from: 672, 176; size: 80, 24; corner: 12; cursor: pointer; label: "Random transition" }
             on press wp_random_pick { wall_transition = 1 }
-            text "Refresh" { at: 820, 186; anchor: right center; size: 12; weight: 700; color: cp.mint; family: "Space Grotesk" }
+            CpPill(762, 176, 64, 24, 0, wp_refresh.hover, cp.mint, ink)
+            text "Refresh" { at: 794, 188; anchor: center; size: 12; weight: 700; color: cp.mint; family: "Space Grotesk" }
             zone box wp_refresh { from: 762, 176; size: 64, 24; corner: 12; cursor: pointer; label: "Refresh wallpapers" }
             on press wp_refresh { emit wall_refresh }
 
@@ -467,21 +622,21 @@ part ConfigPanel {
 
             //  skwd-wall v2's shader transition.  The catalog is cycled here;
             //  the shell sends the selected name with the next apply.
-            box { from: 250, 740; size: 570, 40; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 740, 570, 40)
             text "Transition" { at: 266, 760; anchor: left center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
             text wall_transition_name { at: 540, 760; anchor: center; size: 12; weight: 600; color: cp.mint; width: 190; lines: 1; align: center; family: "Space Grotesk" }
-            box { from: 685, 745; size: 30, 30; corner: 15; color: ink; opacity: 4% + 7% * wp_trans_prev.hover }
+            CpPill(685, 745, 30, 30, 0, wp_trans_prev.hover, cp.mint, ink)
             text "‹" { at: 700, 760; anchor: center; size: 18; weight: 700; color: ink; family: "Space Grotesk" }
             zone box wp_trans_prev { from: 685, 745; size: 30, 30; corner: 15; cursor: pointer; label: "Previous wallpaper transition" }
             on press wp_trans_prev { wall_transition = mod(wall_transition - 1 + wall_transition_count, wall_transition_count) }
-            box { from: 775, 745; size: 30, 30; corner: 15; color: ink; opacity: 4% + 7% * wp_trans_next.hover }
+            CpPill(775, 745, 30, 30, 0, wp_trans_next.hover, cp.mint, ink)
             text "›" { at: 790, 760; anchor: center; size: 18; weight: 700; color: ink; family: "Space Grotesk" }
             zone box wp_trans_next { from: 775, 745; size: 30, 30; corner: 15; cursor: pointer; label: "Next wallpaper transition" }
             on press wp_trans_next { wall_transition = mod(wall_transition + 1, wall_transition_count) }
 
             text "Bar, settings and launcher take their colour from the picture." { at: 266, 800; anchor: left center; size: 13; color: faint; opacity: 78%; width: 540; lines: 1; family: "Space Grotesk" }
 
-            box { from: 250, 618; size: 70, 28; corner: 14; color: ink; opacity: 4% + 6% * wp_prev.hover }
+            CpPill(250, 618, 70, 28, 0, wp_prev.hover, cp.mint, ink)
             text "‹ Prev" { at: 285, 632; anchor: center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
             zone box wp_prev { from: 250, 618; size: 70, 28; corner: 14; cursor: pointer; label: "Previous wallpapers" }
             on press wp_prev { wp_page = max(0, wp_page - 1) }
@@ -490,22 +645,19 @@ part ConfigPanel {
             text "/" { at: 520, 632; anchor: center; size: 13; color: faint; family: "Space Grotesk" }
             text number(wp_pages, 0, "") { at: 537, 632; anchor: center; size: 13; color: faint; family: "Space Grotesk" }
 
-            box { from: 750, 618; size: 70, 28; corner: 14; color: ink; opacity: 4% + 6% * wp_next.hover }
+            CpPill(750, 618, 70, 28, 0, wp_next.hover, cp.mint, ink)
             text "Next ›" { at: 785, 632; anchor: center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
             zone box wp_next { from: 750, 618; size: 70, 28; corner: 14; cursor: pointer; label: "Next wallpapers" }
             on press wp_next { wp_page = min(wp_pages - 1, wp_page + 1) }
 
-            box { from: 250, 654; size: 570, 40; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 654, 570, 40)
             text "Auto rotate" { at: 266, 674; anchor: left center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
-            box { from: 380, 662; size: 44, 24; corner: 12; color: mix(cp.track, cp.mint, wall_auto); opacity: 90% }
-            box { from: 384 + 20 * wall_knob, 666; size: 16, 16; corner: 8; color: if(wall_auto, cp.card, ink); opacity: 92% }
+            CpSwitch(380, 662, 44, 24, if(wall_auto, 1, 0), wall_knob, wp_auto_switch.hover, cp.mint, ink, cp.track)
             zone box wp_auto_switch { from: 370, 654; size: 64, 38; cursor: pointer; label: "Auto rotate wallpapers" }
             on press wp_auto_switch { toggle wall_auto }
 
             text "Every" { at: 456, 674; anchor: left center; size: 13; color: faint; family: "Space Grotesk" }
-            box { from: 520, 670; size: 200, 6; corner: 3; color: ink; opacity: 12% }
-            box { from: 520, 670; size: 200 * wp.min_pct, 6; corner: 3; color: cp.mint }
-            ellipse { at: 520 + 200 * wp.min_pct, 673; radius: 6; color: cp.mint }
+            CpSlider(520, 673, 200, wp.min_pct, wp_min_track.hover, cp.mint, ink, cp.track)
             text number(wall_minutes, 0, " min") { at: 820, 673; anchor: right center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
             zone box wp_min_track { from: 500, 658; size: 240, 30; cursor: pointer; label: "Minutes between wallpapers" }
             on press wp_min_track { wall_minutes = round(clamp(1 + (pointer.x - 520) / 200 * 59, 1, 60)) }
@@ -518,65 +670,63 @@ part ConfigPanel {
         group {
             show: settings_page == 5
 
-            box { from: 250, 176; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 176, 570, 62)
             text "Toast position" { at: 266, 186; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "Where a new notification appears." { at: 266, 204; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 560, 190; size: 108, 28; corner: 14; color: if(nt_pos == 0, cp.mint, ink); opacity: if(nt_pos == 0, 22%, 6% + 8% * nt_pos_center.hover) }
+            CpPill(560, 190, 108, 28, if(nt_pos == 0, 1, 0), nt_pos_center.hover, cp.mint, ink)
             text "Top center" { at: 614, 204; anchor: center; size: 13; weight: 600; color: if(nt_pos == 0, cp.mint, ink); family: "Space Grotesk" }
             zone box nt_pos_center { from: 560, 190; size: 108, 28; corner: 14; cursor: pointer; label: "Notifications in the center" }
             on press nt_pos_center { emit ui_sound; nt_pos = 0 }
-            box { from: 680, 190; size: 116, 28; corner: 14; color: if(nt_pos == 1, cp.mint, ink); opacity: if(nt_pos == 1, 22%, 6% + 8% * nt_pos_right.hover) }
+            CpPill(680, 190, 116, 28, if(nt_pos == 1, 1, 0), nt_pos_right.hover, cp.mint, ink)
             text "Top right" { at: 738, 204; anchor: center; size: 13; weight: 600; color: if(nt_pos == 1, cp.mint, ink); family: "Space Grotesk" }
             zone box nt_pos_right { from: 680, 190; size: 116, 28; corner: 14; cursor: pointer; label: "Notifications at the top right" }
             on press nt_pos_right { emit ui_sound; nt_pos = 1 }
 
-            box { from: 250, 242; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 242, 570, 62)
             text "Play a sound" { at: 266, 252; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "When a notification is shown." { at: 266, 270; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 770, 261; size: 44, 24; corner: 12; color: mix(cp.track, cp.mint, nt_snd_on); opacity: 90% }
-            box { from: 774 + 20 * nt_snd_knob, 265; size: 16, 16; corner: 8; color: if(nt_snd_on, cp.card, ink); opacity: 92% }
+            CpSwitch(770, 261, 44, 24, if(nt_snd_on, 1, 0), nt_snd_knob, nt_snd_switch.hover, cp.mint, ink, cp.track)
             zone box nt_snd_switch { from: 760, 252; size: 64, 38; corner: 19; cursor: pointer; label: "Notification sounds" }
             on press nt_snd_switch { emit ui_sound; emit nt_sound_toggle }
 
-            box { from: 250, 308; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 308, 570, 62)
             text "Default sound" { at: 266, 318; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text nt_sound_name { at: 266, 336; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 700, 322; size: 36, 28; corner: 14; color: ink; opacity: 6% + 8% * nt_snd_prev.hover }
+            CpPill(700, 322, 36, 28, 0, nt_snd_prev.hover, cp.mint, ink)
             text "‹" { at: 718, 336; anchor: center; size: 18; color: ink; family: "Space Grotesk" }
             zone box nt_snd_prev { from: 700, 322; size: 36, 28; corner: 14; cursor: pointer; label: "Previous notification sound" }
             on press nt_snd_prev { emit nt_sound_set(-1) }
-            box { from: 784, 322; size: 36, 28; corner: 14; color: ink; opacity: 6% + 8% * nt_snd_next.hover }
+            CpPill(784, 322, 36, 28, 0, nt_snd_next.hover, cp.mint, ink)
             text "›" { at: 802, 336; anchor: center; size: 18; color: ink; family: "Space Grotesk" }
             zone box nt_snd_next { from: 784, 322; size: 36, 28; corner: 14; cursor: pointer; label: "Next notification sound" }
             on press nt_snd_next { emit nt_sound_set(1) }
 
-            box { from: 250, 374; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 374, 570, 62)
             text "Toast countdown" { at: 266, 384; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "Seconds before a toast closes itself." { at: 266, 402; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 700, 388; size: 36, 28; corner: 14; color: ink; opacity: 6% + 8% * nt_secs_minus.hover }
+            CpPill(700, 388, 36, 28, 0, nt_secs_minus.hover, cp.mint, ink)
             text "−" { at: 718, 402; anchor: center; size: 18; color: ink; family: "Space Grotesk" }
             zone box nt_secs_minus { from: 700, 388; size: 36, 28; corner: 14; cursor: pointer; label: "Shorter toast countdown" }
             on press nt_secs_minus { emit ui_sound; nt_secs = clamp(nt_secs - 1, 2, 60) }
-            box { from: 784, 388; size: 36, 28; corner: 14; color: ink; opacity: 6% + 8% * nt_secs_plus.hover }
+            CpPill(784, 388, 36, 28, 0, nt_secs_plus.hover, cp.mint, ink)
             text "+" { at: 802, 402; anchor: center; size: 18; color: ink; family: "Space Grotesk" }
             zone box nt_secs_plus { from: 784, 388; size: 36, 28; corner: 14; cursor: pointer; label: "Longer toast countdown" }
             on press nt_secs_plus { emit ui_sound; nt_secs = clamp(nt_secs + 1, 2, 60) }
             text number(nt_secs, 0, " s") { at: 760, 402; anchor: center; size: 15; weight: 700; color: cp.mint; family: "Space Grotesk" }
 
-            box { from: 250, 440; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 440, 570, 62)
             text "Do Not Disturb" { at: 266, 450; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "Keep them in the centre, without a toast." { at: 266, 468; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 770, 459; size: 44, 24; corner: 12; color: mix(cp.track, cp.mint, nt_dnd); opacity: 90% }
-            box { from: 774 + 20 * nt_dnd_knob, 463; size: 16, 16; corner: 8; color: if(nt_dnd, cp.card, ink); opacity: 92% }
+            CpSwitch(770, 459, 44, 24, if(nt_dnd, 1, 0), nt_dnd_knob, nt_dnd_switch.hover, cp.mint, ink, cp.track)
             zone box nt_dnd_switch { from: 760, 450; size: 64, 38; corner: 19; cursor: pointer; label: "Do Not Disturb" }
             on press nt_dnd_switch { emit ui_sound; emit nt_dnd_toggle }
 
-            box { from: 250, 506; size: 180, 34; corner: 17; color: cp.mint; opacity: 82% + 18% * nt_test_btn.hover }
-            text "Send test" { at: 340, 523; anchor: center; size: 13; weight: 700; color: cp.card; family: "Space Grotesk" }
+            CpPill(250, 506, 180, 34, 1, nt_test_btn.hover, cp.mint, ink)
+            text "Send test" { at: 340, 523; anchor: center; size: 13; weight: 700; color: cp.mint; family: "Space Grotesk" }
             zone box nt_test_btn { from: 250, 506; size: 180, 34; corner: 17; cursor: pointer; label: "Send a test notification" }
             on press nt_test_btn { emit ui_sound; emit nt_test }
 
-            box { from: 444, 506; size: 180, 34; corner: 17; color: ink; opacity: 6% + 8% * nt_center_btn.hover }
+            CpPill(444, 506, 180, 34, 0, nt_center_btn.hover, cp.mint, ink)
             text "Open centre" { at: 534, 523; anchor: center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
             zone box nt_center_btn { from: 444, 506; size: 180, 34; corner: 17; cursor: pointer; label: "Open notification centre" }
             on press nt_center_btn { emit ui_sound; nt_center = true; panel_open = false }
@@ -590,7 +740,7 @@ part ConfigPanel {
 
             repeat r in 0..5 {
                 let ry = 176 + r * 84
-                box { from: 250, ry; size: 570, 74; corner: 12; color: ink; opacity: 3% }
+                CpCard(250, ry, 570, 74)
                 text pick(r, "Search panel", "Settings panel", "Notification toast", "Notification centre", "Centre panel") { at: 266, ry + 18; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
                 text pick(r, "Launcher card", "This settings card", "The toast under the bar", "The recent list", "The nine-tab glass panel") { at: 266, ry + 38; anchor: left center; size: 13; color: faint; family: "Space Grotesk" }
                 repeat k in 0..6 {
@@ -599,7 +749,7 @@ part ConfigPanel {
                     let bx = 540 + col * 94
                     let by = ry + 8 + row * 30
                     let chosen = pick(r, anim_search, anim_panel, anim_toast, anim_center, anim_center_panel)
-                    box { from: bx, by; size: 88, 24; corner: 12; color: if(chosen == k, cp.mint, ink); opacity: if(chosen == k, 20%, 5%) }
+                    CpPill(bx, by, 88, 24, if(chosen == k, 1, 0), 0, cp.mint, ink)
                     text pick(k, "Fade", "Spin", "Unfold", "Drop", "Aperture", "Random") { at: bx + 44, by + 12; anchor: center; size: 9.5; weight: 600; color: if(chosen == k, cp.mint, faint); width: 84; lines: 1; align: center; family: "Space Grotesk" }
                 }
             }
@@ -672,136 +822,136 @@ part ConfigPanel {
         group {
             show: settings_page == 7
 
-            box { from: 250, 176; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 176, 570, 62)
             text "Blur" { at: 266, 186; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "How much the wallpaper blurs." { at: 266, 204; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 560, 190; size: 76, 28; corner: 14; color: if(lock_blur == 18, cp.mint, cp.track); opacity: if(lock_blur == 18, 22%, 80%) }
+            CpPill(560, 190, 76, 28, if(lock_blur == 18, 1, 0), cp_lk_blur18.hover, cp.mint, ink)
             text "Light" { at: 598, 204; anchor: center; size: 13; weight: 600; color: if(lock_blur == 18, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_blur18 { from: 560, 190; size: 76, 28; corner: 14; cursor: pointer; label: "Light blur" }
             on press cp_lk_blur18 { emit ui_sound; lock_blur = 18 }
-            box { from: 644, 190; size: 76, 28; corner: 14; color: if(lock_blur == 36, cp.mint, cp.track); opacity: if(lock_blur == 36, 22%, 80%) }
+            CpPill(644, 190, 76, 28, if(lock_blur == 36, 1, 0), cp_lk_blur36.hover, cp.mint, ink)
             text "Medium" { at: 682, 204; anchor: center; size: 13; weight: 600; color: if(lock_blur == 36, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_blur36 { from: 644, 190; size: 76, 28; corner: 14; cursor: pointer; label: "Medium blur" }
             on press cp_lk_blur36 { emit ui_sound; lock_blur = 36 }
-            box { from: 728, 190; size: 76, 28; corner: 14; color: if(lock_blur == 60, cp.mint, cp.track); opacity: if(lock_blur == 60, 22%, 80%) }
+            CpPill(728, 190, 76, 28, if(lock_blur == 60, 1, 0), cp_lk_blur60.hover, cp.mint, ink)
             text "Heavy" { at: 766, 204; anchor: center; size: 13; weight: 600; color: if(lock_blur == 60, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_blur60 { from: 728, 190; size: 76, 28; corner: 14; cursor: pointer; label: "Heavy blur" }
             on press cp_lk_blur60 { emit ui_sound; lock_blur = 60 }
 
-            box { from: 250, 242; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 242, 570, 62)
             text "Clock" { at: 266, 252; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "12 or 24 hour; seconds." { at: 266, 270; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 560, 256; size: 76, 28; corner: 14; color: if(lock_12h, cp.mint, cp.track); opacity: if(lock_12h, 22%, 80%) }
+            CpPill(560, 256, 76, 28, if(lock_12h, 1, 0), cp_lk_12h.hover, cp.mint, ink)
             text "12 hour" { at: 598, 270; anchor: center; size: 13; weight: 600; color: if(lock_12h, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_12h { from: 560, 256; size: 76, 28; corner: 14; cursor: pointer; label: "Twelve hour clock" }
             on press cp_lk_12h { emit ui_sound; lock_12h = true; lock_ampm = true }
-            box { from: 644, 256; size: 76, 28; corner: 14; color: if(lock_12h, cp.track, cp.mint); opacity: if(lock_12h, 80%, 22%) }
+            CpPill(644, 256, 76, 28, if(lock_12h, 0, 1), cp_lk_24h.hover, cp.mint, ink)
             text "24 hour" { at: 682, 270; anchor: center; size: 13; weight: 600; color: if(lock_12h, ink, cp.mint); family: "Space Grotesk" }
             zone box cp_lk_24h { from: 644, 256; size: 76, 28; corner: 14; cursor: pointer; label: "Twenty four hour clock" }
             on press cp_lk_24h { emit ui_sound; lock_12h = false; lock_ampm = false }
-            box { from: 728, 256; size: 92, 28; corner: 14; color: if(lock_secs, cp.mint, cp.track); opacity: if(lock_secs, 22%, 80%) }
+            CpPill(728, 256, 92, 28, if(lock_secs, 1, 0), cp_lk_secs.hover, cp.mint, ink)
             text "Seconds" { at: 774, 270; anchor: center; size: 13; weight: 600; color: if(lock_secs, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_secs { from: 728, 256; size: 92, 28; corner: 14; cursor: pointer; label: "Show seconds" }
             on press cp_lk_secs { emit ui_sound; lock_secs = not lock_secs }
 
-            box { from: 250, 308; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 308, 570, 62)
             text "Clock size" { at: 266, 318; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "Time size above the bar." { at: 266, 336; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 610, 322; size: 64, 28; corner: 14; color: if(lock_px == 100, cp.mint, cp.track); opacity: if(lock_px == 100, 22%, 80%) }
+            CpPill(610, 322, 64, 28, if(lock_px == 100, 1, 0), cp_lk_px100.hover, cp.mint, ink)
             text "100" { at: 642, 336; anchor: center; size: 13; weight: 600; color: if(lock_px == 100, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_px100 { from: 610, 322; size: 64, 28; corner: 14; cursor: pointer; label: "Small clock" }
             on press cp_lk_px100 { emit ui_sound; lock_px = 100 }
-            box { from: 682, 322; size: 64, 28; corner: 14; color: if(lock_px == 150, cp.mint, cp.track); opacity: if(lock_px == 150, 22%, 80%) }
+            CpPill(682, 322, 64, 28, if(lock_px == 150, 1, 0), cp_lk_px150.hover, cp.mint, ink)
             text "150" { at: 714, 336; anchor: center; size: 13; weight: 600; color: if(lock_px == 150, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_px150 { from: 682, 322; size: 64, 28; corner: 14; cursor: pointer; label: "Medium clock" }
             on press cp_lk_px150 { emit ui_sound; lock_px = 150 }
-            box { from: 754, 322; size: 64, 28; corner: 14; color: if(lock_px == 200, cp.mint, cp.track); opacity: if(lock_px == 200, 22%, 80%) }
+            CpPill(754, 322, 64, 28, if(lock_px == 200, 1, 0), cp_lk_px200.hover, cp.mint, ink)
             text "200" { at: 786, 336; anchor: center; size: 13; weight: 600; color: if(lock_px == 200, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_px200 { from: 754, 322; size: 64, 28; corner: 14; cursor: pointer; label: "Large clock" }
             on press cp_lk_px200 { emit ui_sound; lock_px = 200 }
 
-            box { from: 250, 374; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 374, 570, 62)
             text "Date" { at: 266, 384; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "How the day is written." { at: 266, 402; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 520, 390; size: 68, 28; corner: 14; color: if(lock_date == 0, cp.mint, cp.track); opacity: if(lock_date == 0, 22%, 80%) }
+            CpPill(520, 390, 68, 28, if(lock_date == 0, 1, 0), cp_lk_date0.hover, cp.mint, ink)
             text "Long" { at: 554, 404; anchor: center; size: 13; weight: 600; color: if(lock_date == 0, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_date0 { from: 520, 390; size: 68, 28; corner: 14; cursor: pointer; label: "Long date" }
             on press cp_lk_date0 { emit ui_sound; lock_date = 0 }
-            box { from: 596, 390; size: 68, 28; corner: 14; color: if(lock_date == 1, cp.mint, cp.track); opacity: if(lock_date == 1, 22%, 80%) }
+            CpPill(596, 390, 68, 28, if(lock_date == 1, 1, 0), cp_lk_date1.hover, cp.mint, ink)
             text "Short" { at: 630, 404; anchor: center; size: 13; weight: 600; color: if(lock_date == 1, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_date1 { from: 596, 390; size: 68, 28; corner: 14; cursor: pointer; label: "Short date" }
             on press cp_lk_date1 { emit ui_sound; lock_date = 1 }
-            box { from: 672, 390; size: 68, 28; corner: 14; color: if(lock_date == 2, cp.mint, cp.track); opacity: if(lock_date == 2, 22%, 80%) }
+            CpPill(672, 390, 68, 28, if(lock_date == 2, 1, 0), cp_lk_date2.hover, cp.mint, ink)
             text "Day first" { at: 706, 404; anchor: center; size: 12; weight: 600; color: if(lock_date == 2, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_date2 { from: 672, 390; size: 68, 28; corner: 14; cursor: pointer; label: "Day first date" }
             on press cp_lk_date2 { emit ui_sound; lock_date = 2 }
-            box { from: 748, 390; size: 68, 28; corner: 14; color: if(lock_date == 3, cp.mint, cp.track); opacity: if(lock_date == 3, 22%, 80%) }
+            CpPill(748, 390, 68, 28, if(lock_date == 3, 1, 0), cp_lk_date3.hover, cp.mint, ink)
             text "ISO" { at: 782, 404; anchor: center; size: 13; weight: 600; color: if(lock_date == 3, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_date3 { from: 748, 390; size: 68, 28; corner: 14; cursor: pointer; label: "ISO date" }
             on press cp_lk_date3 { emit ui_sound; lock_date = 3 }
 
-            box { from: 250, 440; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 440, 570, 62)
             text "Password mask" { at: 266, 450; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "Shape of typed characters." { at: 266, 468; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 520, 456; size: 68, 28; corner: 14; color: if(lock_mask == 0, cp.mint, cp.track); opacity: if(lock_mask == 0, 22%, 80%) }
+            CpPill(520, 456, 68, 28, if(lock_mask == 0, 1, 0), cp_lk_mask0.hover, cp.mint, ink)
             text "Shapes" { at: 554, 470; anchor: center; size: 13; weight: 600; color: if(lock_mask == 0, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_mask0 { from: 520, 456; size: 68, 28; corner: 14; cursor: pointer; label: "Shape mask" }
             on press cp_lk_mask0 { emit ui_sound; lock_mask = 0 }
-            box { from: 596, 456; size: 68, 28; corner: 14; color: if(lock_mask == 1, cp.mint, cp.track); opacity: if(lock_mask == 1, 22%, 80%) }
+            CpPill(596, 456, 68, 28, if(lock_mask == 1, 1, 0), cp_lk_mask1.hover, cp.mint, ink)
             text "Dots" { at: 630, 470; anchor: center; size: 13; weight: 600; color: if(lock_mask == 1, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_mask1 { from: 596, 456; size: 68, 28; corner: 14; cursor: pointer; label: "Dot mask" }
             on press cp_lk_mask1 { emit ui_sound; lock_mask = 1 }
-            box { from: 672, 456; size: 68, 28; corner: 14; color: if(lock_mask == 2, cp.mint, cp.track); opacity: if(lock_mask == 2, 22%, 80%) }
+            CpPill(672, 456, 68, 28, if(lock_mask == 2, 1, 0), cp_lk_mask2.hover, cp.mint, ink)
             text "Stars" { at: 706, 470; anchor: center; size: 13; weight: 600; color: if(lock_mask == 2, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_mask2 { from: 672, 456; size: 68, 28; corner: 14; cursor: pointer; label: "Star mask" }
             on press cp_lk_mask2 { emit ui_sound; lock_mask = 2 }
-            box { from: 748, 456; size: 68, 28; corner: 14; color: if(lock_mask == 3, cp.mint, cp.track); opacity: if(lock_mask == 3, 22%, 80%) }
+            CpPill(748, 456, 68, 28, if(lock_mask == 3, 1, 0), cp_lk_mask3.hover, cp.mint, ink)
             text "Special" { at: 782, 470; anchor: center; size: 13; weight: 600; color: if(lock_mask == 3, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_mask3 { from: 748, 456; size: 68, 28; corner: 14; cursor: pointer; label: "Special mask" }
             on press cp_lk_mask3 { emit ui_sound; lock_mask = 3 }
 
-            box { from: 250, 506; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 506, 570, 62)
             text "Mask colour" { at: 266, 516; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "Typed shape colours." { at: 266, 534; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 500, 522; size: 58, 28; corner: 14; color: if(lock_pal == 0, cp.mint, cp.track); opacity: if(lock_pal == 0, 22%, 80%) }
+            CpPill(500, 522, 58, 28, if(lock_pal == 0, 1, 0), cp_lk_pal0.hover, cp.mint, ink)
             text "Vibrant" { at: 529, 536; anchor: center; size: 12; weight: 600; color: if(lock_pal == 0, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_pal0 { from: 500, 522; size: 58, 28; corner: 14; cursor: pointer; label: "Vibrant mask palette" }
             on press cp_lk_pal0 { emit ui_sound; lock_pal = 0 }
-            box { from: 564, 522; size: 58, 28; corner: 14; color: if(lock_pal == 1, cp.mint, cp.track); opacity: if(lock_pal == 1, 22%, 80%) }
+            CpPill(564, 522, 58, 28, if(lock_pal == 1, 1, 0), cp_lk_pal1.hover, cp.mint, ink)
             text "Accent" { at: 593, 536; anchor: center; size: 12; weight: 600; color: if(lock_pal == 1, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_pal1 { from: 564, 522; size: 58, 28; corner: 14; cursor: pointer; label: "Accent mask palette" }
             on press cp_lk_pal1 { emit ui_sound; lock_pal = 1 }
-            box { from: 628, 522; size: 58, 28; corner: 14; color: if(lock_pal == 2, cp.mint, cp.track); opacity: if(lock_pal == 2, 22%, 80%) }
+            CpPill(628, 522, 58, 28, if(lock_pal == 2, 1, 0), cp_lk_pal2.hover, cp.mint, ink)
             text "Neon" { at: 657, 536; anchor: center; size: 12; weight: 600; color: if(lock_pal == 2, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_pal2 { from: 628, 522; size: 58, 28; corner: 14; cursor: pointer; label: "Neon mask palette" }
             on press cp_lk_pal2 { emit ui_sound; lock_pal = 2 }
-            box { from: 692, 522; size: 58, 28; corner: 14; color: if(lock_pal == 3, cp.mint, cp.track); opacity: if(lock_pal == 3, 22%, 80%) }
+            CpPill(692, 522, 58, 28, if(lock_pal == 3, 1, 0), cp_lk_pal3.hover, cp.mint, ink)
             text "Pastel" { at: 721, 536; anchor: center; size: 12; weight: 600; color: if(lock_pal == 3, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_pal3 { from: 692, 522; size: 58, 28; corner: 14; cursor: pointer; label: "Pastel mask palette" }
             on press cp_lk_pal3 { emit ui_sound; lock_pal = 3 }
-            box { from: 756, 522; size: 58, 28; corner: 14; color: if(lock_pal == 4, cp.mint, cp.track); opacity: if(lock_pal == 4, 22%, 80%) }
+            CpPill(756, 522, 58, 28, if(lock_pal == 4, 1, 0), cp_lk_pal4.hover, cp.mint, ink)
             text "Mono" { at: 785, 536; anchor: center; size: 12; weight: 600; color: if(lock_pal == 4, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_pal4 { from: 756, 522; size: 58, 28; corner: 14; cursor: pointer; label: "Monochrome mask palette" }
             on press cp_lk_pal4 { emit ui_sound; lock_pal = 4 }
 
-            box { from: 250, 572; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 572, 570, 62)
             text "Lock screen extras" { at: 266, 582; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "Media pill and power." { at: 266, 600; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 560, 588; size: 96, 28; corner: 14; color: if(lock_media, cp.mint, cp.track); opacity: if(lock_media, 22%, 80%) }
+            CpPill(560, 588, 96, 28, if(lock_media, 1, 0), cp_lk_media.hover, cp.mint, ink)
             text "Media" { at: 608, 602; anchor: center; size: 13; weight: 600; color: if(lock_media, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_media { from: 560, 588; size: 96, 28; corner: 14; cursor: pointer; label: "Media pill" }
             on press cp_lk_media { emit ui_sound; lock_media = not lock_media }
-            box { from: 664, 588; size: 96, 28; corner: 14; color: if(lock_power, cp.mint, cp.track); opacity: if(lock_power, 22%, 80%) }
+            CpPill(664, 588, 96, 28, if(lock_power, 1, 0), cp_lk_power.hover, cp.mint, ink)
             text "Power" { at: 712, 602; anchor: center; size: 13; weight: 600; color: if(lock_power, cp.mint, ink); family: "Space Grotesk" }
             zone box cp_lk_power { from: 664, 588; size: 96, 28; corner: 14; cursor: pointer; label: "Power buttons" }
             on press cp_lk_power { emit ui_sound; lock_power = not lock_power }
 
-            box { from: 250, 638; size: 570, 68; corner: 12; color: ink; opacity: 3% }
-            box { from: 266, 652; size: 150, 36; corner: 18; color: cp.mint; opacity: 80% + 20% * cp_lk_now.hover }
-            text "Lock now" { at: 341, 670; anchor: center; size: 13; weight: 700; color: cp.card; family: "Space Grotesk" }
+            CpCard(250, 638, 570, 68)
+            CpPill(266, 652, 150, 36, 1, cp_lk_now.hover, cp.mint, ink)
+            text "Lock now" { at: 341, 670; anchor: center; size: 13; weight: 700; color: cp.mint; family: "Space Grotesk" }
             zone box cp_lk_now { from: 266, 652; size: 150, 36; corner: 18; cursor: pointer; label: "Lock now" }
             on press cp_lk_now { emit ui_sound; emit lock_now }
-            box { from: 430, 652; size: 150, 36; corner: 18; color: ink; opacity: 6% + 8% * cp_lk_test.hover }
+            CpPill(430, 652, 150, 36, 0, cp_lk_test.hover, cp.mint, ink)
             text "Test lock" { at: 505, 670; anchor: center; size: 13; weight: 700; color: ink; family: "Space Grotesk" }
             zone box cp_lk_test { from: 430, 652; size: 150, 36; corner: 18; cursor: pointer; label: "Test the lock safely" }
             on press cp_lk_test { emit ui_sound; emit lock_test }
@@ -812,23 +962,19 @@ part ConfigPanel {
         group {
             show: settings_page == 8
 
-            box { from: 250, 176; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 176, 570, 62)
             text "Lock after" { at: 266, 186; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "Start the lock screen after this much inactivity." { at: 266, 204; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 520, 220; size: 200, 6; corner: 3; color: ink; opacity: 12% }
-            box { from: 520, 220; size: 200 * cp.idle_lock_pct, 6; corner: 3; color: cp.mint }
-            ellipse { at: 520 + 200 * cp.idle_lock_pct, 223; radius: 6; color: cp.mint }
+            CpSlider(520, 223, 200, cp.idle_lock_pct, cp_idle_lock.hover, cp.mint, ink, cp.track)
             text idle_lock_t { at: 820, 223; anchor: right center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_idle_lock { from: 510, 208; size: 240, 30; cursor: pointer; label: "Lock after" }
             on press cp_idle_lock { idle_lock_i = clamp(round((pointer.x - 520) / 200 * 16), 0, 16) }
             on drag cp_idle_lock { idle_lock_i = clamp(round((pointer.x - 520) / 200 * 16), 0, 16) }
 
-            box { from: 250, 242; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 242, 570, 62)
             text "Screen off after" { at: 266, 252; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "Turn the monitors off after this much inactivity." { at: 266, 270; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            box { from: 520, 286; size: 200, 6; corner: 3; color: ink; opacity: 12% }
-            box { from: 520, 286; size: 200 * cp.idle_off_pct, 6; corner: 3; color: cp.mint }
-            ellipse { at: 520 + 200 * cp.idle_off_pct, 289; radius: 6; color: cp.mint }
+            CpSlider(520, 289, 200, cp.idle_off_pct, cp_idle_off.hover, cp.mint, ink, cp.track)
             text idle_off_t { at: 820, 289; anchor: right center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_idle_off { from: 510, 274; size: 240, 30; cursor: pointer; label: "Screen off after" }
             on press cp_idle_off { idle_off_i = clamp(round((pointer.x - 520) / 200 * 16), 0, 16) }
@@ -841,14 +987,14 @@ part ConfigPanel {
         group {
             show: settings_page == 9
 
-            box { from: 250, 176; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 176, 570, 62)
             text "Weather city" { at: 266, 186; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "The centre panel asks Open-Meteo for this city; no API key." { at: 266, 204; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
 
-            box { from: 250, 244; size: 570, 62; corner: 12; color: ink; opacity: 3% }
+            CpCard(250, 244, 570, 62)
             input weather_city { at: 266, 262; width: 460; size: 17; color: ink; family: "Noto Sans CJK SC"; placeholder: "City name, for example Hangzhou" }
-            box { from: 744, 258; size: 68, 34; corner: 17; color: cp.mint; opacity: 82% + 18% * cp_weather_apply.hover }
-            text "Apply" { at: 778, 275; anchor: center; size: 13; weight: 700; color: cp.card; family: "Space Grotesk" }
+            CpPill(744, 258, 68, 34, 1, cp_weather_apply.hover, cp.mint, ink)
+            text "Apply" { at: 778, 275; anchor: center; size: 13; weight: 700; color: cp.mint; family: "Space Grotesk" }
             zone box cp_weather_apply { from: 744, 258; size: 68, 34; corner: 17; cursor: pointer; label: "Apply weather city" }
             on press cp_weather_apply { emit ui_sound; emit weather_apply }
 
