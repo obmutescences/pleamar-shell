@@ -159,11 +159,19 @@ def blur(raw_s: str, width_s: str, height_s: str, blur_s: str):
         "-extent",
         f"{width}x{height}",
     ])
-    tmp = target.with_name(f"{target.name}.{os.getpid()}.tmp")
+    # Keep a JPEG suffix on the temporary file.  ImageMagick chooses the
+    # encoder from the output name; a plain `.tmp` suffix makes it reject the
+    # write as an unknown format, and the caller then falls back to the sharp
+    # PNG.  The final rename is still atomic.
+    tmp = target.with_name(f".{target.stem}.{os.getpid()}.tmp.jpg")
     args.extend(["-quality", "88", str(tmp)])
     try:
         proc = subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=25)
         if proc.returncode != 0 or not tmp.is_file() or tmp.stat().st_size == 0:
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
             return 3
         os.replace(tmp, target)
     except (OSError, subprocess.SubprocessError):

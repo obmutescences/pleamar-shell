@@ -23,6 +23,7 @@ scene WindowKeys {
             size: 6
             opacity: 0
             color: #000000
+            passive: true
         }
         zone box hit { from: 0, 0; size: 8, 8; label: "Window picker keys" }
     }

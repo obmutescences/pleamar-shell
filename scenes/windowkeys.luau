@@ -3,7 +3,6 @@
 --  itself asks for none.
 local parent = "island"
 local ready = false
-local last = ""
 
 local function send(cmd)
     local ok, err = pcall(sys.call, "say", parent, cmd)
@@ -13,30 +12,16 @@ end
 run("sh", { "-c", 'printf %s "${PLEAMAR_WINDOW_PARENT:-island}"' }, function(out)
     local p = tostring(out or ""):gsub("%s+$", "")
     if p ~= "" then parent = p end
-    after(250, function()
+    after(50, function()
         ready = true
         fact.ready = true
     end)
 end)
 
---  The input owns the text; forward only the new characters, then empty the
---  helper buffer so the next batch starts clean.
-on("text:buffer", function()
-    if not ready then return end
-    local value = tostring(text.buffer or "")
-    if value == last then return end
-    local added = value:sub(#last + 1)
-    last = value
-    for ch in added:gmatch("[A-Za-z]") do
-        send("emit winpicker_key " .. ch)
-    end
-    if value ~= "" then
-        text.buffer = ""
-        last = ""
-    end
-end)
+
 
 on("key_down", function(name)
+    if not ready then return end
     name = tostring(name or "")
     if name == "Escape" or name == "Return" then
         send("emit winpicker_close")
@@ -46,6 +31,17 @@ on("key_down", function(name)
         run("sh", { "-c", "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%- 2>/dev/null || true" })
     elseif name == "XF86AudioMute" then
         run("sh", { "-c", "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle 2>/dev/null || true" })
+    end
+end)
+
+--  `key` is delivered for every key, even one an input field consumed.
+--  `key_down` is not: a non-passive field swallows the letter before it.
+--  Send the text itself so the parent needs no event-payload parsing.
+on("key", function(name)
+    if not ready then return end
+    name = tostring(name or "")
+    if #name == 1 and name:match("[A-Za-z]") then
+        send("text winpicker_key " .. name)
     end
 end)
 

@@ -609,6 +609,9 @@ function M.start(layout)
         anim_serial = 0,
         capture_serial = 0,
         capture_done = false,
+        rows_ready = false,
+        animation_started = false,
+        animation_pending = false,
         bg_serial = 0,
         opening = false,
         previews = {},
@@ -706,15 +709,6 @@ function M.start(layout)
             --  opening and closing so the close is the exact reverse.
             local e = t * t * (3 - 2 * t)
             local nextv = clamp(start + (target - start) * e, 0, 1)
-            --  Do not finish the entrance before the previews exist: hold at
-            --  92% (the cards are already nearly in place) until the helper
-            --  answers, then let the last 8% land.  The cap keeps a broken
-            --  helper from freezing the picker.
-            if target >= 0.99 and not win_pick.capture_done and nextv >= 0.92 and elapsed < duration + 1600 then
-                fact.winpicker_progress = 0.92
-                after(16, step)
-                return
-            end
             fact.winpicker_progress = nextv
             if t < 1 then
                 after(16, step)
@@ -725,12 +719,28 @@ function M.start(layout)
         step()
     end
 
+    local function win_start_animation()
+        if win_pick.animation_started or win_pick.animation_pending
+            or not win_pick.rows_ready then return end
+        if not truthy(fact.winpicker_open) then return end
+        -- Start animation immediately when rows are ready; previews can load later
+        win_pick.animation_pending = true
+        after(80, function()
+            win_pick.animation_pending = false
+            if win_pick.animation_started or not win_pick.rows_ready
+                or not truthy(fact.winpicker_open) then return end
+            win_pick.animation_started = true
+            win_animate(1)
+        end)
+    end
+
     local function win_close(focus_id)
         if not truthy(fact.winpicker_open) and number(fact.winpicker_progress, 0) <= 0.001 then
             return
         end
         fact.winpicker_open = false
         stop_windowkeys()
+        text.winpicker_key = ""
         win_pick.prefix = ""
         win_pick.prefix_serial = win_pick.prefix_serial + 1
         win_update_hint()
@@ -808,7 +818,10 @@ function M.start(layout)
                 local id, path = line:match("^([^\t]+)\t(.+)$")
                 if id and path then paths[id] = path end
             end
-            if next(paths) == nil then return end
+            if next(paths) == nil then
+                win_start_animation()
+                return
+            end
             --  The helper may finish before the niri window query.  Keep the
             --  paths so the rows can pick them up when they are made.
             win_pick.previews = paths
@@ -818,7 +831,9 @@ function M.start(layout)
                     row.has_pic = true
                 end
             end
-            if #win_pick.rows > 0 then model.win_cards = win_pick.rows end
+            if #win_pick.rows > 0 then
+                model.win_cards = win_pick.rows
+            end
         end)
     end
 
@@ -836,6 +851,9 @@ function M.start(layout)
         win_pick.prefix_serial = win_pick.prefix_serial + 1
         win_pick.capture_serial = win_pick.capture_serial + 1
         win_pick.capture_done = false
+        win_pick.rows_ready = false
+        win_pick.animation_started = false
+        win_pick.animation_pending = false
         win_pick.suppress_nt_until = os.time() + 15
         fact.winpicker_open = true
         start_windowkeys()
@@ -907,7 +925,8 @@ function M.start(layout)
             fact.winpicker_count = #win_pick.rows
             model.win_cards = win_pick.rows
             win_update_hint()
-            win_animate(1)
+            win_pick.rows_ready = true
+            win_start_animation()
         end)
     end
 
@@ -968,10 +987,12 @@ function M.start(layout)
     on("ipc_open_windows", function() win_open() end)
     on("winpicker_close", function() win_close(nil) end)
     on("winpicker_pick", function(index) win_pick_at(index) end)
-    on("winpicker_key", function(ch)
+    on("text:winpicker_key", function()
+        local typed = tostring(text.winpicker_key or "")
+        if typed == "" then return end
+        text.winpicker_key = ""
         if not truthy(fact.winpicker_open) then return end
-        local key = tostring(ch or "")
-        if #key == 1 then win_handle_letter(key) end
+        for ch in typed:upper():gmatch("[A-Z]") do win_handle_letter(ch) end
     end)
     on("fact:winpicker_size", function() save() end)
     on("fact:winpicker_cols", function() save() end)

@@ -53,8 +53,11 @@ part WindowPicker {
                 from: 0, 0; size: w, h; corner: 18
                 color: mix(panel_bg, primary, 0.10 + 0.34 * hot)
                 opacity: 94%
-                glass: if(glass_on, 100%, 0%)
-                frost: glass_frost / 100
+                //  A lens on every moving card is the expensive part of the
+                //  reveal.  Let the cards settle first, then restore the
+                //  configured glass/frost for the resting picker.
+                glass: if(glass_on and winpicker_progress > 0.98, 100%, 0%)
+                frost: if(glass_on and winpicker_progress > 0.98, glass_frost / 100, 0%)
                 shine: pointer
             }
 
@@ -119,9 +122,15 @@ part WindowPicker {
         zone box wp_shield { from: 0, 0; size: wp.screen_w, wp.screen_h; active: winpicker_open; label: "Close window picker" }
         on press wp_shield { emit winpicker_close }
 
-        //  Blur-only backdrop: a pre-blurred desktop screenshot, no glass
-        //  and no lens.  Keeping glass and blur together made niri's
-        //  compositor blur fight the lens pass, which flickered.
+        //  The pre-blurred desktop image covers this fallback tint as soon as
+        //  the capture job completes.  Keep the fallback opaque so a failed
+        //  capture never exposes a sharp desktop behind the cards.
+        body {
+            color: mix(deep, primary, 0.16)
+            opacity: 84%
+            glass: 0
+            box { from: 0, 0; size: wp.screen_w, wp.screen_h }
+        }
         image win_bg.0.picture { at: 0, 0; size: wp.screen_w, wp.screen_h; fit: cover; show: win_bg.count > 0 }
 
         group {
