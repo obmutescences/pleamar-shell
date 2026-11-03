@@ -58,12 +58,11 @@ part WindowPicker {
                 shine: pointer
             }
 
-            //  The preview is the card's top face: edge to edge, with exactly
-            //  the same rounded top corners.  The key cap is outside this clip
-            //  so a third of it can hang above the card.
+            //  The preview is the card's top face: edge to edge.  The helper
+            //  gives the PNG transparent rounded corners, so no clip pass is
+            //  needed; the key cap can hang above the card.
             group {
-                clip inset 0 box { from: 0, 0; size: w, thumb; corner: 18 }
-                box { from: 0, 0; size: w, thumb; color: mix(panel_bg, primary, 0.16); opacity: 96% }
+                box { from: 0, 0; size: w, thumb; corner: 18; color: mix(panel_bg, primary, 0.16); opacity: 96% }
                 text "{upper(app)}" { at: w / 2, thumb / 2 - 4; anchor: center; size: 12; weight: 700; color: primary; opacity: 62%; width: w - 36; lines: 1; align: center; family: "Space Grotesk" }
                 text "PREVIEW" { at: w / 2, thumb / 2 + 14; anchor: center; size: 7.5; weight: 700; color: faint; opacity: 45%; family: "Space Grotesk" }
                 image picture { at: 0, 0; size: w, thumb; fit: cover; show: has_pic }
@@ -113,7 +112,7 @@ part WindowPicker {
         anchor: top_left
         level: overlay
         open: winpicker_open or winpicker_progress > 0.01
-        rate: 120, 30 while quiet
+        rate: 60, 30 while quiet
         //  This is the only surface of the picker and it asks for the keyboard
         //  itself.  The field is invisible; it exists so letters, Escape and
         //  Return reach the scene without depending on a second helper process.
@@ -141,15 +140,11 @@ part WindowPicker {
             box { from: 0, 0; size: wp.screen_w, wp.screen_h }
         }
 
-        box { from: 46, 114; size: wp.screen_w - 92, 64; corner: 16; color: deep; opacity: 52% }
         group {
             z: 100
             opacity: min(1, winpicker_progress * 4)
-            text "WINDOWS" { at: 54, 132; anchor: left center; size: 10; weight: 700; color: primary; family: "Space Grotesk" }
-            text "Choose a window · type its letter" { at: 54, 152; anchor: left center; size: 13; color: ink; family: "Space Grotesk" }
-            text number(winpicker_count, 0, "") { at: wp.screen_w - 54, 132; anchor: right center; size: 18; weight: 700; color: primary; family: "Space Grotesk" }
-            text winpicker_hint { at: wp.screen_w - 54, 152; anchor: right center; size: 10; color: faint; family: "Space Grotesk" }
-            line { from: 54, 174; to: wp.screen_w - 54, 174; width: 1; color: ink; opacity: 10% }
+            text "WINDOWS" { at: wp.screen_w / 2 - 8, 132; anchor: right center; size: 12; weight: 700; color: primary; family: "Space Grotesk" }
+            text number(winpicker_count, 0, "") { at: wp.screen_w / 2 + 8, 132; anchor: left center; size: 18; weight: 700; color: primary; family: "Space Grotesk" }
         }
 
         repeat k in 0..31 {

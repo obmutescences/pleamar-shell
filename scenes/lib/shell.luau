@@ -709,6 +709,8 @@ function M.start(layout)
                 model.win_cards = {}
                 fact.winpicker_count = 0
                 text.winpicker_hint = "Type a letter to jump"
+                fact.quiet = not (truthy(fact.wave_on) and truthy(fact.music_on))
+                    and not truthy(fact.panel_open) and not truthy(fact.launch_open)
             end
         end)
     end
@@ -801,6 +803,7 @@ function M.start(layout)
         win_pick.capture_done = false
         win_pick.suppress_nt_until = os.time() + 15
         fact.winpicker_open = true
+        fact.quiet = false
         fact.winpicker_progress = 0
         fact.winpicker_count = 0
         fact.winpicker_fx = win_choose_fx()
@@ -1377,10 +1380,13 @@ function M.start(layout)
     local function recompute_quiet()
         local playing = truthy(fact.wave_on) and truthy(fact.music_on)
         local open = truthy(fact.panel_open) or truthy(fact.launch_open)
+            or truthy(fact.winpicker_open) or number(fact.winpicker_progress, 0) > 0.01
         local q = (not playing) and (not open)
         if truthy(fact.quiet) ~= q then fact.quiet = q end
     end
     recompute_quiet()
+    on("fact:winpicker_open", function() recompute_quiet() end)
+    on("fact:winpicker_progress", function() recompute_quiet() end)
 
     --  A bar that appears under the pointer can receive the tail of a click
     --  meant for the window beneath it.  The scene takes its own presses only

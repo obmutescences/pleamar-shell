@@ -141,6 +141,7 @@ def clean_cliphist(before_ids, captured_hashes):
 
 
 def thumbnail(source, target):
+    mask = f"roundrectangle 0,0 {THUMB_W - 1},{THUMB_H - 1} 22,22"
     p = run(
         [
             "magick",
@@ -152,6 +153,22 @@ def thumbnail(source, target):
             "center",
             "-extent",
             f"{THUMB_W}x{THUMB_H}",
+            "(",
+            "-size",
+            f"{THUMB_W}x{THUMB_H}",
+            "xc:none",
+            "-fill",
+            "white",
+            "-draw",
+            mask,
+            ")",
+            "-gravity",
+            "northwest",
+            "-alpha",
+            "set",
+            "-compose",
+            "DstIn",
+            "-composite",
             "-quality",
             "88",
             str(target),
