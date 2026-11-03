@@ -286,7 +286,7 @@ part Common {
     text winpicker_letters = "asdfghjkl"
     text winpicker_hint = "Type a letter to jump"
     model win_bg max 1 {
-        picture: image 0, 0
+        picture: image 3840, 2160
     }
     model win_cards max 32 {
         id: text; title: text; app: text; code: text

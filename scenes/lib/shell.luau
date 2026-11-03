@@ -575,7 +575,11 @@ function M.start(layout)
         end
     end
     local function start_windowkeys()
-        if window_key_helper or shell_root == "" or not truthy(fact.winpicker_open) then return end
+        if window_key_helper or not truthy(fact.winpicker_open) then return end
+        if shell_root == "" then
+            log("window key helper: PLEAMAR_SHELL_ROOT is empty")
+            return
+        end
         local parent = string.lower(tostring(text.layout or "island"))
         local cmd = "PLEAMAR_WINDOW_PARENT=" .. sq(parent)
             .. " exec " .. sq(shell_root .. "/bin/pleamar-windowkeys")
@@ -835,6 +839,7 @@ function M.start(layout)
         win_pick.suppress_nt_until = os.time() + 15
         fact.winpicker_open = true
         start_windowkeys()
+        after(400, start_windowkeys)
         fact.quiet = false
         fact.winpicker_progress = 0
         fact.winpicker_count = 0
@@ -925,6 +930,7 @@ function M.start(layout)
         local w = math.floor(number(fact.winpicker_screen_w, 2560))
         local h = math.floor(number(fact.winpicker_screen_h, 1440))
         if helper == "" then
+            log("window backdrop: PLEAMAR_SHELL_ROOT is empty")
             win_pick.opening = false
             win_open_now()
             return
@@ -935,6 +941,9 @@ function M.start(layout)
                 return
             end
             local raw = tostring(out or ""):match("^([^\n]+)")
+            if not (raw and raw:sub(1, 1) == "/") then
+                log("window backdrop: screen capture returned no path")
+            end
             local function show(path)
                 win_pick.opening = false
                 if path and path:sub(1, 1) == "/" then model.win_bg = { { picture = path } } end
