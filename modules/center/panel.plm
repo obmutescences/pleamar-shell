@@ -959,21 +959,17 @@ part CenterPanel {
                         text "Run an app that publishes a StatusNotifier item." { at: 186, 356; anchor: center; size: 10; color: faint; width: 232; lines: 2; align: center; family: "Space Grotesk" }
                     }
 
-                    //  Middle: the hovered app's actions.
-                    body {
-                        color: ct.card2
-                        opacity: 1% * max(glass_tint, 64)
+                    //  Middle: the hovered app's actions.  Same card recipe as
+                    //  the left pane: flat tint, one inner rim, no lens.
+                    box { from: 352, 160; size: 420, 488; corner: 20; color: #000000; opacity: 12% }
+                    box {
+                        from: 352, 160; size: 420, 488; corner: 20
+                        color: ct.card2; opacity: 58%
                         glass: if(glass_on, 100%, 0%)
-                        lens: glass_on and glass_bend
                         frost: glass_frost / 100
-                        refraction: glass_refr
-                        dispersion: glass_disp
-                        dome: glass_dome
-                        milk: glass_milk
                         shine: pointer
-                        shadow: 0, 10, 28, 24%, glass_shadow
-                        box { from: 352, 160; size: 420, 488; corner: 20 }
                     }
+                    box { from: 352, 160; size: 420, 488; corner: 20; stroke: 1; color: ink; opacity: 12% }
                     text "ACTIONS" { at: 372, 182; anchor: left center; size: 9; weight: 700; color: ct.secondary; family: "Space Grotesk" }
                     text tray_items[tray_menu_row].name { at: 372, 200; anchor: left center; size: 12; weight: 600; color: ink; width: 328; lines: 1; show: tray_menu_open; family: "Space Grotesk" }
                     text "Choose an app" { at: 372, 200; anchor: left center; size: 12; weight: 600; color: faint; width: 328; lines: 1; show: not tray_menu_open; family: "Space Grotesk" }
@@ -1006,19 +1002,15 @@ part CenterPanel {
                     //  Right: a submenu, in its own glass card.  It stays put
                     //  while the pointer crosses the gap, so the child rows
                     //  never slide away from the cursor.
-                    box { from: 788, 166; size: 296, 488; corner: 20; color: #000000; opacity: 12% }
+                    box { from: 788, 160; size: 296, 488; corner: 20; color: #000000; opacity: 12% }
                     box {
                         from: 788, 160; size: 296, 488; corner: 20
-                        color: ct.card2; opacity: 54%
+                        color: ct.card2; opacity: 58%
                         glass: if(glass_on, 100%, 0%)
-                        lens: glass_on and glass_bend
                         frost: glass_frost / 100
-                        refraction: glass_refr
-                        dispersion: glass_disp
-                        dome: glass_dome
-                        milk: glass_milk
                         shine: pointer
                     }
+                    box { from: 788, 160; size: 296, 488; corner: 20; stroke: 1; color: ink; opacity: 12% }
                     text "SUBMENU" { at: 808, 182; anchor: left center; size: 9; weight: 700; color: ct.secondary; family: "Space Grotesk" }
 
                     repeat n in 0..12 {
