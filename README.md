@@ -362,11 +362,14 @@ experiments/probe.plm        1×1 基线探针
   Frame 布局不再显示这条 bar。
 - **WINDOWS**：窗口 picker。Thumbnail size 140–420px、Per row 2–8、
   Reveal（Fade / Rise / Zoom / Drop / Unfold / Spin / Random）、
-  Duration 160–900ms、Background glass 0–100%、Background blur 0–100%，
-  以及参与选窗的字母（A–Z、去重）。默认每个窗口一个字母；窗口数超过
-  配置字母时才切换为随机双字母；字母组合容量不足时退回 A–Z。窗口预览通过 niri `screenshot-window` 生成，
-  多张并行抓取，动画最后 8% 会等预览就绪；截图前后恢复剪贴板并在 Pleamar
-  内抑制 niri 的 “Screenshot captured” toast。
+  Duration 160–900ms、Background blur 0–100%，以及参与选窗的字母
+  （A–Z、去重）。默认每个窗口一个字母；窗口数超过配置字母时才切换为
+  随机双字母；字母组合容量不足时退回 A–Z。背景是打开前抓取的桌面截图，
+  先按 blur 值预模糊再映射，不使用 glass 或 lens，避免与 niri 的模糊叠加
+  闪烁。窗口预览通过 niri `screenshot-window` 生成，多张并行抓取，动画
+  最后 8% 会等预览就绪；截图前后恢复剪贴板并在 Pleamar 内抑制 niri 的
+  “Screenshot captured” toast。键盘由独立的单 surface `windowkeys` helper
+  接管，向主场景转发字母、Esc 和 Enter。
 - **LOCK**：锁屏外观。Blur（Light/Medium/Heavy）、12/24 小时与秒、
   Clock size、日期格式、密码遮罩（Shapes/Dots/Stars/Special）、遮罩调色板、
   Media pill / Power buttons；`Lock now` 与 `Test lock`。Mask colour 只控制

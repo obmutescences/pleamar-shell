@@ -115,7 +115,6 @@ part ConfigPanel {
     let cp.win_size_pct = clamp((winpicker_size - 140) / 280, 0, 1)
     let cp.win_cols_pct = clamp((winpicker_cols - 2) / 6, 0, 1)
     let cp.win_ms_pct = clamp((winpicker_ms - 160) / 740, 0, 1)
-    let cp.win_bg_glass_pct = clamp(winpicker_bg_glass / 100, 0, 1)
     let cp.win_bg_blur_pct = clamp(winpicker_bg_blur / 100, 0, 1)
     //  IDLE_STEPS in scenes/lib/shell.luau has 17 entries (0, 5 s, 10 s, 30 s,
     //  then minutes to 2 h); the slider addresses its last index, 16.
@@ -808,25 +807,17 @@ part ConfigPanel {
             input winpicker_letters { at: 520, 478; width: 196; size: 14; color: ink; family: "Space Grotesk"; placeholder: "asdfghjkl" }
             text "A–Z · unique" { at: 820, 478; anchor: right center; size: 9; color: faint; opacity: 65%; family: "Space Grotesk" }
 
-            CpCard(250, 526, 570, 62)
-            text "Background glass" { at: 266, 536; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "Glass veil behind the whole picker; 0% is a dark scrim." { at: 266, 554; anchor: left center; size: 14; color: faint; width: 540; family: "Space Grotesk" }
-            CpSlider(520, 573, 200, cp.win_bg_glass_pct, cp_win_bg_glass.hover, cp.mint, ink, cp.track)
-            text number(winpicker_bg_glass, 0, "%") { at: 820, 573; anchor: right center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
-            zone box cp_win_bg_glass { from: 510, 558; size: 240, 30; corner: 15; cursor: pointer; label: "Window picker background glass" }
-            on press cp_win_bg_glass { winpicker_bg_glass = clamp(round((pointer.x - 520) / 200 * 100), 0, 100) }
-            on drag cp_win_bg_glass { winpicker_bg_glass = clamp(round((pointer.x - 520) / 200 * 100), 0, 100) }
 
-            CpCard(250, 592, 570, 62)
-            text "Background blur" { at: 266, 602; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "How soft the backdrop is under the glass." { at: 266, 620; anchor: left center; size: 14; color: faint; width: 540; family: "Space Grotesk" }
-            CpSlider(520, 639, 200, cp.win_bg_blur_pct, cp_win_bg_blur.hover, cp.mint, ink, cp.track)
-            text number(winpicker_bg_blur, 0, "%") { at: 820, 639; anchor: right center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
-            zone box cp_win_bg_blur { from: 510, 624; size: 240, 30; corner: 15; cursor: pointer; label: "Window picker background blur" }
+            CpCard(250, 526, 570, 62)
+            text "Background blur" { at: 266, 536; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "Blur of the wallpaper behind the picker; no glass layer." { at: 266, 554; anchor: left center; size: 14; color: faint; width: 540; family: "Space Grotesk" }
+            CpSlider(520, 573, 200, cp.win_bg_blur_pct, cp_win_bg_blur.hover, cp.mint, ink, cp.track)
+            text number(winpicker_bg_blur, 0, "%") { at: 820, 573; anchor: right center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_win_bg_blur { from: 510, 558; size: 240, 30; corner: 15; cursor: pointer; label: "Window picker background blur" }
             on press cp_win_bg_blur { winpicker_bg_blur = clamp(round((pointer.x - 520) / 200 * 100), 0, 100) }
             on drag cp_win_bg_blur { winpicker_bg_blur = clamp(round((pointer.x - 520) / 200 * 100), 0, 100) }
 
-            text "Type the key(s) while the picker is open; Esc closes it. Clicking a card also jumps." { at: 266, 680; anchor: left center; size: 13; color: faint; opacity: 75%; width: 540; lines: 1; family: "Space Grotesk" }
+            text "Type the key(s) while the picker is open; Esc closes it. Clicking a card also jumps." { at: 266, 614; anchor: left center; size: 13; color: faint; opacity: 75%; width: 540; lines: 1; family: "Space Grotesk" }
         }
 
         //  ── MOTION ───────────────────────────────────────────────────────

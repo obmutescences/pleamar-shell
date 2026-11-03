@@ -105,40 +105,24 @@ part WindowPicker {
     let wp.grid_h = wp.rows * wp.card_h + wp.gap * (wp.rows - 1)
     let wp.gx = (wp.screen_w - wp.grid_w) / 2
     let wp.gy = wp.margin + wp.header + max(0, (wp.avail_h - wp.grid_h) / 2)
-    prop wp_focus = 0 ~quick
-
     surface win_picker {
         size: full, full
         anchor: top_left
         level: overlay
         open: winpicker_open or winpicker_progress > 0.01
         rate: 60, 30 while quiet
-        //  This is the only surface of the picker and it asks for the keyboard
-        //  itself.  The field is invisible; it exists so letters, Escape and
-        //  Return reach the scene without depending on a second helper process.
-        keyboard: exclusive
-
-        input winpicker_typed {
-            at: 0, 0
-            width: 1
-            size: 1
-            opacity: 0
-            color: #000000
-        }
+        //  The main scene has many layer surfaces and niri does not give it
+        //  layer keyboard focus.  The single-surface windowkeys helper owns
+        //  the keyboard and forwards letters/Escape/Return.
+        keyboard: none
 
         zone box wp_shield { from: 0, 0; size: wp.screen_w, wp.screen_h; active: winpicker_open; label: "Close window picker" }
         on press wp_shield { emit winpicker_close }
 
-        //  The whole backdrop is glass/blur, tinted with the wallpaper palette
-        //  instead of a plain black sheet.
-        body {
-            color: mix(deep, primary, 0.16)
-            opacity: 84% * min(1, winpicker_progress * 3)
-            glass: if(glass_on, winpicker_bg_glass / 100, 0)
-            lens: glass_on and winpicker_bg_glass > 0 and winpicker_bg_blur > 0
-            frost: winpicker_bg_blur / 100
-            box { from: 0, 0; size: wp.screen_w, wp.screen_h }
-        }
+        //  Blur-only backdrop: a pre-blurred desktop screenshot, no glass
+        //  and no lens.  Keeping glass and blur together made niri's
+        //  compositor blur fight the lens pass, which flickered.
+        image win_bg.0.picture { at: 0, 0; size: wp.screen_w, wp.screen_h; fit: cover; show: win_bg.count > 0 }
 
         group {
             z: 100
@@ -164,10 +148,5 @@ part WindowPicker {
             text "Open an application, then ask again." { at: wp.screen_w / 2, wp.screen_h / 2 + 12; anchor: center; size: 11; color: faint; family: "Space Grotesk" }
         }
 
-        on change winpicker_open while winpicker_open { wp_focus: 1 after 120ms }
-        on change winpicker_open while not winpicker_open { wp_focus: 0 }
-        on change wp_focus > 0.05 while winpicker_open { focus winpicker_typed }
-        on key Escape while winpicker_open { emit winpicker_close }
-        on key Return while winpicker_open { emit winpicker_close }
     }
 }

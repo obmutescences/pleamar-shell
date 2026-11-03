@@ -564,6 +564,33 @@ function M.start(layout)
         end
     end
 
+    --  The picker surface cannot keep layer keyboard focus in this multi-
+    --  surface scene, so a one-surface process owns the keyboard and sends
+    --  letters and Escape back through the scene socket.
+    local window_key_helper = nil
+    local function stop_windowkeys()
+        if window_key_helper then
+            kill(window_key_helper, "term")
+            window_key_helper = nil
+        end
+    end
+    local function start_windowkeys()
+        if window_key_helper or shell_root == "" or not truthy(fact.winpicker_open) then return end
+        local parent = string.lower(tostring(text.layout or "island"))
+        local cmd = "PLEAMAR_WINDOW_PARENT=" .. sq(parent)
+            .. " exec " .. sq(shell_root .. "/bin/pleamar-windowkeys")
+        local mine
+        local ok, id = pcall(spawn, "sh", { "-c", cmd }, function() end, function()
+            if window_key_helper == mine then window_key_helper = nil end
+        end)
+        if ok then
+            window_key_helper = id
+            mine = id
+        else
+            log("window key helper could not start: " .. tostring(id))
+        end
+    end
+
     --  ── window picker ──────────────────────────────────────────────────
     --  niri already knows every toplevel; Pleamar's own `thumbnails` service
     --  does not produce pictures under niri, so bin/pleamar-window-previews
@@ -578,6 +605,8 @@ function M.start(layout)
         anim_serial = 0,
         capture_serial = 0,
         capture_done = false,
+        bg_serial = 0,
+        opening = false,
         previews = {},
         suppress_nt_until = 0,
     }
@@ -697,7 +726,7 @@ function M.start(layout)
             return
         end
         fact.winpicker_open = false
-        text.winpicker_typed = ""
+        stop_windowkeys()
         win_pick.prefix = ""
         win_pick.prefix_serial = win_pick.prefix_serial + 1
         win_update_hint()
@@ -709,6 +738,7 @@ function M.start(layout)
                 model.win_cards = {}
                 fact.winpicker_count = 0
                 text.winpicker_hint = "Type a letter to jump"
+                model.win_bg = {}
                 fact.quiet = not (truthy(fact.wave_on) and truthy(fact.music_on))
                     and not truthy(fact.panel_open) and not truthy(fact.launch_open)
             end
@@ -788,7 +818,8 @@ function M.start(layout)
         end)
     end
 
-    local function win_open()
+
+    local function win_open_now()
         if truthy(fact.winpicker_open) then return end
         if truthy(fact.panel_open) then fact.panel_open = false end
         if truthy(fact.launch_open) then fact.launch_open = false end
@@ -803,12 +834,12 @@ function M.start(layout)
         win_pick.capture_done = false
         win_pick.suppress_nt_until = os.time() + 15
         fact.winpicker_open = true
+        start_windowkeys()
         fact.quiet = false
         fact.winpicker_progress = 0
         fact.winpicker_count = 0
         fact.winpicker_fx = win_choose_fx()
         model.win_cards = {}
-        text.winpicker_typed = ""
         text.winpicker_hint = "Reading windows…"
 
         --  Start the screenshot job before asking niri for the window list.
@@ -875,15 +906,63 @@ function M.start(layout)
         end)
     end
 
+
+    --  Capture the desktop before the picker surface maps, then open.  The
+    --  raw screenshot keeps the windows visible while the blurred version is
+    --  being written; neither path uses glass or the compositor's blur.
+    local function win_open()
+        if truthy(fact.winpicker_open) or win_pick.opening then return end
+        if truthy(fact.panel_open) then fact.panel_open = false end
+        if truthy(fact.launch_open) then fact.launch_open = false end
+        if truthy(fact.nt_center) then fact.nt_center = false end
+        center.close()
+        stop_settingskeys()
+
+        win_pick.opening = true
+        win_pick.suppress_nt_until = os.time() + 15
+        model.win_bg = {}
+        local helper = shell_root ~= "" and (shell_root .. "/bin/pleamar-window-backdrop") or ""
+        local w = math.floor(number(fact.winpicker_screen_w, 2560))
+        local h = math.floor(number(fact.winpicker_screen_h, 1440))
+        if helper == "" then
+            win_pick.opening = false
+            win_open_now()
+            return
+        end
+        run("sh", { "-c", sq(helper) .. " capture 2>/dev/null" }, function(out)
+            if truthy(fact.winpicker_open) then
+                win_pick.opening = false
+                return
+            end
+            local raw = tostring(out or ""):match("^([^\n]+)")
+            local function show(path)
+                win_pick.opening = false
+                if path and path:sub(1, 1) == "/" then model.win_bg = { { picture = path } } end
+                win_open_now()
+            end
+            if not (raw and raw:sub(1, 1) == "/") then
+                show(nil)
+                return
+            end
+            --  Resolve the blur before the surface maps: the model is written
+            --  once, so no later row replacement can leave the sharp frame in
+            --  place (which is what happened with the first backdrop pass).
+            run("sh", { "-c", sq(helper) .. " blur " .. sq(raw) .. " " .. w .. " " .. h .. " " .. math.floor(clamp(number(fact.winpicker_bg_blur, 52), 0, 100)) .. " 2>/dev/null" }, function(blurred)
+                local path = tostring(blurred or ""):match("^([^\n]+)")
+                if not (path and path:sub(1, 1) == "/") then path = raw end
+                show(path)
+            end)
+        end)
+    end
+
+
     on("ipc_open_windows", function() win_open() end)
     on("winpicker_close", function() win_close(nil) end)
     on("winpicker_pick", function(index) win_pick_at(index) end)
-    on("text:winpicker_typed", function()
-        local typed = tostring(text.winpicker_typed or "")
-        if typed == "" then return end
-        text.winpicker_typed = ""
+    on("winpicker_key", function(ch)
         if not truthy(fact.winpicker_open) then return end
-        for ch in typed:upper():gmatch("[A-Z]") do win_handle_letter(ch) end
+        local key = tostring(ch or "")
+        if #key == 1 then win_handle_letter(key) end
     end)
     on("fact:winpicker_size", function() save() end)
     on("fact:winpicker_cols", function() save() end)
@@ -2360,6 +2439,9 @@ function M.start(layout)
     every(700, function()
         if truthy(fact.panel_open) and settings_key_helper then
             pcall(sys.call, "say", "settingskeys", "emit key_ping")
+        end
+        if truthy(fact.winpicker_open) and window_key_helper then
+            pcall(sys.call, "say", "windowkeys", "emit key_ping")
         end
     end)
 end

@@ -285,13 +285,16 @@ part Common {
     fact winpicker_bg_blur: number = 52
     text winpicker_letters = "asdfghjkl"
     text winpicker_hint = "Type a letter to jump"
-    text winpicker_typed = ""
+    model win_bg max 1 {
+        picture: image 0, 0
+    }
     model win_cards max 32 {
         id: text; title: text; app: text; code: text
         active: bool; has_pic: bool; picture: image 400, 250
     }
     event ipc_open_windows ->
     event winpicker_close ->
+    event winpicker_key ->
     event winpicker_pick ->
     event winpicker_set ->
     //  The launcher is a search, not an app list: rows carry what they need
