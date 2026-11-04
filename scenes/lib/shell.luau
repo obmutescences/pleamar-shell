@@ -88,6 +88,7 @@ function M.start(layout)
         wallpaper_transition_ms = WALL_TRANSITION_MS,
         snd_on = true,
         nt_pos = 1,
+        nt_drift = false,
         nt_snd_on = true,
         nt_sound = 1,
         nt_dnd = false,
@@ -215,6 +216,7 @@ function M.start(layout)
             number(saved.wallpaper_transition_ms, cfg.wallpaper_transition_ms), 50, 2000))
         if type(saved.snd_on) == "boolean" then cfg.snd_on = saved.snd_on end
         cfg.nt_pos = clamp(number(saved.nt_pos, cfg.nt_pos), 0, 1)
+        if type(saved.nt_drift) == "boolean" then cfg.nt_drift = saved.nt_drift end
         if type(saved.nt_snd_on) == "boolean" then cfg.nt_snd_on = saved.nt_snd_on end
         cfg.nt_sound = clamp(number(saved.nt_sound, cfg.nt_sound), 1, 8)
         if type(saved.nt_dnd) == "boolean" then cfg.nt_dnd = saved.nt_dnd end
@@ -292,6 +294,7 @@ function M.start(layout)
         text.wall_transition_name = WALL_TRANSITIONS[cfg.wallpaper_transition + 1] or "off"
         fact.snd_on = cfg.snd_on
         fact.nt_pos = cfg.nt_pos
+        fact.nt_drift = cfg.nt_drift
         fact.nt_snd_on = cfg.nt_snd_on
         fact.nt_sound = cfg.nt_sound
         fact.nt_dnd = cfg.nt_dnd
@@ -365,6 +368,7 @@ function M.start(layout)
             wallpaper_transition_ms = number(fact.wall_transition_ms, WALL_TRANSITION_MS),
             snd_on = truthy(fact.snd_on),
             nt_pos = number(fact.nt_pos, 1),
+            nt_drift = truthy(fact.nt_drift),
             nt_snd_on = truthy(fact.nt_snd_on),
             nt_sound = number(fact.nt_sound, 1),
             nt_dnd = truthy(fact.nt_dnd),
@@ -1494,18 +1498,12 @@ function M.start(layout)
     pcall(sys.call, "notifications.keep", true)
     nt_save_hist()
 
-    --  The toast anchor and the names shown by the settings page.
-    local function nt_set_anchor()
-        fact.nt_anchor = (number(fact.nt_pos, 1) == 0) and "top" or "top_right"
-        text.nt_pos_name = (number(fact.nt_pos, 1) == 0) and "Top center" or "Top right"
-    end
     local function nt_set_sound_name()
         local s = NT_SOUNDS[math.floor(number(fact.nt_sound, 1))] or NT_SOUNDS[1]
         text.nt_sound_name = s[2]
     end
-    nt_set_anchor()
     nt_set_sound_name()
-    after(500, function() nt_set_anchor(); nt_set_sound_name() end)
+    after(500, function() nt_set_sound_name() end)
 
     --  ── quiet: the scene only runs hot while the water can move ─────────
     local function recompute_quiet()
@@ -2196,7 +2194,10 @@ function M.start(layout)
     on("ui_sound", function() play_panel_sound() end)
     on("fact:nt_pos", function()
         cfg.nt_pos = clamp(number(fact.nt_pos, 1), 0, 1)
-        nt_set_anchor()
+        save()
+    end)
+    on("fact:nt_drift", function()
+        cfg.nt_drift = truthy(fact.nt_drift)
         save()
     end)
     on("fact:nt_sound", function()
@@ -2289,6 +2290,11 @@ function M.start(layout)
     end)
     on("nt_pos_set", function(v)
         fact.nt_pos = clamp(number(v, 1), 0, 1)
+    end)
+    on("nt_drift_toggle", function()
+        fact.nt_drift = not truthy(fact.nt_drift)
+        cfg.nt_drift = truthy(fact.nt_drift)
+        save()
     end)
     on("nt_test", function()
         run("sh", { "-c", "notify-send -a pleamar-shell 'Notification test' 'This is how a notification looks and sounds.'" }, function(_, code)

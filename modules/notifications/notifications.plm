@@ -19,12 +19,20 @@ part Notifications {
         nt_ring: 1 ~800ms after 30ms
         nt_sw: 0 ~16ms
         nt_sw: 1 ~2400ms after 450ms
-        //  A new toast always starts with a full rail, even if the previous
-        //  one was closed at zero.
+        //  A new toast always starts with a full rail, and a drift starts at
+        //  the left edge even if the previous one was closed halfway across.
         nt_fill: 1 ~1ms
+        nt_fly: 0 ~0ms
     }
     prop nt_p = 0 ~quick
     follow nt_p = nt_has
+    //  Drift: 0 at the left edge, 1 at the right.  It advances at the toast
+    //  countdown's rate, so a drift takes exactly `nt_secs` seconds; the
+    //  nt_new rule puts it back to 0 for each new card.  Urgent notifications
+    //  have no countdown but still drift over the same configured time, then
+    //  stay at the right until dismissed.  The settings switch gates it.
+    prop nt_fly = 0
+    spin nt_fly by if(nt_drift and nt_has and nt_fly < 1, 1 / max(nt_secs, 1), 0)
     //  The timer writes once every 50 ms; the spring moves the rail between
     //  those samples, so the countdown reads as one continuous drain.
     prop nt_fill = 1 ~quick
@@ -32,21 +40,43 @@ part Notifications {
     prop ntc_p = 0 ~gentle
     follow ntc_p = nt_center
 
-    //  The toast: one glass card under the bar, at the top centre or top right.  `nt_anchor` is a fact whose values are surface anchors.
+    //  The toast: one glass card under the bar.  The surface is the full
+    //  monitor width and the card itself is moved inside it: that is what lets
+    //  the Drift switch carry the same card from the left edge to the right
+    //  while Top center and Top right stay at fixed positions.  Only the card
+    //  has a zone, so the transparent rest of the strip still passes clicks
+    //  through.
     surface nt_toast {
-        size: 294, 112
-        anchor: nt_anchor
-        //  top, right, bottom, left: leave the bar 16 px of air below it
-        //  and pull the right-hand toast 16 px in from the screen edge.
-        margin: 56, 56, 0, 0
+        size: full, 112
+        anchor: top
+        //  Leave the bar 56 px of air below it; the card's x is set below.
+        margin: 56, 0, 0, 0
         level: overlay
         open: nt_has or nt_p > 0.01
-        rate: 120, 30 while quiet
+        //  Only a moving drift needs the full cadence.  A static toast keeps
+        //  the old quiet rate, and the strip drops back once it is closed.
+        rate: 120, 30 while quiet and not (nt_has and nt_drift)
 
-        zone box nt_toast_hit { from: 0, 0; size: 294, 112; active: nt_has; label: "Dismiss notification" }
+        let nt.w = 294
+        let nt.gap = 56
+        let nt.start = nt.gap
+        let nt.end = max(nt.start, nt_toast.width - nt.w - nt.gap)
+        //  In Drift, nt_fly is the exact countdown progress; reduced motion
+        //  places the card at the destination instead of sliding it.
+        let nt.fly = if(motion.reduced, 1, clamp(nt_fly, 0, 1))
+        let nt.x = if(nt_drift,
+            nt.start + (nt.end - nt.start) * nt.fly,
+            if(nt_pos == 0,
+                (nt_toast.width - nt.w) / 2,
+                nt.end))
+
+        group {
+            move: nt.x, 0
+
+        zone box nt_toast_hit { from: 0, 0; size: nt.w, 112; active: nt_has; label: "Dismiss notification" }
         on press nt_toast_hit { emit nt_close }
 
-        PanelPop(toast_fx, nt_p, 294, 112) {
+        PanelPop(toast_fx, nt_p, nt.w, 112) {
             //  A rounded clip: without it the full-screen lens draws its
             //  sampled backdrop as a square, which showed behind the card.
             clip inset 0 box { from: 0, 0; size: 294, 112; corner: 17 }
@@ -150,6 +180,7 @@ part Notifications {
             zone box nt_x { from: 384, 8; size: 28, 28; corner: 14; cursor: pointer; label: "Dismiss notification" }
             on press nt_x { emit nt_close }
             }
+        }
         }
     }
 

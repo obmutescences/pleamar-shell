@@ -36,7 +36,7 @@
 | bottom | 2560×150-200 | bottom | Frame 底边 + 底波形 | 46 |
 | launcher | 660×640 | center | 搜索（居中面板；IPC 可开） | 无 |
 | notif centre | 480×650 | bar 下方中间 | 通知历史 / DND / clear（IPC 可开） | 无 |
-| toast | 294×112 | bar 下方中间或右侧 | 通知 toast + 主色倒计时（原 420×160 的 70%） | 无 |
+| toast strip | full×112（卡片 294×112） | top | 通知 toast + 主色倒计时；卡片可居中、靠右或横向漂移（原 420×160 的 70%） | 无 |
 | wallpaper | full | background | skwd-wall v2（Nix 默认）/ swaybg 回退；独立进程，不是 Pleamar surface | 无 |
 
 - 永远不要常驻 2560×1440 的 Pleamar surface。壁纸交给 skwd-wall v2
@@ -623,8 +623,13 @@ Overview 的天气由 `bin/pleamar-weather` 获取：先通过 Nominatim 把设�
 - Pleamar 本身是 `org.freedesktop.Notifications` server；logic 用
   `sys.watch("notifications")` 收列表，`notifications.keep(true)` 保留，
   `notifications.dismiss/invoke/clear` 操作。
-- **Toast**：294×112 玻璃卡（原 420×160 的 70%，整体缩放），吸附在 bar 下；位置可选 **Top center**
-  （bar 正中间下方）或 **Top right**（bar 右端下方），不是屏幕中央。
+- **Toast**：294×112 玻璃卡（原 420×160 的 70%，整体缩放），吸附在 bar 下；Drift 关闭时
+  位置可选 **Top center**（bar 正中间下方）或 **Top right**（bar 右端下方）。
+  ALERTS 页的 **Drift left to right** 开关打开后，卡片保持同一套玻璃/图标/倒计时样式，
+  使用一条全宽、透明的 top strip 从左边缘滑到右边缘；滑行时间就是 **Toast countdown**
+  （`nt_secs`），普通通知到达右端时自动关闭，紧急通知到达右端后停住直到被关闭。
+  开关默认关闭。全宽 strip 只在 toast 打开时保持 120fps，关闭后降回 quiet 帧率；
+  透明区域没有 zone，点击会穿透。
   左侧是 app 图标；没有图标时画 Vitreus 风格的铅笔铃铛，并带一圈扩散
   ring 和铃铛/图标摆动。app 名称 11px、壁纸 secondary；标题 16px、
   壁纸 primary、最多两行；body 13px、faint 混向 ink、最多两行，并且用
@@ -636,7 +641,7 @@ Overview 的天气由 `bin/pleamar-weather` 获取：先通过 Nominatim 把设�
   由 `nt_fill` 弹簧补成连续动画。紧急 toast 不自动消失，因此不画圆环。
 - **通知中心**：从终端 `pleamar-ipc notifications` 打开；480×650，吸附在 bar 下方中间。最近 8 条
   历史、DND、Clear、Sounds、Close；点卡片调用该通知的 default action。
-- **通知设置**（ALERTS 页）：Top center / Top right；Play a sound；默认音
+- **通知设置**（ALERTS 页）：Top center / Top right；Drift left to right 开关；Play a sound；默认音
   （8 种，选择即试听）；Toast countdown（2–60 秒，默认 6，步进按钮）；
   Do Not Disturb；Send test；Open centre。倒计时写入 `nt_secs`，下一次
   toast 生效；紧急通知不自动关闭。

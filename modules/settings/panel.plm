@@ -692,7 +692,7 @@ part ConfigPanel {
 
             CpCard(250, 176, 570, 62)
             text "Toast position" { at: 266, 186; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "Where a new notification appears." { at: 266, 204; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            text "Where it sits when Drift is off." { at: 266, 204; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
             CpPill(560, 190, 108, 28, if(nt_pos == 0, 1, 0), nt_pos_center.hover, cp.mint, ink)
             text "Top center" { at: 614, 204; anchor: center; size: 13; weight: 600; color: if(nt_pos == 0, cp.mint, ink); family: "Space Grotesk" }
             zone box nt_pos_center { from: 560, 190; size: 108, 28; corner: 14; cursor: pointer; label: "Notifications in the center" }
@@ -703,55 +703,62 @@ part ConfigPanel {
             on press nt_pos_right { emit ui_sound; nt_pos = 1 }
 
             CpCard(250, 242, 570, 62)
-            text "Play a sound" { at: 266, 252; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "When a notification is shown." { at: 266, 270; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            CpSwitch(770, 261, 44, 24, if(nt_snd_on, 1, 0), nt_snd_knob, nt_snd_switch.hover, cp.mint, ink, cp.track)
-            zone box nt_snd_switch { from: 760, 252; size: 64, 38; corner: 19; cursor: pointer; label: "Notification sounds" }
-            on press nt_snd_switch { emit ui_sound; emit nt_sound_toggle }
+            text "Drift left to right" { at: 266, 252; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "Slides the toast across the top over the countdown." { at: 266, 270; anchor: left center; size: 14; color: faint; width: 470; lines: 1; family: "Space Grotesk" }
+            CpSwitch(770, 261, 44, 24, if(nt_drift, 1, 0), nt_drift_knob, nt_drift_switch.hover, cp.mint, ink, cp.track)
+            zone box nt_drift_switch { from: 760, 252; size: 64, 38; corner: 19; cursor: pointer; label: "Drift notifications from left to right" }
+            on press nt_drift_switch { emit ui_sound; emit nt_drift_toggle }
 
             CpCard(250, 308, 570, 62)
-            text "Default sound" { at: 266, 318; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text nt_sound_name { at: 266, 336; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            CpPill(700, 322, 36, 28, 0, nt_snd_prev.hover, cp.mint, ink)
-            text "‹" { at: 718, 336; anchor: center; size: 18; color: ink; family: "Space Grotesk" }
-            zone box nt_snd_prev { from: 700, 322; size: 36, 28; corner: 14; cursor: pointer; label: "Previous notification sound" }
-            on press nt_snd_prev { emit nt_sound_set(-1) }
-            CpPill(784, 322, 36, 28, 0, nt_snd_next.hover, cp.mint, ink)
-            text "›" { at: 802, 336; anchor: center; size: 18; color: ink; family: "Space Grotesk" }
-            zone box nt_snd_next { from: 784, 322; size: 36, 28; corner: 14; cursor: pointer; label: "Next notification sound" }
-            on press nt_snd_next { emit nt_sound_set(1) }
+            text "Play a sound" { at: 266, 318; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "When a notification is shown." { at: 266, 336; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSwitch(770, 327, 44, 24, if(nt_snd_on, 1, 0), nt_snd_knob, nt_snd_switch.hover, cp.mint, ink, cp.track)
+            zone box nt_snd_switch { from: 760, 318; size: 64, 38; corner: 19; cursor: pointer; label: "Notification sounds" }
+            on press nt_snd_switch { emit ui_sound; emit nt_sound_toggle }
 
             CpCard(250, 374, 570, 62)
-            text "Toast countdown" { at: 266, 384; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "Seconds before a toast closes itself." { at: 266, 402; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            CpPill(700, 388, 36, 28, 0, nt_secs_minus.hover, cp.mint, ink)
-            text "−" { at: 718, 402; anchor: center; size: 18; color: ink; family: "Space Grotesk" }
-            zone box nt_secs_minus { from: 700, 388; size: 36, 28; corner: 14; cursor: pointer; label: "Shorter toast countdown" }
-            on press nt_secs_minus { emit ui_sound; nt_secs = clamp(nt_secs - 1, 2, 60) }
-            CpPill(784, 388, 36, 28, 0, nt_secs_plus.hover, cp.mint, ink)
-            text "+" { at: 802, 402; anchor: center; size: 18; color: ink; family: "Space Grotesk" }
-            zone box nt_secs_plus { from: 784, 388; size: 36, 28; corner: 14; cursor: pointer; label: "Longer toast countdown" }
-            on press nt_secs_plus { emit ui_sound; nt_secs = clamp(nt_secs + 1, 2, 60) }
-            text number(nt_secs, 0, " s") { at: 760, 402; anchor: center; size: 15; weight: 700; color: cp.mint; family: "Space Grotesk" }
+            text "Default sound" { at: 266, 384; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text nt_sound_name { at: 266, 402; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpPill(700, 388, 36, 28, 0, nt_snd_prev.hover, cp.mint, ink)
+            text "‹" { at: 718, 402; anchor: center; size: 18; color: ink; family: "Space Grotesk" }
+            zone box nt_snd_prev { from: 700, 388; size: 36, 28; corner: 14; cursor: pointer; label: "Previous notification sound" }
+            on press nt_snd_prev { emit nt_sound_set(-1) }
+            CpPill(784, 388, 36, 28, 0, nt_snd_next.hover, cp.mint, ink)
+            text "›" { at: 802, 402; anchor: center; size: 18; color: ink; family: "Space Grotesk" }
+            zone box nt_snd_next { from: 784, 388; size: 36, 28; corner: 14; cursor: pointer; label: "Next notification sound" }
+            on press nt_snd_next { emit nt_sound_set(1) }
 
             CpCard(250, 440, 570, 62)
-            text "Do Not Disturb" { at: 266, 450; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "Keep them in the centre, without a toast." { at: 266, 468; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            CpSwitch(770, 459, 44, 24, if(nt_dnd, 1, 0), nt_dnd_knob, nt_dnd_switch.hover, cp.mint, ink, cp.track)
-            zone box nt_dnd_switch { from: 760, 450; size: 64, 38; corner: 19; cursor: pointer; label: "Do Not Disturb" }
+            text "Toast countdown" { at: 266, 450; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "Seconds before a toast closes itself." { at: 266, 468; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpPill(700, 454, 36, 28, 0, nt_secs_minus.hover, cp.mint, ink)
+            text "−" { at: 718, 468; anchor: center; size: 18; color: ink; family: "Space Grotesk" }
+            zone box nt_secs_minus { from: 700, 454; size: 36, 28; corner: 14; cursor: pointer; label: "Shorter toast countdown" }
+            on press nt_secs_minus { emit ui_sound; nt_secs = clamp(nt_secs - 1, 2, 60) }
+            CpPill(784, 454, 36, 28, 0, nt_secs_plus.hover, cp.mint, ink)
+            text "+" { at: 802, 468; anchor: center; size: 18; color: ink; family: "Space Grotesk" }
+            zone box nt_secs_plus { from: 784, 454; size: 36, 28; corner: 14; cursor: pointer; label: "Longer toast countdown" }
+            on press nt_secs_plus { emit ui_sound; nt_secs = clamp(nt_secs + 1, 2, 60) }
+            text number(nt_secs, 0, " s") { at: 760, 468; anchor: center; size: 15; weight: 700; color: cp.mint; family: "Space Grotesk" }
+
+            CpCard(250, 506, 570, 62)
+            text "Do Not Disturb" { at: 266, 516; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "Keep them in the centre, without a toast." { at: 266, 534; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSwitch(770, 525, 44, 24, if(nt_dnd, 1, 0), nt_dnd_knob, nt_dnd_switch.hover, cp.mint, ink, cp.track)
+            zone box nt_dnd_switch { from: 760, 516; size: 64, 38; corner: 19; cursor: pointer; label: "Do Not Disturb" }
             on press nt_dnd_switch { emit ui_sound; emit nt_dnd_toggle }
 
-            CpPill(250, 506, 180, 34, 1, nt_test_btn.hover, cp.mint, ink)
-            text "Send test" { at: 340, 523; anchor: center; size: 13; weight: 700; color: cp.mint; family: "Space Grotesk" }
-            zone box nt_test_btn { from: 250, 506; size: 180, 34; corner: 17; cursor: pointer; label: "Send a test notification" }
+            CpPill(250, 572, 180, 34, 1, nt_test_btn.hover, cp.mint, ink)
+            text "Send test" { at: 340, 589; anchor: center; size: 13; weight: 700; color: cp.mint; family: "Space Grotesk" }
+            zone box nt_test_btn { from: 250, 572; size: 180, 34; corner: 17; cursor: pointer; label: "Send a test notification" }
             on press nt_test_btn { emit ui_sound; emit nt_test }
 
-            CpPill(444, 506, 180, 34, 0, nt_center_btn.hover, cp.mint, ink)
-            text "Open centre" { at: 534, 523; anchor: center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
-            zone box nt_center_btn { from: 444, 506; size: 180, 34; corner: 17; cursor: pointer; label: "Open notification centre" }
+            CpPill(444, 572, 180, 34, 0, nt_center_btn.hover, cp.mint, ink)
+            text "Open centre" { at: 534, 589; anchor: center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box nt_center_btn { from: 444, 572; size: 180, 34; corner: 17; cursor: pointer; label: "Open notification centre" }
             on press nt_center_btn { emit ui_sound; nt_center = true; panel_open = false }
 
-            text "Sounds play through PipeWire; DND keeps the history. Urgent toasts stay until closed." { at: 266, 576; anchor: left center; size: 13; color: faint; opacity: 75%; width: 540; lines: 1; family: "Space Grotesk" }
+            text "Sounds play through PipeWire; DND keeps the history. Urgent toasts stay until closed." { at: 266, 642; anchor: left center; size: 13; color: faint; opacity: 75%; width: 540; lines: 1; family: "Space Grotesk" }
         }
 
         //  ── WINDOW PICKER ────────────────────────────────────────────────

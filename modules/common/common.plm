@@ -162,6 +162,8 @@ part Common {
     follow snd_knob = snd_on
     prop nt_snd_knob = 0 ~quick
     follow nt_snd_knob = nt_snd_on
+    prop nt_drift_knob = 0 ~quick
+    follow nt_drift_knob = nt_drift
     prop nt_dnd_knob = 0 ~quick
     follow nt_dnd_knob = nt_dnd
 
@@ -224,8 +226,8 @@ part Common {
     fact nt_snd_on = true
     fact nt_sound: number = 1
     fact nt_pos: number = 1
+    fact nt_drift = false
     fact nt_unread: number = 0
-    fact nt_anchor: top_right | top = top_right
     //  Auto-close countdown.  The seconds are a preference; `nt_left` is
     //  the 1..0 progress driven by the shell's timer, and `nt_timed` hides
     //  the rail for urgent notifications that stay until dismissed.
@@ -239,7 +241,6 @@ part Common {
     text nt_icon = ""
     text nt_countdown = ""
     text nt_sound_name = "Message"
-    text nt_pos_name = "Top right"
     model nt_actions max 3 { label: text }
     model nt_history max 8 { app: text; title: text; body: text; when: text; urgent: bool }
     event nt_close ->
@@ -249,6 +250,7 @@ part Common {
     event nt_sound_toggle ->
     event nt_sound_set ->
     event nt_pos_set ->
+    event nt_drift_toggle ->
     event nt_test ->
     event nt_center_toggle ->
     event nt_center_close ->
