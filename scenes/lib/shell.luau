@@ -741,6 +741,7 @@ function M.start(layout)
         fact.winpicker_open = false
         stop_windowkeys()
         text.winpicker_key = ""
+        fact.winpicker_prefix_num = 0
         win_pick.prefix = ""
         win_pick.prefix_serial = win_pick.prefix_serial + 1
         win_update_hint()
@@ -774,6 +775,7 @@ function M.start(layout)
             end
         end
         if win_pick.single then
+            fact.winpicker_prefix_num = 0
             local row = find_code(ch)
             if row then win_pick_at(row.index) end
             return
@@ -782,12 +784,14 @@ function M.start(layout)
             for _, row in ipairs(win_pick.rows) do
                 if row.code:sub(1, 1) == ch then
                     win_pick.prefix = ch
+                    fact.winpicker_prefix_num = string.byte(ch) - 64
                     text.winpicker_hint = ch .. " · type the second letter"
                     win_pick.prefix_serial = win_pick.prefix_serial + 1
                     local serial = win_pick.prefix_serial
                     after(900, function()
                         if serial == win_pick.prefix_serial and truthy(fact.winpicker_open) then
                             win_pick.prefix = ""
+                            fact.winpicker_prefix_num = 0
                             win_update_hint()
                         end
                     end)
@@ -798,6 +802,7 @@ function M.start(layout)
             local code = win_pick.prefix .. ch
             local row = find_code(code)
             win_pick.prefix = ""
+            fact.winpicker_prefix_num = 0
             if row then win_pick_at(row.index) else win_update_hint() end
         end
     end
@@ -906,12 +911,16 @@ function M.start(layout)
                 local app = tostring(w.app_id or "")
                 local wid = tostring(w.id)
                 local picture = win_pick.previews[wid]
+                local code = codes[i] or ""
+                local first = code:sub(1, 1):upper()
+                local lead = first ~= "" and (string.byte(first) - 64) or 0
                 win_pick.rows[i] = {
                     index = i - 1,
                     id = wid,
                     title = title ~= "" and title or app,
                     app = app,
-                    code = codes[i] or "",
+                    code = code,
+                    lead = lead,
                     active = w.is_focused == true,
                     has_pic = picture ~= nil,
                     picture = picture or "",
@@ -938,6 +947,7 @@ function M.start(layout)
         stop_settingskeys()
 
         win_pick.opening = true
+        fact.winpicker_prefix_num = 0
         win_pick.capture_serial = win_pick.capture_serial + 1
         win_pick.capture_done = false
         win_pick.previews = {}

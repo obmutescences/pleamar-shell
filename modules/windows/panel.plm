@@ -6,7 +6,7 @@ part WindowPicker {
     //  round trip per card would compete with the picker itself.
     component WinCard(
         x: number, y: number, w: number, h: number,
-        idx: number, code: text, title: text, app: text,
+        idx: number, code: text, lead: number, title: text, app: text,
         active: bool, has_pic: bool, picture: image
     ) {
         let info = 50
@@ -14,6 +14,8 @@ part WindowPicker {
         prop hov = 0 ~quick
         follow hov = hit.hover
         let fx = clamp(winpicker_fx, 0, 5)
+        let matches = if(winpicker_prefix_num == 0 or lead == winpicker_prefix_num, 1, 0)
+        let faded = 1 - matches
         let dir = if(mod(idx, 2) == 0, -1, 1)
         //  Gather comes in from all four sides toward the centre; Cascade
         //  comes from alternating sides; Spiral starts every card at the
@@ -28,7 +30,7 @@ part WindowPicker {
         //  Do not draw the active/hover halos while the cards move: they are
         //  several extra translucent boxes per card and the biggest reveal
         //  cost.  They return once the grid is settled.
-        let halo = hot * if(winpicker_progress > 0.985, 1, 0)
+        let halo = hot * matches * if(winpicker_progress > 0.985, 1, 0)
         //  ease-out-back, for Pop and the Gather landing: 0 at p = 0, 1 with
         //  a small overshoot at p = 1.
         let q = p - 1
@@ -72,20 +74,22 @@ part WindowPicker {
                  if(fx == 3, -160 * (1 - p),
                  if(fx == 5, -90 * (1 - p), 0))))
         let lift = 6 * hov
-        zone box hit { from: x, y; size: w, h; corner: 18; cursor: pointer; active: winpicker_open; label: title }
+        zone box hit { from: x, y; size: w, h; corner: 18; cursor: pointer; active: winpicker_open and matches > 0; label: title }
         group {
             pivot: w / 2, if(fx == 4, h, h / 2)
-            opacity: op
+            opacity: op * (0.55 + 0.45 * matches)
             scale: scale_x * (1 + 0.020 * hov), scale_y * (1 + 0.020 * hov)
             rotate: rot
             move: x + move_x, y + move_y - lift
-            z: 1 + 8 * hov + if(active, 4, 0)
+            z: 1 + 8 * hov + if(active, 4, 0) + 2 * matches
+            blur: 7 * faded
+            saturation: 1 - 0.55 * faded
+            brightness: 1 - 0.22 * faded
 
             //  Primary + secondary halo: the current window keeps a soft
             //  iridescent background, and hover lifts the same light.
             group {
                 show: halo > 0.01
-                glow: 40, 130% * halo, mix(primary, secondary, 0.35)
                 box { from: 2, 2; size: w - 4, h - 4; corner: 20; color: mix(primary, secondary, 0.30); opacity: 18% * halo }
             }
             box { from: -8, -8; size: w + 16, h + 16; corner: 26; color: mix(primary, secondary, 0.35); opacity: 22% * halo }
@@ -190,7 +194,7 @@ part WindowPicker {
             group {
                 show: k < win_cards.count
                 WinCard(wx, wy, wp.card_w, wp.card_h, k,
-                        win_cards.$k.code, win_cards.$k.title, win_cards.$k.app,
+                        win_cards.$k.code, win_cards.$k.lead, win_cards.$k.title, win_cards.$k.app,
                         win_cards.$k.active, win_cards.$k.has_pic, win_cards.$k.picture)
             }
         }

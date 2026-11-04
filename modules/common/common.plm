@@ -283,6 +283,7 @@ part Common {
     fact winpicker_ms: number = 460
     fact winpicker_bg_glass: number = 62
     fact winpicker_bg_blur: number = 52
+    fact winpicker_prefix_num: number = 0
     text winpicker_letters = "asdfghjkl"
     text winpicker_hint = "Type a letter to jump"
     text winpicker_key = ""
@@ -290,7 +291,7 @@ part Common {
         picture: image 3840, 2160
     }
     model win_cards max 32 {
-        id: text; title: text; app: text; code: text
+        id: text; title: text; app: text; code: text; lead: number
         active: bool; has_pic: bool; picture: image 400, 250
     }
     event ipc_open_windows ->
