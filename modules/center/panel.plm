@@ -29,6 +29,7 @@ part CenterPanel {
     fact center_tab: number = 0
     fact center_sys_scroll: number = 0
     fact center_cal_off: number = 0
+    fact center_cal_progress: number = 1
     fact center_power_confirm: number = -1
 
     //  The system monitor, filled by bin/pleamar-sysmon through the logic.
@@ -881,9 +882,9 @@ part CenterPanel {
                     box { from: 776, 184; size: 296, 460; corner: 18; color: ink; opacity: 4% }
                     box { from: 776, 184; size: 296, 460; corner: 18; stroke: 1; color: ink; opacity: 7% }
                     text "今天" { at: 800, 210; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Noto Sans CJK SC" }
-                    ellipse { at: 924, 326; radius: 92; stroke: 1; color: ct.primary; opacity: 15% }
+                    ellipse { at: 924, 326; radius: 92; stroke: 1; color: ink; opacity: 8% }
+                    arc { at: 924, 326; radius: 92; span: 360deg * center_cal_progress; width: 2.5; color: ct.secondary; opacity: 88%; rotate: 180deg * center_cal_progress }
                     ellipse { at: 924, 326; radius: 78; stroke: 1; color: ink; opacity: 8% }
-                    arc { at: 924, 326; radius: 92; span: 280deg; width: 2; color: ct.secondary; opacity: 58%; rotate: -140deg }
                     text ct_today_day { at: 924, 314; anchor: center; size: 74; weight: 700; color: ct.primary; family: "Space Grotesk" }
                     text ct_today_month { at: 924, 366; anchor: center; size: 13; weight: 700; color: ink; family: "Noto Sans CJK SC" }
                     text ct_today_year { at: 924, 386; anchor: center; size: 11; color: faint; family: "Space Grotesk" }

@@ -271,6 +271,15 @@ end
 local WEEKDAYS = { [1] = "星期日", [2] = "星期一", [3] = "星期二", [4] = "星期三",
     [5] = "星期四", [6] = "星期五", [7] = "星期六" }
 
+--  Fraction of the current month still ahead, today included.  The ring
+--  around today's number uses this: full on the first, nearly gone at the
+--  end of the month.
+local function month_progress(year, month, day)
+    local days = os.date("*t", os.time({ year = year, month = month + 1, day = 0 })).day
+    if days < 1 then return 1 end
+    return clamp((days - day + 1) / days, 0, 1)
+end
+
 --  Luau's os.date does not implement %V.  ISO week from the Thursday of
 --  this week: that is the week-year's first Thursday rule.
 local function iso_week(ts)
@@ -313,6 +322,7 @@ local function calendar_fallback(ft, today)
     text.ct_month = string.format("%d年 %d月", ft.year, ft.month)
     text.ct_month_sub = string.format("第 %d 周", iso_week(first))
     text.ct_weekday = WEEKDAYS[today.wday]
+    fact.center_cal_progress = month_progress(today.year, today.month, today.day)
     text.ct_today_day = string.format("%02d", today.day)
     text.ct_today_month = string.format("%d月", today.month)
     text.ct_today_year = tostring(today.year)
@@ -364,6 +374,15 @@ local function apply_calendar(d)
     text.ct_today_year = tostring(td.year or "")
     text.ct_weekday = tostring(td.weekday or "")
     text.ct_weeknum = tostring(td.week or "")
+    local progress = tonumber(td.month_progress)
+    if progress == nil then
+        local now = os.date("*t")
+        local day = tonumber(td.day) or now.day
+        local month = tonumber((tostring(td.month or "")):match("(%d+)")) or now.month
+        local year = tonumber(td.year) or now.year
+        progress = month_progress(year, month, day)
+    end
+    fact.center_cal_progress = clamp(progress, 0, 1)
     return true
 end
 

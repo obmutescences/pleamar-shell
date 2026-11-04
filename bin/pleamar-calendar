@@ -324,6 +324,9 @@ def build(year, month):
     if lunar_today:
         header += f" · 农历{lunar_today}"
     week = first.isocalendar()[1]
+    next_month = date(today.year + (1 if today.month == 12 else 0), today.month % 12 + 1, 1)
+    days_in_month = (next_month - date(today.year, today.month, 1)).days
+    month_progress = (days_in_month - today.day + 1) / days_in_month
 
     return {
         "header": header,
@@ -339,6 +342,7 @@ def build(year, month):
             "year": str(today.year),
             "weekday": weekday,
             "week": f"第 {today.isocalendar()[1]} 周",
+            "month_progress": month_progress,
         },
         "weekdays": WEEKDAY_SHORT,
         "days": cells,
