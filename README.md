@@ -81,6 +81,7 @@
 | 中心面板指定 tab | `pleamar-ipc center 3` |
 | 通知中心 | `pleamar-ipc notifications` |
 | 窗口 picker | `pleamar-ipc windows` |
+| 窗口 picker toggle | `pleamar-ipc windows toggle` |
 | 换壁纸 | `pleamar-ipc wallpaper /path/to/image.png` |
 | 打开官方 picker | `pleamar-ipc picker` |
 | 锁屏 | `pleamar-ipc lock` |

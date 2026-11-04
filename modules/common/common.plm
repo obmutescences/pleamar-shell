@@ -295,6 +295,7 @@ part Common {
         active: bool; has_pic: bool; picture: image 400, 250
     }
     event ipc_open_windows ->
+    event ipc_toggle_windows ->
     event winpicker_close ->
     event winpicker_key ->
     event winpicker_pick ->

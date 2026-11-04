@@ -998,6 +998,13 @@ function M.start(layout)
 
 
     on("ipc_open_windows", function() win_open() end)
+    on("ipc_toggle_windows", function()
+        if truthy(fact.winpicker_open) then
+            win_close(nil)
+        elseif not win_pick.opening then
+            win_open()
+        end
+    end)
     on("winpicker_close", function() win_close(nil) end)
     on("winpicker_pick", function(index) win_pick_at(index) end)
     on("text:winpicker_key", function()

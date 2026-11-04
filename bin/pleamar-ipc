@@ -4,7 +4,7 @@
 #   pleamar-ipc settings [0..10]
 #   pleamar-ipc center [toggle|0..6]
 #   pleamar-ipc notifications
-#   pleamar-ipc windows
+#   pleamar-ipc windows [open|toggle]
 #   pleamar-ipc wallpaper /path/to/image.png
 #   pleamar-ipc picker
 #   pleamar-ipc lock
@@ -25,7 +25,7 @@ fi
 case "$action" in
     search|settings|center|notifications|windows|wallpaper|picker|lock) ;;
     *)
-        echo "usage: $0 search | settings [0..10] | center [toggle|0..6] | notifications | windows | wallpaper <image> | picker | lock" >&2
+        echo "usage: $0 search | settings [0..10] | center [toggle|0..6] | notifications | windows [open|toggle] | wallpaper <image> | picker | lock" >&2
         exit 2
         ;;
 esac
@@ -108,7 +108,17 @@ case "$action" in
         esac
         ;;
     notifications) command="emit ipc_open_notifications" ;;
-    windows) command="emit ipc_open_windows" ;;
+    windows)
+        mode="${2:-open}"
+        case "$mode" in
+            ""|open) command="emit ipc_open_windows" ;;
+            toggle) command="emit ipc_toggle_windows" ;;
+            *)
+                echo "windows must be open or toggle" >&2
+                exit 2
+                ;;
+        esac
+        ;;
 esac
 
 bin="$("$root/bin/pleamar-shell" --path)"
