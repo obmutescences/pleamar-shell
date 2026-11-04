@@ -88,6 +88,11 @@ def capture():
     cache = cache_dir()
     saved = save_clipboard(cache)
     try:
+        #  The screenshot action writes the new image to the clipboard.  If an
+        #  older screenshot is still there, wl-paste returns it before niri has
+        #  painted the new one, and the picker keeps the previous wallpaper.
+        #  Drop it first; save_clipboard has already preserved the real data.
+        run(["wl-copy", "--clear"], timeout=1.5)
         action = run(
             [
                 "niri",
@@ -105,14 +110,16 @@ def capture():
             return 3
         #  niri puts the PNG on the clipboard; reading it is the only way to
         #  get the pixels without relying on its screenshot-path setting.
-        for _ in range(8):
+        #  niri writes the image asynchronously; give it enough time to appear
+        #  after the clipboard was cleared.
+        for _ in range(40):
             p = run(["wl-paste", "--type", "image/png"], timeout=2.5)
             if p and p.returncode == 0 and p.stdout:
                 raw = cache / f"desktop-{int(time.time() * 1000)}.png"
                 raw.write_bytes(p.stdout)
                 print(raw)
                 return 0
-            time.sleep(0.03)
+            time.sleep(0.05)
         return 3
     finally:
         restore_clipboard(saved)

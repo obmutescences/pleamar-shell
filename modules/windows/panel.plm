@@ -170,12 +170,12 @@ part WindowPicker {
         zone box wp_shield { from: 0, 0; size: wp.screen_w, wp.screen_h; active: winpicker_open; label: "Close window picker" }
         on press wp_shield { emit winpicker_close }
 
-        //  The pre-blurred desktop image covers this fallback tint as soon as
-        //  the capture job completes.  Keep the fallback opaque so a failed
-        //  capture never exposes a sharp desktop behind the cards.
+        //  The pre-blurred desktop image is the whole background.  Keep the
+        //  fallback neutral, with no palette tint: if the capture fails the
+        //  picker is dark, never the previous wallpaper colour.
         body {
-            color: mix(deep, primary, 0.16)
-            opacity: 84%
+            color: rgb(0, 0, 0)
+            opacity: 100%
             glass: 0
             box { from: 0, 0; size: wp.screen_w, wp.screen_h }
         }
