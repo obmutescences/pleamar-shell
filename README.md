@@ -93,3 +93,10 @@ Settings are stored in:
 ```
 
 Use the settings panel for normal changes. Window previews, notification sounds, and wallpaper transitions are handled by helpers installed with the package.
+
+## Credits
+
+Thanks to these projects, which this shell builds on and takes reference from:
+
+- [Vitreus](https://github.com/natepayn3/Vitreus) — glass UI and shell behavior reference.
+- [Pleamar](https://github.com/k4ditano/pleamar) — the rendering engine behind this shell.
