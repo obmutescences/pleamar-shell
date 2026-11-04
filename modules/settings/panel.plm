@@ -626,9 +626,9 @@ part ConfigPanel {
             text font_family { at: 266, 208; anchor: left center; size: 15; weight: 600; color: ink; width: 200; lines: 1; family: "Space Grotesk" }
             text "Selected" { at: 480, 186; anchor: left center; size: 13; weight: 700; color: faint; family: "Space Grotesk" }
             text font_choice { at: 480, 208; anchor: left center; size: 15; weight: 600; color: cp.mint; width: 250; lines: 1; family: "Space Grotesk" }
-            CpPill(750, 188, 80, 28, 1, cp_font_apply.hover, cp.mint, ink)
-            text "Save" { at: 790, 202; anchor: center; size: 14; weight: 700; color: cp.mint; family: "Space Grotesk" }
-            zone box cp_font_apply { from: 750, 188; size: 80, 28; corner: 14; cursor: pointer; label: "Save font choice" }
+            CpPill(738, 188, 72, 28, 1, cp_font_apply.hover, cp.mint, ink)
+            text "Save" { at: 774, 202; anchor: center; size: 14; weight: 700; color: cp.mint; family: "Space Grotesk" }
+            zone box cp_font_apply { from: 738, 188; size: 72, 28; corner: 14; cursor: pointer; label: "Save font choice" }
             on press cp_font_apply { emit ui_sound; emit font_apply }
             text font_status { at: 266, 226; anchor: left center; size: 11; color: cp.mint; width: 540; lines: 1; family: "Space Grotesk" }
 
@@ -1198,28 +1198,28 @@ part ConfigPanel {
 
             CpCard(250, 548, 570, 70)
             text "Smoke" { at: 266, 558; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            text number(glass_smoke * 100, 0, "%") { at: 470, 558; anchor: right center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
             CpSlider(340, 582, 120, cp.smoke_pct, cp_smoke_track.hover, cp.mint, ink, cp.track)
-            text number(glass_smoke * 100, 0, "%") { at: 470, 582; anchor: right center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_smoke_track { from: 330, 567; size: 140, 30; cursor: pointer; label: "Smoked glass" }
             on press cp_smoke_track { glass_smoke = clamp((pointer.x - 340) / 120, 0, 1) }
             on drag cp_smoke_track { glass_smoke = clamp((pointer.x - 340) / 120, 0, 1) }
             text "Vivid" { at: 530, 558; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            text number(glass_vivid * 100, 0, "%") { at: 734, 558; anchor: right center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
             CpSlider(604, 582, 120, cp.vivid_pct, cp_vivid_track.hover, cp.mint, ink, cp.track)
-            text number(glass_vivid * 100, 0, "%") { at: 734, 582; anchor: right center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_vivid_track { from: 594, 567; size: 140, 30; cursor: pointer; label: "Glass vividness" }
             on press cp_vivid_track { glass_vivid = clamp((pointer.x - 604) / 120 * 2, 0, 2) }
             on drag cp_vivid_track { glass_vivid = clamp((pointer.x - 604) / 120 * 2, 0, 2) }
 
             CpCard(250, 624, 570, 70)
             text "Mirror" { at: 266, 634; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            text number(glass_mirror * 100, 0, "%") { at: 470, 634; anchor: right center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
             CpSlider(340, 658, 120, cp.mirror_pct, cp_mirror_track.hover, cp.mint, ink, cp.track)
-            text number(glass_mirror * 100, 0, "%") { at: 470, 658; anchor: right center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_mirror_track { from: 330, 643; size: 140, 30; cursor: pointer; label: "Mirror rim" }
             on press cp_mirror_track { glass_mirror = clamp((pointer.x - 340) / 120 * 2, 0, 2) }
             on drag cp_mirror_track { glass_mirror = clamp((pointer.x - 340) / 120 * 2, 0, 2) }
             text "Highlight" { at: 530, 634; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            text number(glass_highlight * 100, 0, "%") { at: 734, 634; anchor: right center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
             CpSlider(604, 658, 120, cp.highlight_pct, cp_highlight_track.hover, cp.mint, ink, cp.track)
-            text number(glass_highlight * 100, 0, "%") { at: 734, 658; anchor: right center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_highlight_track { from: 594, 643; size: 140, 30; cursor: pointer; label: "Rim highlight" }
             on press cp_highlight_track { glass_highlight = clamp((pointer.x - 604) / 120 * 2, 0, 2) }
             on drag cp_highlight_track { glass_highlight = clamp((pointer.x - 604) / 120 * 2, 0, 2) }
