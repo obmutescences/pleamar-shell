@@ -1,6 +1,6 @@
 # pleamar-shell
 
-<video src="https://github.com/obmutescences/pleamar-shell/raw/main/showcase.mp4" controls autoplay loop muted playsinline width="100%"></video>
+[![pleamar-shell showcase](showcase-preview.gif)](showcase.mp4)
 
 A small, animated Wayland shell for [niri](https://github.com/YaLTeR/niri), built on the [Pleamar](https://github.com/k4ditano/pleamar) engine. It combines glass surfaces, wallpaper-derived colors, and music-reactive edges in two layouts: **Island** and **Frame**.
 
