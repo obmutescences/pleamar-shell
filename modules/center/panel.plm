@@ -289,12 +289,13 @@ part CenterPanel {
                     repeat q in 0..4 {
                         let qx = 36 + q * 262
                         let lv = clamp(pick(q, sys_cpu, sys_mem, sys_gpu, if(sys_mounts.count > 0, sys_mounts.0.pct, 0)), 0, 1)
+                        let fluid = if(q == 1 or q == 3, ct.secondary, ct.primary)
                         box { from: qx, 140; size: 250, 122; corner: 16; color: ink; opacity: 4% }
                         shader ct_water {
                             at: qx, 140
                             size: 250, 122
                             values: lv, q * 0.19, ct_ov_stat.$q.hover, 0, 0, 0, 0, 0
-                            colors: ct.primary, ct.primary
+                            colors: fluid, fluid
                         }
                         box { from: qx, 140; size: 250, 122; corner: 16; stroke: 1; color: ink; opacity: 7% + 6% * ct_ov_stat.$q.hover }
                         text pick(q, "PROCESSOR", "MEMORY", "GRAPHICS", "STORAGE") { at: qx + 18, 160; anchor: left center; size: 10; weight: 700; color: faint; family: "Space Grotesk" }
