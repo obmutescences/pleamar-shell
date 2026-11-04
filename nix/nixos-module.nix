@@ -79,7 +79,7 @@ in
         ExecStart = "${cfg.package}/share/pleamar-shell/bin/pleamar-lock-keeper";
         Restart = "on-failure";
         RestartSec = 2;
-        Environment = [ "PATH=${config.system.path}/sw/bin" ];
+        Environment = [ "PATH=${config.system.path}/bin" ];
       };
     };
 
@@ -106,7 +106,7 @@ in
         #  PATH.  Expose the system profile so the calendar helper can find it;
         #  the package wrapper prepends its own runtime tools after this.
         Environment = lib.optional skwdEnabled "PLEAMAR_WALL_BACKEND=skwd"
-          ++ [ "PATH=${config.system.path}/sw/bin" ];
+          ++ [ "PATH=${config.system.path}/bin" ];
       };
     };
   };
