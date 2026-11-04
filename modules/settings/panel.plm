@@ -783,8 +783,8 @@ part ConfigPanel {
                 let bx = 266 + k * 75
                 let by = 352
                 CpPill(bx, by, 70, 22, if(winpicker_mode == k, 1, 0), 0, cp.mint, ink)
-                text pick(k, "Fade", "Rise", "Zoom", "Drop", "Unfold", "Spin") { at: bx + 35, by + 11; anchor: center; size: 8.5; weight: 600; color: if(winpicker_mode == k, cp.mint, faint); width: 66; lines: 1; align: center; family: "Space Grotesk" }
-                zone box cp_win_anim.$k { from: bx, by; size: 70, 22; corner: 11; cursor: pointer; label: pick(k, "Window reveal Fade", "Window reveal Rise", "Window reveal Zoom", "Window reveal Drop", "Window reveal Unfold", "Window reveal Spin") }
+                text pick(k, "Orbit", "Cascade", "Pop", "Flip", "Unfold", "Spin") { at: bx + 35, by + 11; anchor: center; size: 8.5; weight: 600; color: if(winpicker_mode == k, cp.mint, faint); width: 66; lines: 1; align: center; family: "Space Grotesk" }
+                zone box cp_win_anim.$k { from: bx, by; size: 70, 22; corner: 11; cursor: pointer; label: pick(k, "Window reveal Orbit", "Window reveal Cascade", "Window reveal Pop", "Window reveal Flip", "Window reveal Unfold", "Window reveal Spin") }
                 on press cp_win_anim.$k { emit ui_sound; winpicker_mode = k }
             }
             CpPill(716, 352, 70, 22, if(winpicker_mode == 6, 1, 0), 0, cp.mint, ink)

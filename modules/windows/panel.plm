@@ -13,20 +13,42 @@ part WindowPicker {
         let thumb = h - info
         prop hov = 0 ~quick
         follow hov = hit.hover
-        let lag = min(0.16, idx * 0.012)
-        let p = clamp((winpicker_progress - lag) / max(0.01, 1 - lag), 0, 1)
         let fx = clamp(winpicker_fx, 0, 5)
+        let dir = if(mod(idx, 2) == 0, -1, 1)
+        //  Cascade starts from alternating sides with a stronger stagger;
+        //  Orbit blooms out of the centre; the rest keep the quick stagger.
+        let lag = if(fx == 1, min(0.34, idx * 0.045),
+                 if(fx == 0, min(0.24, idx * 0.025),
+                 min(0.16, idx * 0.012)))
+        let p = clamp((winpicker_progress - lag) / max(0.01, 1 - lag), 0, 1)
         let hot = clamp(if(active, 0.72, 0) + 0.28 * hov, 0, 1)
-        let op = if(fx == 3, clamp(p * 1.7, 0, 1),
-                 if(fx == 1, clamp(p * 1.5, 0, 1), p))
-        let move_y = if(fx == 0, 18 * (1 - p),
-                     if(fx == 1, 64 * (1 - p),
-                     if(fx == 3, -(h + 82) * (1 - p), 0)))
-        let scale_x = if(fx == 2, 0.78 + 0.22 * p,
-                      if(fx == 5, 0.70 + 0.30 * p,
-                      if(fx == 0, 0.96 + 0.04 * p, 1)))
-        let scale_y = if(fx == 4, 0.02 + 0.98 * p, scale_x)
-        let rot = if(fx == 5, -10 * (1 - p), 0deg)
+        //  Do not draw the active/hover halos while the cards move: they are
+        //  several extra translucent boxes per card and the biggest reveal
+        //  cost.  They return once the grid is settled.
+        let halo = hot * if(winpicker_progress > 0.985, 1, 0)
+        //  ease-out-back, for Pop: 0 at p = 0, 1 with a small overshoot at p = 1
+        let q = p - 1
+        let back = 1 + 2.70158 * q * q * q + 1.70158 * q * q
+        let pop = if(fx == 2, 0.58 + 0.42 * back, 1)
+        let op = if(fx == 0, clamp(p * 1.25, 0, 1),
+                 if(fx == 1, clamp(p * 1.55, 0, 1),
+                 if(fx == 2, clamp(p * 1.8, 0, 1),
+                 if(fx == 3, clamp(p * 1.7, 0, 1), p))))
+        let orbit_x = if(fx == 0, (wp.screen_w / 2 - (x + w / 2)) * (1 - p), 0)
+        let orbit_y = if(fx == 0, (wp.screen_h / 2 - (y + h / 2)) * (1 - p), 0)
+        let side_x = if(fx == 1, dir * (wp.screen_w * 0.55 + w) * (1 - p), 0)
+        let move_x = orbit_x + side_x
+        let move_y = if(fx == 2, 8 * (1 - p), 0)
+        let scale_x = if(fx == 0, 0.38 + 0.62 * p,
+                      if(fx == 2, pop,
+                      if(fx == 3, 1 - 0.08 * (1 - p),
+                      if(fx == 5, 0.72 + 0.28 * p, 1))))
+        let scale_y = if(fx == 3, 0.035 + 0.965 * p,
+                      if(fx == 4, 0.02 + 0.98 * p,
+                      if(fx == 2, pop, scale_x)))
+        let rot = if(fx == 0, dir * 12 * (1 - p),
+                 if(fx == 1, dir * 8 * (1 - p),
+                 if(fx == 5, -90 * (1 - p), 0)))
         let lift = 6 * hov
         zone box hit { from: x, y; size: w, h; corner: 18; cursor: pointer; active: winpicker_open; label: title }
         group {
@@ -34,19 +56,19 @@ part WindowPicker {
             opacity: op
             scale: scale_x * (1 + 0.020 * hov), scale_y * (1 + 0.020 * hov)
             rotate: rot
-            move: x, y + move_y - lift
+            move: x + move_x, y + move_y - lift
             z: 1 + 8 * hov + if(active, 4, 0)
 
             //  Primary + secondary halo: the current window keeps a soft
             //  iridescent background, and hover lifts the same light.
             group {
-                show: hot > 0.01
-                glow: 40, 130% * hot, mix(primary, secondary, 0.35)
-                box { from: 2, 2; size: w - 4, h - 4; corner: 20; color: mix(primary, secondary, 0.30); opacity: 18% * hot }
+                show: halo > 0.01
+                glow: 40, 130% * halo, mix(primary, secondary, 0.35)
+                box { from: 2, 2; size: w - 4, h - 4; corner: 20; color: mix(primary, secondary, 0.30); opacity: 18% * halo }
             }
-            box { from: -8, -8; size: w + 16, h + 16; corner: 26; color: mix(primary, secondary, 0.35); opacity: 22% * hot }
-            box { from: -4, -4; size: w + 8, h + 8; corner: 22; color: mix(primary, secondary, 0.25); opacity: 20% * hot }
-            box { from: -2, -2; size: w + 4, h + 4; corner: 20; stroke: 1.5; color: secondary; opacity: 90% * hot }
+            box { from: -8, -8; size: w + 16, h + 16; corner: 26; color: mix(primary, secondary, 0.35); opacity: 22% * halo }
+            box { from: -4, -4; size: w + 8, h + 8; corner: 22; color: mix(primary, secondary, 0.25); opacity: 20% * halo }
+            box { from: -2, -2; size: w + 4, h + 4; corner: 20; stroke: 1.5; color: secondary; opacity: 90% * halo }
             box { from: 0, 0; size: w, h; corner: 18; stroke: 1; color: primary; opacity: 62% * hot }
 
             box {

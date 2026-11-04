@@ -365,14 +365,16 @@ experiments/probe.plm        1×1 基线探针
 - **BAR**：Bar height 32–80px；只作用于 Island 胶囊，默认 44px。
   Frame 布局不再显示这条 bar。
 - **WINDOWS**：窗口 picker。Thumbnail size 140–420px、Per row 2–8、
-  Reveal（Fade / Rise / Zoom / Drop / Unfold / Spin / Random）、
+  Reveal（Orbit / Cascade / Pop / Flip / Unfold / Spin / Random）、
   Duration 160–900ms、Background blur 0–100%，以及参与选窗的字母
   （A–Z、去重）。默认每个窗口一个字母；窗口数超过配置字母时才切换为
   随机双字母；字母组合容量不足时退回 A–Z。背景是打开前抓取的桌面截图，
   先按 blur 值预模糊再映射，不使用 glass 或 lens，避免与 niri 的模糊叠加
   闪烁。窗口预览通过 niri `screenshot-window` 生成，多张并行抓取，动画
   最后 8% 会等预览就绪；截图前后恢复剪贴板并在 Pleamar 内抑制 niri 的
-  “Screenshot captured” toast。键盘由独立的单 surface `windowkeys` helper
+  “Screenshot captured” toast。预览在 picker 真正映射前开始抓取，动画期间
+  不绘制 active/hover halo，减少缩放到位时的纹理上传和额外透明层。
+  键盘由独立的单 surface `windowkeys` helper
   接管，向主场景转发字母、Esc 和 Enter。
 - 帧率诊断（`render · slow frame` / `this scene does not keep up`）默认由
   wrapper 过滤；调试时用 `PLEAMAR_RENDER_LOG=1` 启动可恢复完整日志。

@@ -811,7 +811,8 @@ function M.start(layout)
         local serial = win_pick.capture_serial
         local helper = shell_root .. "/bin/pleamar-window-previews"
         run("sh", { "-c", sq(helper) .. " 2>/dev/null" }, function(out)
-            if serial ~= win_pick.capture_serial or not truthy(fact.winpicker_open) then return end
+            if serial ~= win_pick.capture_serial
+                or (not truthy(fact.winpicker_open) and not win_pick.opening) then return end
             win_pick.capture_done = true
             local paths = {}
             for line in tostring(out or ""):gmatch("[^\n]+") do
@@ -849,8 +850,6 @@ function M.start(layout)
         win_pick.rows = {}
         win_pick.prefix = ""
         win_pick.prefix_serial = win_pick.prefix_serial + 1
-        win_pick.capture_serial = win_pick.capture_serial + 1
-        win_pick.capture_done = false
         win_pick.rows_ready = false
         win_pick.animation_started = false
         win_pick.animation_pending = false
@@ -865,10 +864,6 @@ function M.start(layout)
         model.win_cards = {}
         text.winpicker_hint = "Reading windows…"
 
-        --  Start the screenshot job before asking niri for the window list.
-        --  The helper has its own niri query, so the two run in parallel and
-        --  the reveal is not waiting for the first capture.
-        win_capture()
         run("sh", { "-c", "niri msg -j focused-output 2>/dev/null" }, function(out)
             local ok, output = pcall(json.decode, out or "{}")
             if ok and type(output) == "table" and type(output.logical) == "table" then
@@ -943,6 +938,9 @@ function M.start(layout)
         stop_settingskeys()
 
         win_pick.opening = true
+        win_pick.capture_serial = win_pick.capture_serial + 1
+        win_pick.capture_done = false
+        win_pick.previews = {}
         win_pick.suppress_nt_until = os.time() + 15
         model.win_bg = {}
         local helper = shell_root ~= "" and (shell_root .. "/bin/pleamar-window-backdrop") or ""
@@ -963,6 +961,11 @@ function M.start(layout)
             if not (raw and raw:sub(1, 1) == "/") then
                 log("window backdrop: screen capture returned no path")
             end
+            --  The backdrop capture restores the clipboard before it exits;
+            --  only now is it safe to start the window-preview helper, which
+            --  saves and restores the clipboard too.  Its images load before
+            --  the reveal instead of arriving during the scale/opacity pass.
+            win_capture()
             local function show(path)
                 win_pick.opening = false
                 if path and path:sub(1, 1) == "/" then model.win_bg = { { picture = path } } end
