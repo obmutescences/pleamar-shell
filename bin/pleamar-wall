@@ -12,6 +12,7 @@
 #
 #   pleamar-wall <image>
 #   pleamar-wall current
+#   pleamar-wall ensure
 #   pleamar-wall backend
 #   pleamar-wall stop-swaybg
 set -euo pipefail
@@ -53,6 +54,30 @@ stop_swaybg() {
     pkill -KILL -f -- "$swaybg" >/dev/null 2>&1 || true
 }
 
+#  A monitor power cycle can make skwd-walld's static renderer exit while the
+#  daemon keeps running and its last path in wall.outputs.  That leaves the
+#  desktop without a background after unlocking.  `ensure` checks for a live
+#  renderer and repeats the current static apply only when it is gone.
+skwd_still_alive() {
+    local pid state
+    while read -r pid; do
+        [[ -n "$pid" ]] || continue
+        state="$(ps -o stat= -p "$pid" 2>/dev/null || true)"
+        [[ "$state" == Z* ]] && continue
+        return 0
+    done < <(pgrep -f -- 'skwd-wall-still' 2>/dev/null || true)
+    return 1
+}
+
+repair_skwd() {
+    local current
+    [[ -S "$sock" && -x "$skwd_helper" ]] || return 1
+    current="$("$skwd_helper" current 2>/dev/null)" || return 1
+    [[ -f "$current" ]] || return 1
+    "$skwd_helper" apply "$current" >/dev/null 2>&1 || return 1
+    stop_swaybg
+}
+
 requested="${PLEAMAR_WALL_BACKEND:-auto}"
 backend="$requested"
 if [[ "$backend" == "auto" ]]; then
@@ -70,6 +95,14 @@ esac
 if [[ "$command" == "backend" ]]; then
     printf '%s\n' "$backend"
     exit 0
+fi
+
+if [[ "$command" == "ensure" ]]; then
+    if [[ "$backend" == "skwd" ]]; then
+        skwd_still_alive || repair_skwd || true
+        exec "$skwd_helper" current
+    fi
+    command=current
 fi
 
 if [[ "$command" == "current" ]]; then
@@ -94,7 +127,7 @@ fi
 
 path="$command"
 [[ -n "$path" && -f "$path" ]] || {
-    echo "usage: $0 <image> | current | backend" >&2
+    echo "usage: $0 <image> | current | ensure | backend" >&2
     exit 2
 }
 mkdir -p "$runtime"

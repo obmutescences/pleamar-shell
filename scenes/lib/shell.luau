@@ -1220,7 +1220,9 @@ function M.start(layout)
         if os.time() < wall_sync_hold_until then return end
         wall_sync_running = true
         local helper = shell_root .. "/bin/pleamar-wall"
-        run("sh", { "-c", shq(helper) .. " current 2>/dev/null" }, function(out, code)
+        --  `ensure` also revives skwd's static renderer when a monitor
+        --  power cycle left the daemon alive with no background layer.
+        run("sh", { "-c", shq(helper) .. " ensure 2>/dev/null" }, function(out, code)
             if code ~= 0 then wall_sync_running = false; return end
             local path = tostring(out or ""):gsub("%s+$", "")
             if path == "" or path == tostring(text.wallpaper or "") then

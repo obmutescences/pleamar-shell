@@ -14,7 +14,15 @@ log="${PLEAMAR_LOCK_KEEPER_LOG:-/tmp/pleamar-lock.log}"
 runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 
 mkdir -p "$(dirname "$log")" 2>/dev/null || true
-running() { pgrep -f -- "pleamar --scene .*/lockscreen/lockscreen\.plm" >/dev/null 2>&1; }
+running() {
+    local pid state
+    for pid in $(pgrep -f -- "pleamar --scene .*/lockscreen/lockscreen\.plm" 2>/dev/null || true); do
+        state="$(ps -o stat= -p "$pid" 2>/dev/null || true)"
+        [[ "$state" == Z* ]] && continue
+        return 0
+    done
+    return 1
+}
 
 #  A compositor that has gone can leave its socket behind; do not restart a
 #  scene into a dead display after logout.
@@ -60,8 +68,9 @@ while :; do
     compositor_alive || exit 0
     if running; then
         #  The shell or a previous process already owns the scene.  Wait for it
-        #  to stop rather than starting a second one.
-        sleep 2
+        #  to stop rather than starting a second one.  The short poll keeps the
+        #  compositor's red fallback visible for as little time as possible.
+        sleep 0.5
         continue
     fi
 
@@ -84,5 +93,5 @@ while :; do
         exit 1
     fi
     echo "keeper   · lock scene stopped (exit $code): starting it again" >>"$log"
-    sleep 2
+    sleep 0.5
 done
