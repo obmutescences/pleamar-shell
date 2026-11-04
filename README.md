@@ -338,9 +338,10 @@ experiments/probe.plm        1×1 基线探针
 
 - **LOOK**：Wallpaper、Glass
 - **SHELL**：Bar、Frame music、Typeface、Motion、Notifications、Windows
-- NixOS 模块额外启用 `pleamar-lock-guard.service`：它独立于主 shell，
-  在睡眠唤醒或输出变化后用 `pleamar-lock recover` 重建锁面，避免 niri
-  的红色 fallback 卡住。主 shell 的 watchdog 也会改用 `recover`。
+- NixOS 模块额外启用 `pleamar-lock-keeper.service`，做法和 Vitreus 的
+  `vitreus-keep` 一致：锁屏作为独立 Pleamar 进程长期运行，退出就重启；
+  如果 logind 仍报告锁定，重启后的锁屏会再次收到 `fact locked true`，
+  让 niri 用真正的锁面替换红色 fallback。
 - **SCREEN**：Lock screen、Idle
 - **SYSTEM**：Weather
 

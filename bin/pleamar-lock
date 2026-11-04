@@ -69,49 +69,6 @@ say() { "$bin" --say lockscreen "$1" >/dev/null 2>&1 || true; }
 #  back up without matching its own command line (as pgrep would).
 alive() { "$bin" --say lockscreen "get locked" >/dev/null 2>&1; }
 
-#  Whether logind still considers this session locked.  A crashed locker
-#  leaves the compositor locked even though its socket is gone, which is the
-#  state the recovery guard must repair rather than unlock.
-locked_hint() {
-    local sid out
-    sid="${XDG_SESSION_ID:-}"
-    if [[ -z "$sid" ]]; then
-        sid="$(loginctl list-sessions --no-legend 2>/dev/null | while read -r s uid user rest; do
-            [[ "$user" == "$USER" ]] && { echo "$s"; break; }
-        done)"
-    fi
-    [[ -n "$sid" ]] || return 1
-    out="$(loginctl show-session "$sid" -p LockedHint --value 2>/dev/null || true)"
-    [[ "$out" == "yes" ]]
-}
-
-held() { "$bin" --say lockscreen 'get lock.held' 2>/dev/null | grep -qx '1'; }
-
-#  niri keeps the session locked when its locker disconnects, and paints its
-#  red fallback until another lock client has a face on every output.  A
-#  resumed lock scene can answer on its socket while its lock face is gone,
-#  so `alive` is not enough: replace the process and wait for the compositor
-#  to confirm `lock.held` again.
-recover() {
-    locked_hint || { ensure; return; }
-    #  The shell watchdog and the independent guard can both see the same
-    #  broken socket.  Only one of them may replace the locker.
-    mkdir -p "$runtime/pleamar"
-    exec 9>"$runtime/pleamar/lock-recover.lock"
-    if command -v flock >/dev/null 2>&1; then
-        flock -n 9 || return 0
-    fi
-    stop
-    rm -f "$runtime/pleamar/lockscreen.sock" "$runtime/pleamar/lockscreen.display"
-    ensure || return 1
-    sync
-    say "fact locked true"
-    for _ in $(seq 1 50); do
-        held && return 0
-        sleep 0.1
-    done
-    return 1
-}
 
 sync() {
     running || return 0
@@ -147,10 +104,7 @@ case "${1:-lock}" in
     ensure) ensure ;;
     sync) sync ;;
     alive) alive ;;
-    locked) locked_hint ;;
-    held) held ;;
-    recover) recover ;;
     lock) ensure; sync; say "fact locked true" ;;
     test) fresh; sync; say "fact safe true"; say "fact locked true" ;;
-    *) echo "usage: $0 ensure|lock|test|sync|alive|locked|held|recover" >&2; exit 2 ;;
+    *) echo "usage: $0 ensure|lock|test|sync|alive" >&2; exit 2 ;;
 esac

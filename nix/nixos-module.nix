@@ -62,28 +62,30 @@ in
       };
     };
 
-    #  The shell's own lock watchdog is enough while the shell lives, but a
-    #  sleep/resume can outlast it.  This independent guard notices the resume
-    #  jump or a lost lock face, then replaces the lock scene while logind is
-    #  still locked.  Without it niri keeps its red ext-session-lock fallback.
-    systemd.user.services.pleamar-lock-guard = {
-      description = "Pleamar lock resume guard";
+    #  The lock scene is a separate Pleamar process, kept alive exactly like
+    #  Vitreus keeps its own scenes: if it stops while the session is locked,
+    #  niri has no lock surface and paints its red fallback.  The keeper starts
+    #  the scene again and re-sends `locked true` when logind says the session
+    #  is still locked.
+    systemd.user.services.pleamar-lock-keeper = {
+      description = "Pleamar lock scene keeper";
       after = [ "graphical-session.target" ];
+      before = [ "pleamar-shell.service" ];
       partOf = [ "graphical-session.target" ];
       wantedBy = [ "graphical-session.target" ];
       startLimitIntervalSec = 0;
       serviceConfig = {
         Type = "simple";
-        ExecStart = "${cfg.package}/share/pleamar-shell/bin/pleamar-lock-guard";
-        Restart = "always";
-        RestartSec = 1;
+        ExecStart = "${cfg.package}/share/pleamar-shell/bin/pleamar-lock-keeper";
+        Restart = "on-failure";
+        RestartSec = 2;
         Environment = [ "PATH=${config.system.path}/sw/bin" ];
       };
     };
 
     systemd.user.services.pleamar-shell = {
       description = "Pleamar shell (${cfg.layout})";
-      after = [ "graphical-session.target" ] ++ lib.optional skwdEnabled "skwd-walld.service";
+      after = [ "graphical-session.target" ] ++ lib.optional skwdEnabled "skwd-walld.service" ++ [ "pleamar-lock-keeper.service" ];
       wants = lib.optional skwdEnabled "skwd-walld.service";
       partOf = [ "graphical-session.target" ];
       wantedBy = [ "graphical-session.target" ];

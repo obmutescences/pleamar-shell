@@ -49,7 +49,7 @@ grep -q 'fatal kept on stderr' "$tmp/filtered" || { echo "render filter ate stde
 ! grep -q '^render · slow frame' "$tmp/filtered" || { echo "render filter left slow frames" >&2; exit 1; }
 PLEAMAR="$tmp/fake-pleamar" PLEAMAR_RENDER_LOG=1 "$root/bin/pleamar-shell" island >"$tmp/unfiltered" 2>&1
 grep -q '^render · slow frame' "$tmp/unfiltered" || { echo "PLEAMAR_RENDER_LOG did not restore logs" >&2; exit 1; }
-bash -n "$root/bin/pleamar-lock" "$root/bin/pleamar-lock-guard"
+bash -n "$root/bin/pleamar-lock" "$root/bin/pleamar-lock-keeper"
 
 #  The centre panel's System page is fed by this helper; a broken JSON line
 #  would silently blank the whole monitor.

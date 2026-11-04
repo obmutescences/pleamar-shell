@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# Supervise the ext-session-lock scene, the way Vitreus's vitreus-keep does.
+#
+# The lock scene is its own Pleamar process.  If it stops while the session is
+# still locked, niri has no locker to draw its lock surface and shows the red
+# ext-session-lock fallback.  This keeper starts the scene again and, when
+# logind still reports the session locked, tells the fresh scene to lock.
+# There is no polling of compositor state beyond whether the scene is running.
+set -uo pipefail
+
+root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+bin="$("$root/bin/pleamar-shell" --path)"
+log="${PLEAMAR_LOCK_KEEPER_LOG:-/tmp/pleamar-lock.log}"
+runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+
+mkdir -p "$(dirname "$log")" 2>/dev/null || true
+running() { pgrep -f -- "pleamar --scene .*/lockscreen/lockscreen\.plm" >/dev/null 2>&1; }
+
+#  A compositor that has gone can leave its socket behind; do not restart a
+#  scene into a dead display after logout.
+compositor_alive() {
+    [[ -n "${WAYLAND_DISPLAY:-}" ]] || return 1
+    case "$WAYLAND_DISPLAY" in
+        /*) local socket="$WAYLAND_DISPLAY" ;;
+        *)  local socket="$runtime/$WAYLAND_DISPLAY" ;;
+    esac
+    [[ -S "$socket" ]]
+}
+
+locked_hint() {
+    local sid out
+    sid="${XDG_SESSION_ID:-}"
+    if [[ -z "$sid" ]]; then
+        sid="$(loginctl list-sessions --no-legend 2>/dev/null | while read -r s uid user rest; do
+            [[ "$user" == "$USER" ]] && { echo "$s"; break; }
+        done)"
+    fi
+    [[ -n "$sid" ]] || return 1
+    out="$(loginctl show-session "$sid" -p LockedHint --value 2>/dev/null || true)"
+    [[ "$out" == "yes" ]]
+}
+
+#  The new scene starts warm (`locked = false`).  If the session is still
+#  locked, asking it to lock again is what makes niri replace its red fallback
+#  with the lock face.
+lock_if_needed() {
+    locked_hint || return 0
+    for _ in $(seq 1 80); do
+        if "$bin" --say lockscreen "get locked" >/dev/null 2>&1; then
+            "$bin" --say lockscreen "fact locked true" >/dev/null 2>&1 || true
+            return 0
+        fi
+        sleep 0.1
+    done
+    return 1
+}
+
+quick=0
+while :; do
+    compositor_alive || exit 0
+    if running; then
+        #  The shell or a previous process already owns the scene.  Wait for it
+        #  to stop rather than starting a second one.
+        sleep 2
+        continue
+    fi
+
+    started="$(date +%s)"
+    echo "keeper   · starting lock scene" >>"$log"
+    PLEAMAR_SWAPCHAIN=1 "$root/bin/pleamar-shell" lock >>"$log" 2>&1 &
+    child=$!
+    lock_if_needed >>"$log" 2>&1 &
+    wait "$child"
+    code=$?
+
+    compositor_alive || exit 0
+    if (( $(date +%s) - started < 30 )); then
+        quick=$((quick + 1))
+    else
+        quick=0
+    fi
+    if (( quick >= 5 )); then
+        echo "keeper   · lock scene stopped five times within 30 s (last exit $code): giving up" >>"$log"
+        exit 1
+    fi
+    echo "keeper   · lock scene stopped (exit $code): starting it again" >>"$log"
+    sleep 2
+done
