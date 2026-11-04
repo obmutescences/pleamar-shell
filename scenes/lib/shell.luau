@@ -1029,10 +1029,10 @@ function M.start(layout)
     end
 
     --  ── wallpaper ──────────────────────────────────────────────────────
-    --  Vitreus drives awww and asks Iris for the palette.  This checkout
-    --  drives swaybg (bin/pleamar-wall) and reads the palette with
-    --  bin/pleamar-colors: set the picture, then recolour the bar, panels and
-    --  launcher from its primary, exactly where the old aqua/azure lived.
+    --  bin/pleamar-wall selects skwd-wall v2 when its daemon is available
+    --  (swaybg only as a fallback), and bin/pleamar-colors reads the
+    --  palette: set the picture, then recolour the bar, panels and launcher
+    --  from its primary, exactly where the old aqua/azure lived.
     local function shq(v)
         return "'" .. tostring(v):gsub("'", "'\\''") .. "'"
     end

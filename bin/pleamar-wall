@@ -120,6 +120,10 @@ if [[ "$backend" == "skwd" ]]; then
     #  background layer: two full-screen layers double the compositing work.
     "$skwd_helper" "${args[@]}"
     stop_swaybg
+    #  skwd owns the background now.  Without this exit the helper fell
+    #  through and started swaybg too, putting a second full-screen layer on
+    #  top of skwd's wallpaper.
+    exit 0
 fi
 
 swaybg="$(find_swaybg)"
