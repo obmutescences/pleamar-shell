@@ -2,7 +2,7 @@ part ConfigPanel {
     //  Vitreus's settings panel, cut down to the pages we need: FRAME MUSIC,
     //  GLASS, BAR and FONT.  Header with badge/breadcrumb, sidebar, page of
     //  rows with sliders, switches and the font list; most changes apply
-    //  right away, the font one restarts the shell.
+    //  right away; the font one is saved for the next service start.
     //  These follow the wallpaper palette: the settings card is its surface
     //  colour, the plates are a veil over it, and the accent is its primary.
     let cp.card = rgb(pal_panel_r, pal_panel_g, pal_panel_b)
@@ -97,6 +97,19 @@ part ConfigPanel {
     component CpCard(x: number, y: number, w: number, h: number) {
         box { from: x, y; size: w, h; corner: 12; color: ink; opacity: 3% }
         box { from: x, y; size: w, h; corner: 12; stroke: 1; color: ink; opacity: 9% }
+    }
+
+    //  One row of the scrollable font list.  The component gives each copy
+    //  its own hit zone, so the list needs no hand-written `font_row.$k`
+    //  slots and can hold every match the model carries.
+    component FontRow(r: record, pick: event) {
+        group {
+            size: 570, 38
+            box { from: 0, 0; size: 570, 38; corner: 8; color: ink; opacity: 3% + 9% * hit.hover }
+            text r.name { at: 16, 19; anchor: left center; size: 15; color: ink; width: 530; lines: 1; family: "Space Grotesk" }
+            zone box hit { from: 0, 0; size: 570, 38; corner: 8; cursor: pointer; label: r.name }
+            on press hit { emit ui_sound; emit pick(r.index) }
+        }
     }
     let cp.tint_pct = clamp((glass_tint - 20) / 80, 0, 1)
     let cp.panel_pct = clamp(panel_bg_tint / 100, 0, 1)
@@ -419,7 +432,7 @@ part ConfigPanel {
 
         //  ── page header ──────────────────────────────────────────────────
         text pick(settings_page, "Frame music", "Glass", "Bar", "Font", "Wallpaper", "Notifications", "Motion", "Lock screen", "Idle", "Weather", "Windows", "Theme") { at: 250, 132; anchor: left center; size: 19.5; weight: 700; color: ink; family: "Space Grotesk" }
-        text pick(settings_page, "Changes apply right away.", "Changes apply right away.", "Changes apply right away.", "Apply restarts the shell.", "Click a picture to set it.", "Position, sounds, countdown.", "One pose per panel.", "Lock appearance and a safe test.", "Lock and screen-off timers; no suspend.", "City for the centre panel.", "Grid, letters, reveal and duration.", "Presets, gradient, light and border.") { at: 820, 132; anchor: right center; size: 15; color: faint; opacity: 80%; family: "Space Grotesk" }
+        text pick(settings_page, "Changes apply right away.", "Changes apply right away.", "Changes apply right away.", "Save; restart the service.", "Click a picture to set it.", "Position, sounds, countdown.", "One pose per panel.", "Lock appearance and a safe test.", "Lock and screen-off timers; no suspend.", "City for the centre panel.", "Grid, letters, reveal and duration.", "Presets, gradient, light and border.") { at: 820, 132; anchor: right center; size: 15; color: faint; opacity: 80%; family: "Space Grotesk" }
 
         //  ── FRAME MUSIC ──────────────────────────────────────────────────
         group {
@@ -614,27 +627,30 @@ part ConfigPanel {
             text "Selected" { at: 480, 186; anchor: left center; size: 13; weight: 700; color: faint; family: "Space Grotesk" }
             text font_choice { at: 480, 208; anchor: left center; size: 15; weight: 600; color: cp.mint; width: 250; lines: 1; family: "Space Grotesk" }
             CpPill(750, 188, 80, 28, 1, cp_font_apply.hover, cp.mint, ink)
-            text "Apply" { at: 790, 202; anchor: center; size: 14; weight: 700; color: cp.mint; family: "Space Grotesk" }
-            zone box cp_font_apply { from: 750, 188; size: 80, 28; corner: 14; cursor: pointer; label: "Apply font and restart" }
+            text "Save" { at: 790, 202; anchor: center; size: 14; weight: 700; color: cp.mint; family: "Space Grotesk" }
+            zone box cp_font_apply { from: 750, 188; size: 80, 28; corner: 14; cursor: pointer; label: "Save font choice" }
             on press cp_font_apply { emit ui_sound; emit font_apply }
+            text font_status { at: 266, 226; anchor: left center; size: 11; color: cp.mint; width: 540; lines: 1; family: "Space Grotesk" }
 
             box { from: 250, 250; size: 570, 38; corner: 10; color: ink; opacity: 4% }
             ellipse { at: 270, 269; radius: 5; stroke: 1.4; color: faint }
             line { from: 273.5, 272.5; to: 278, 277; width: 1.4; color: faint }
             input font_query { at: 290, 259; width: 512; size: 15; color: ink; family: "Space Grotesk"; placeholder: "Search installed fonts" }
 
-            repeat k in 0..10 {
-                let fy = 300 + k * 48
-                group {
-                    show: k < font_rows.count
-                    box { from: 250, fy; size: 570, 38; corner: 8; color: ink; opacity: 3% + 9% * font_row.$k.hover }
-                    text font_rows.$k.name { at: 266, fy + 19; anchor: left center; size: 15; color: ink; width: 530; lines: 1; family: "Space Grotesk" }
-                    zone box font_row.$k { from: 250, fy; size: 570, 38; corner: 8; cursor: pointer; label: font_rows.$k.name }
-                    on press font_row.$k { emit ui_sound; font_choice = font_rows.$k.name }
-                }
+            //  A real scroll container: wheel, drag and touchpad all move the
+            //  list; every matching family can be reached, not just the first
+            //  ten.  Each row is a component copy with its own hit zone.
+            column font_list {
+                at: 250, 300
+                view: 570, 430
+                step: 48
+                gap: 10
+                content: font_rows.count * 48
+                for r in font_rows { FontRow(r, pick: font_pick) }
             }
             text "No fonts match." { at: 266, 320; anchor: left center; size: 15; color: faint; show: font_rows.count < 1 }
-            text "Type to search · Apply restarts the shell." { at: 266, 790; anchor: left center; size: 13; color: faint; opacity: 70%; family: "Space Grotesk" }
+
+            text "Scroll to browse · Save writes it; restart the service to apply." { at: 266, 770; anchor: left center; size: 12; color: faint; opacity: 72%; width: 540; lines: 1; family: "Space Grotesk" }
         }
 
         //  ── WALLPAPER ────────────────────────────────────────────────────

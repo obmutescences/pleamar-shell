@@ -424,12 +424,13 @@ experiments/probe.plm        1×1 基线探针
   自动换图都是随机动画。skwd 自己的 picker 换图时，shell 会在 5 秒内同步
   当前项和颜色。页面右侧的空位也属于面板，不会点穿到后面的窗口
   （`cp_shield` / `la_shield`）。
-- **FONT**：全局字体。搜索 `fc-list` 返回的已安装字体，点一行选
-  Selected，Apply 后写入 `font_family` 并由 systemd user service 重启
-  整个 shell。重启时 `bin/pleamar-fonts` 直接按 Vitreus 的做法，把所选
-  字体复制并改名为 `Space Grotesk`，fontconfig 拒绝真实 Space Grotesk，
-  shell 只看到改名后的字体；所以 bar、设置面板、launcher 的所有文本都会
-  跟着变。重启通常 5–7 秒。
+- **FONT**：全局字体。搜索 `fc-list` 返回的已安装字体，列表可滚轮/拖动；
+  点一行选 Selected，**Save** 只写入 `font_family`，不再自动重启。要让
+  新字体生效，手动执行 `systemctl --user restart pleamar-shell.service`。
+  重启时 `bin/pleamar-fonts` 按 Vitreus 的做法，把所选字体复制并改名为
+  `Space Grotesk`，fontconfig 拒绝真实 Space Grotesk，shell 只看到改名后
+  的字体；bar、设置面板、launcher 的所有文本都会跟着变。手动重启通常
+  5–7 秒。
 
 面板也可以用终端 IPC 直接打开：`pleamar-ipc settings [0–11]`。
 锁屏外观的 `lock_*` 与 IDLE 的 `idle_*` 也写在同一份
@@ -438,7 +439,7 @@ experiments/probe.plm        1×1 基线探针
 默认 Never，不配置 suspend。
 
 全部写入 `~/.config/pleamar-shell/config.json`，slider 拖动即时生效；
-字体例外，需要 Apply 重启。`bin/pleamar-shell` 启动时读取
+字体例外：Save 后需要手动重启服务。`bin/pleamar-shell` 启动时读取
 `font_family`，不是 Space Grotesk 就生成
 `~/.config/pleamar-shell/fonts.conf` 并导出 `FONTCONFIG_FILE`。
 `Bend` 关掉会保留玻璃但不再用全屏 lens（改用 compositor blur），是

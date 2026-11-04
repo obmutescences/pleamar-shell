@@ -386,7 +386,7 @@ function M.start(layout)
         local payload = {
             v = 6,
             weather_city = tostring(text.weather_city or cfg.weather_city or ""),
-            font_family = tostring(text.font_family or "Space Grotesk"),
+            font_family = tostring(cfg.font_family or text.font_family or "Space Grotesk"),
             wallpaper = tostring(text.wallpaper or ""),
             wallpaper_dir = tostring(text.wallpaper_dir or ""),
             wallpaper_auto = truthy(fact.wall_auto),
@@ -541,8 +541,8 @@ function M.start(layout)
         save()
     end)
 
-    --  Where this checkout lives, for the font Apply button's restart.  The
-    --  launcher exports it; a scene started by hand simply saves without one.
+    --  Where this checkout lives, for the settings key helper and the lock
+    --  scene.  The launcher exports it; a hand-started scene simply has none.
     local shell_root = ""
     local start_settingskeys
     center.start(function() return shell_root end, function() set_fx("center_panel") end)
@@ -2096,19 +2096,25 @@ function M.start(layout)
         end)
     end)
     --  ── fonts ───────────────────────────────────────────────────────────
-    --  The settings page shows ten matches at a time; the search field narrows
-    --  the installed families.  Applying one saves it and restarts the shell,
+    --  The settings page shows a scrollable list of every matching family.
+    --  Saving one only writes the choice; a manual shell restart applies it,
     --  because pleamar resolves family names when a process starts.
     local all_fonts = {}
+    local font_matches = {}
 
     local function refresh_fonts()
-        local q = string.lower(tostring(text.font_query or ""))
+        local q = string.lower(tostring(text.font_query or "")):gsub("^%s+", ""):gsub("%s+$", "")
+        local compact = q:gsub("%s+", "")
         local out = {}
+        font_matches = {}
         for i = 1, #all_fonts do
             local name = all_fonts[i]
-            if q == "" or string.find(string.lower(name), q, 1, true) then
+            local low = string.lower(name)
+            if q == "" or string.find(low, q, 1, true)
+                or (compact ~= "" and string.find((low:gsub("%s+", "")), compact, 1, true)) then
                 out[#out + 1] = { name = name }
-                if #out >= 10 then break end
+                font_matches[#out] = name
+                if #out >= 64 then break end
             end
         end
         model.font_rows = out
@@ -2412,32 +2418,22 @@ function M.start(layout)
         if chosen ~= "" then set_wallpaper(chosen, true) end
     end)
     on("fact:wp_page", function() show_wall_page() end)
+    on("font_pick", function(i)
+        local chosen = font_matches[math.floor(number(i, -1)) + 1]
+        if chosen then
+            text.font_choice = chosen
+            text.font_status = ""
+        end
+    end)
     on("font_apply", function()
         local chosen = tostring(text.font_choice or "Space Grotesk")
-        text.font_family = chosen
+        --  Keep `font_family` as the font the running process actually loaded.
+        --  The saved choice is applied by a manual service restart.
+        cfg.font_family = chosen
         text.font_choice = chosen
+        text.font_status = "Saved; restart pleamar-shell.service to apply"
         save(function(code)
-            if code ~= 0 then
-                log("font choice could not be saved; not restarting")
-                return
-            end
-            if shell_root == "" then
-                log("font saved; start pleamar-shell again to apply it")
-                return
-            end
-            local mode = string.lower(tostring(text.layout or "island"))
-            local helper = shell_root .. "/bin/pleamar-shell-restart"
-            --  Give the config write a moment to reach the disk, and carry the
-            --  chosen family into the new process even if it has not.
-            after(400, function()
-                local cmd = string.format(
-                    "if command -v systemd-run >/dev/null 2>&1; then "
-                        .. "systemd-run --user --collect --unit=pleamar-font-$$ %q %q %q; "
-                        .. "else setsid -f %q %q %q >/tmp/pleamar-shell-restart.log 2>&1; fi",
-                    helper, mode, chosen, helper, mode, chosen)
-                local started, err = pcall(run, "sh", { "-c", cmd })
-                if not started then log("font restart could not start: " .. tostring(err)) end
-            end)
+            if code ~= 0 then log("font choice could not be saved") end
         end)
     end)
     on("text:query", function()

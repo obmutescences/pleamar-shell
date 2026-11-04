@@ -243,8 +243,9 @@ part Common {
     text font_family = "Space Grotesk"
     text font_choice = "Space Grotesk"
     text font_query = ""
+    text font_status = ""
     text weather_city = ""
-    model font_rows max 10 { name: text }
+    model font_rows max 64 { name: text }
 
     //  ── wallpaper ───────────────────────────────────────────────────────
     //  The wallpaper is handed to swaybg (the background layer), as Vitreus
@@ -363,6 +364,7 @@ part Common {
     event la_move ->
     event la_hint ->
     event font_apply ->
+    event font_pick ->
     event weather_apply ->
     event settings_close ->
     //  Terminal entry points.  `pleamar --say island "emit ipc_open_search"`
