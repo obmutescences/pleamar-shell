@@ -32,6 +32,25 @@ helper_bin="$(env -i HOME="${HOME:-/tmp}" PATH="$tmp" "$root/bin/pleamar-shell" 
     exit 1
 }
 
+#  Frame-pacing chatter belongs to tuning, not the journal.  The wrapper
+#  drops it by default and PLEAMAR_RENDER_LOG=1 brings it back.
+cat >"$tmp/fake-pleamar" <<'EOF'
+#!/usr/bin/env bash
+if [[ " $* " == *" --version "* ]]; then echo "fake 1.0"; exit 0; fi
+echo 'render · slow frame: 34 ms at 90.55 s'
+echo 'render · this scene does not keep up: 12.1 ms a frame'
+echo 'kept line'
+echo 'fatal kept on stderr' >&2
+EOF
+chmod +x "$tmp/fake-pleamar"
+PLEAMAR="$tmp/fake-pleamar" "$root/bin/pleamar-shell" island >"$tmp/filtered" 2>&1
+grep -q '^kept line$' "$tmp/filtered" || { echo "render filter ate ordinary output" >&2; exit 1; }
+grep -q 'fatal kept on stderr' "$tmp/filtered" || { echo "render filter ate stderr" >&2; exit 1; }
+! grep -q '^render · slow frame' "$tmp/filtered" || { echo "render filter left slow frames" >&2; exit 1; }
+PLEAMAR="$tmp/fake-pleamar" PLEAMAR_RENDER_LOG=1 "$root/bin/pleamar-shell" island >"$tmp/unfiltered" 2>&1
+grep -q '^render · slow frame' "$tmp/unfiltered" || { echo "PLEAMAR_RENDER_LOG did not restore logs" >&2; exit 1; }
+bash -n "$root/bin/pleamar-lock" "$root/bin/pleamar-lock-guard"
+
 #  The centre panel's System page is fed by this helper; a broken JSON line
 #  would silently blank the whole monitor.
 "$root/bin/pleamar-sysmon" --once | python3 -c '

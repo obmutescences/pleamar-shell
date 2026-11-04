@@ -338,6 +338,9 @@ experiments/probe.plm        1×1 基线探针
 
 - **LOOK**：Wallpaper、Glass
 - **SHELL**：Bar、Frame music、Typeface、Motion、Notifications、Windows
+- NixOS 模块额外启用 `pleamar-lock-guard.service`：它独立于主 shell，
+  在睡眠唤醒或输出变化后用 `pleamar-lock recover` 重建锁面，避免 niri
+  的红色 fallback 卡住。主 shell 的 watchdog 也会改用 `recover`。
 - **SCREEN**：Lock screen、Idle
 - **SYSTEM**：Weather
 
@@ -370,6 +373,8 @@ experiments/probe.plm        1×1 基线探针
   最后 8% 会等预览就绪；截图前后恢复剪贴板并在 Pleamar 内抑制 niri 的
   “Screenshot captured” toast。键盘由独立的单 surface `windowkeys` helper
   接管，向主场景转发字母、Esc 和 Enter。
+- 帧率诊断（`render · slow frame` / `this scene does not keep up`）默认由
+  wrapper 过滤；调试时用 `PLEAMAR_RENDER_LOG=1` 启动可恢复完整日志。
 - **LOCK**：锁屏外观。Blur（Light/Medium/Heavy）、12/24 小时与秒、
   Clock size、日期格式、密码遮罩（Shapes/Dots/Stars/Special）、遮罩调色板、
   Media pill / Power buttons；`Lock now` 与 `Test lock`。Mask colour 只控制

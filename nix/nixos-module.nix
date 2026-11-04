@@ -62,6 +62,25 @@ in
       };
     };
 
+    #  The shell's own lock watchdog is enough while the shell lives, but a
+    #  sleep/resume can outlast it.  This independent guard notices the resume
+    #  jump or a lost lock face, then replaces the lock scene while logind is
+    #  still locked.  Without it niri keeps its red ext-session-lock fallback.
+    systemd.user.services.pleamar-lock-guard = {
+      description = "Pleamar lock resume guard";
+      after = [ "graphical-session.target" ];
+      partOf = [ "graphical-session.target" ];
+      wantedBy = [ "graphical-session.target" ];
+      startLimitIntervalSec = 0;
+      serviceConfig = {
+        Type = "simple";
+        ExecStart = "${cfg.package}/share/pleamar-shell/bin/pleamar-lock-guard";
+        Restart = "always";
+        RestartSec = 1;
+        Environment = [ "PATH=${config.system.path}/sw/bin" ];
+      };
+    };
+
     systemd.user.services.pleamar-shell = {
       description = "Pleamar shell (${cfg.layout})";
       after = [ "graphical-session.target" ] ++ lib.optional skwdEnabled "skwd-walld.service";

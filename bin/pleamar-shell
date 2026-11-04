@@ -137,4 +137,14 @@ fi
 export PLEAMAR_SHELL_ROOT="$root"
 export PLEAMAR_SHELL_MODE="$mode"
 
-exec "$bin" --scene "$scene" --no-hud "${@:2}"
+#  Pleamar's frame-pacing diagnostics are useful while tuning a scene, but a
+#  shell should not fill the journal with isolated 34 ms frames.  Set
+#  PLEAMAR_RENDER_LOG=1 to keep them.
+if [[ "${PLEAMAR_RENDER_LOG:-0}" == "1" ]]; then
+    exec "$bin" --scene "$scene" --no-hud "${@:2}"
+fi
+set +e
+"$bin" --scene "$scene" --no-hud "${@:2}" 2>&1 \
+    | sed -u -E '/^render · (slow frame|this scene does not keep up):/d'
+code=${PIPESTATUS[0]}
+exit "$code"

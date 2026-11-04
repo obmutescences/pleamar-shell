@@ -2459,7 +2459,7 @@ function M.start(layout)
             run("sh", { "-c", lock_hint }, function(out)
                 local locked = tostring(out or ""):lower():find("yes") ~= nil
                 log("lock scene is gone; " .. (locked and "re-locking" or "starting it again"))
-                run("sh", { "-c", helper .. (locked and " lock" or " ensure") }, function(_, code)
+                run("sh", { "-c", helper .. (locked and " recover" or " ensure") }, function(_, code)
                     if code ~= 0 then log("lock scene could not be restarted") end
                     lock_watch_busy = false
                 end)

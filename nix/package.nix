@@ -1,8 +1,8 @@
-{ lib, stdenvNoCC, makeWrapper, pleamar, bash, coreutils, findutils, imagemagick, python3, swaybg, procps, util-linux, libnotify, pipewire, wireplumber, xdg-utils, cliphist, wl-clipboard, cava, fontconfig, jq, niri, swayidle, curl, skwdWall ? null }:
+{ lib, stdenvNoCC, makeWrapper, pleamar, bash, coreutils, findutils, gnused, imagemagick, python3, swaybg, procps, util-linux, libnotify, pipewire, wireplumber, xdg-utils, cliphist, wl-clipboard, cava, fontconfig, jq, niri, swayidle, curl, skwdWall ? null }:
 
 let
   runtimePackages = [
-    bash coreutils findutils imagemagick python3 swaybg procps util-linux
+    bash coreutils findutils gnused imagemagick python3 swaybg procps util-linux
     libnotify pipewire wireplumber xdg-utils cliphist wl-clipboard cava fontconfig jq niri
     swayidle curl
   ] ++ lib.optional (skwdWall != null) skwdWall;
