@@ -241,8 +241,14 @@ part CenterPanel {
                 text "{floor(tick.second / 10)}" { size: 12; weight: 700; color: ct.secondary; family: "Space Grotesk" }
                 text "{mod(tick.second, 10)}" { size: 12; weight: 700; color: ct.secondary; family: "Space Grotesk" }
             }
-            text ct_header_date { at: 36, 71; anchor: left center; size: 11; weight: 500; color: faint; width: 258; lines: 1; family: "Noto Sans CJK SC" }
-            text "PLEAMAR / CENTRE" { at: 36, 83; anchor: left center; size: 9; weight: 700; color: faint; opacity: 55%; family: "Space Grotesk" }
+            row {
+                at: 36, 74
+                anchor: left center
+                gap: 6
+                text ct_header_date { size: 16; weight: 600; color: ct.primary; family: "Noto Sans CJK SC" }
+                text "·" { size: 16; color: ct.secondary; opacity: 55%; family: "Noto Sans CJK SC" }
+                text ct_weekday { size: 16; weight: 500; color: ct.secondary; family: "Noto Sans CJK SC" }
+            }
 
             text number(center_tab + 1, 0, "0") { at: 1014, 37; anchor: right center; size: 11; weight: 700; color: ct.secondary; family: "Space Grotesk" }
             text "/ 07" { at: 1020, 37; anchor: left center; size: 10; color: faint; opacity: 60%; family: "Space Grotesk" }
@@ -881,7 +887,7 @@ part CenterPanel {
                     text ct_today_day { at: 924, 314; anchor: center; size: 74; weight: 700; color: ct.primary; family: "Space Grotesk" }
                     text ct_today_month { at: 924, 366; anchor: center; size: 13; weight: 700; color: ink; family: "Noto Sans CJK SC" }
                     text ct_today_year { at: 924, 386; anchor: center; size: 11; color: faint; family: "Space Grotesk" }
-                    text ct_weekday { at: 800, 448; anchor: left center; size: 14; weight: 600; color: ink; width: 248; lines: 1; family: "Noto Sans CJK SC" }
+                    text ct_weekday { at: 800, 448; anchor: left center; size: 18; weight: 700; color: ct.secondary; width: 248; lines: 1; family: "Noto Sans CJK SC" }
                     text ct_weeknum { at: 800, 474; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Noto Sans CJK SC" }
                     line { from: 800, 496; to: 1048, 496; width: 1; color: ink; opacity: 9% }
                     text ct_countdown_title { at: 800, 514; anchor: left center; size: 9; weight: 700; color: ct.secondary; family: "Noto Sans CJK SC" }

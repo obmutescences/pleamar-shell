@@ -323,7 +323,6 @@ def build(year, month):
     header = f"{today.year}年{today.month}月{today.day}日"
     if lunar_today:
         header += f" · 农历{lunar_today}"
-    header += f" · {weekday}"
     week = first.isocalendar()[1]
 
     return {

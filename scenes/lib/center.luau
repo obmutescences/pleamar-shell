@@ -309,7 +309,7 @@ local function calendar_fallback(ft, today)
     model.ct_countdown = {}
     text.ct_countdown_title = (ft.year == today.year and ft.month == today.month)
         and "本月倒计时" or string.format("%d月倒计时", ft.month)
-    text.ct_header_date = string.format("%d年%d月%d日 · %s", today.year, today.month, today.day, WEEKDAYS[today.wday])
+    text.ct_header_date = string.format("%d年%d月%d日", today.year, today.month, today.day)
     text.ct_month = string.format("%d年 %d月", ft.year, ft.month)
     text.ct_month_sub = string.format("第 %d 周", iso_week(first))
     text.ct_weekday = WEEKDAYS[today.wday]
