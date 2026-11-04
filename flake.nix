@@ -27,10 +27,19 @@
       skwdFor = pkgs: if pkgs.stdenv.hostPlatform.system == "x86_64-linux"
         then skwdWall.packages.x86_64-linux.default
         else null;
+      #  Every Pleamar layer surface otherwise reaches niri as the single
+      #  namespace "pleamar", which makes `niri msg layers` useless for telling
+      #  the bar, the water and each closed panel apart.  The scene already has
+      #  a name for every surface; this patch carries it into layer-shell.
+      pleamarFor = pkgs:
+        let base = pleamar.packages.${pkgs.stdenv.hostPlatform.system}.default;
+        in base.overrideAttrs (old: {
+          patches = (old.patches or []) ++ [ ./nix/pleamar-layer-names.patch ];
+        });
     in {
       nixosModules.default = { config, lib, pkgs, ... }: import ./nix/nixos-module.nix {
         inherit config lib pkgs;
-        pleamar = pleamar.packages.${pkgs.stdenv.hostPlatform.system}.default;
+        pleamar = pleamarFor pkgs;
         skwdWall = skwdFor pkgs;
       };
 
@@ -40,7 +49,7 @@
         inherit swaybg-pleamar;
         default = pkgs.callPackage ./nix/package.nix {
           swaybg = swaybg-pleamar;
-          pleamar = pleamar.packages.${pkgs.stdenv.hostPlatform.system}.default;
+          pleamar = pleamarFor pkgs;
           skwdWall = skwdFor pkgs;
         };
       });
@@ -49,7 +58,7 @@
         default = pkgs.mkShell {
           packages = with pkgs; [ bash coreutils findutils gnused gnugrep gawk jq imagemagick python3 wireplumber swayidle procps util-linux ]
             ++ [ (import ./nix/swaybg-pleamar.nix { inherit pkgs; }) ]
-            ++ [ pleamar.packages.${pkgs.stdenv.hostPlatform.system}.default ];
+            ++ [ (pleamarFor pkgs) ];
         };
       });
     };

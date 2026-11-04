@@ -1,0 +1,20 @@
+--- a/src/platform/wayland.rs
++++ b/src/platform/wayland.rs
+@@ -1060,7 +1060,16 @@
+                 self.placed.push(Placed { id, which, role, output: output.clone(), viewport, _fractional_scale: fractional_scale, scale: 1.0, size: (0, 0), pending: Some((surface, name.clone(), mhz)), layer_placement: None, backdrop });
+                 continue;
+             }
+-            let layer = self.layers.create_layer_surface(qh, wl, level, Some("pleamar"), Some(output));
++            //  niri's layer list is how one tells the bar, the water and each
++            //  panel apart.  The scene already names every surface; carry that
++            //  name into the layer-shell namespace instead of collapsing all
++            //  of them to "pleamar".
++            let namespace = if p.name.is_empty() {
++                "pleamar:main".to_string()
++            } else {
++                format!("pleamar:{}", p.name)
++            };
++            let layer = self.layers.create_layer_surface(qh, wl, level, Some(namespace.as_str()), Some(output));
+             let reserves = p.exclusive_zone > 0 || p.reserve_while.is_some();
+             let mut stretch = Stretch { width: p.width == 0, height: p.height == 0, monitor: if reserves { info.logical_size } else { None }, edges: Anchor::empty(), screen: info.logical_size, extra_height: height - p.height };
+             let (edges, size) = placement(said.anchor.unwrap_or(p.anchor), stretch, (p.width, height));
