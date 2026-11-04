@@ -207,6 +207,7 @@ part CenterPanel {
             //  this rounded clip that sample leaks into the four corners and
             //  shows as a square dark backing under the 30 px border.
             clip inset 0 box { from: 0, 0; size: 1120, 720; corner: 30 }
+            PanelBackdrop(0, 0, 1120, 720, 30)
             body {
                 color: panel_bg
                 glass: if(glass_on, 100%, 0%)
@@ -220,6 +221,12 @@ part CenterPanel {
                 dispersion: glass_disp
                 dome: glass_dome
                 milk: glass_milk
+                smoke: glass_smoke
+                vivid: glass_vivid
+                mirror: glass_mirror
+                highlight: glass_highlight
+                ripple: glass_ripple
+                border: 1.5 * glass_border / 100, ink
                 shine: pointer
                 shadow: 0, 10, 40, 32%, glass_shadow
                 box { from: 0, 0; size: 1120, 720; corner: 30 }
@@ -1169,6 +1176,7 @@ part CenterPanel {
 
         zone box ct_power_body { from: 40, 40; size: 520, 210; corner: 22; active: center_power_confirm >= 0; label: "Cancel power action" }
         on press ct_power_body { emit center_power_cancel }
+        PanelBackdrop(40, 40, 520, 210, 22)
         body {
             color: mix(ct.card2, ct.primary, 0.45)
             opacity: if(glass_on, 1% * max(glass_tint, 76), 98%)
@@ -1179,7 +1187,12 @@ part CenterPanel {
             dispersion: glass_disp
             dome: glass_dome
             milk: glass_milk
-            smoke: 18%
+            smoke: glass_smoke
+            vivid: glass_vivid
+            mirror: glass_mirror
+            highlight: glass_highlight
+            ripple: glass_ripple
+            border: 1.5 * glass_border / 100, ink
             shine: pointer
             shadow: 0, 10, 28, 24%, glass_shadow
             box { from: 40, 40; size: 520, 210; corner: 22 }
@@ -1210,6 +1223,7 @@ part CenterPanel {
         zone box ap_shield { from: 0, 0; size: 1120, 720; active: audio_pick_open; label: "Close output picker" }
         on press ap_shield { audio_pick_open = false }
         box { from: 36, 152; size: 420, 500; corner: 18; color: mix(ct.card2, ct.primary, 0.45); opacity: 92% }
+        PanelBackdrop(36, 152, 420, 500, 18)
         body {
             color: mix(ct.card2, ct.primary, 0.45)
             opacity: if(glass_on, 1% * max(glass_tint, 76), 98%)
@@ -1220,7 +1234,12 @@ part CenterPanel {
             dispersion: glass_disp
             dome: glass_dome
             milk: glass_milk
-            smoke: 80%
+            smoke: glass_smoke
+            vivid: glass_vivid
+            mirror: glass_mirror
+            highlight: glass_highlight
+            ripple: glass_ripple
+            border: 1.5 * glass_border / 100, ink
             shine: pointer
             shadow: 0, 10, 28, 24%, glass_shadow
             box { from: 36, 152; size: 420, 500; corner: 18 }

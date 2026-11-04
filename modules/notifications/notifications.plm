@@ -86,6 +86,7 @@ part Notifications {
             group {
                 scale: 0.7
                 pivot: 0, 0
+            PanelBackdrop(0, 0, 420, 160, 24)
             body {
                 color: panel_bg
                 glass: if(glass_on, 100%, 0%)
@@ -96,6 +97,12 @@ part Notifications {
                 dispersion: glass_disp
                 dome: glass_dome
                 milk: glass_milk
+                smoke: glass_smoke
+                vivid: glass_vivid
+                mirror: glass_mirror
+                highlight: glass_highlight
+                ripple: glass_ripple
+                border: 1.5 * glass_border / 100, ink
                 rim: 1% * glass_edge
                 shine: pointer
                 box { from: 0, 0; size: 420, 160; corner: 24 }
@@ -199,6 +206,7 @@ part Notifications {
         on press nt_center_shield { nt_center = nt_center }
 
         PanelPop(center_fx, ntc_p, 480, 650) {
+        PanelBackdrop(0, 6, 480, 644, 26)
         body {
             color: panel_bg
             glass: if(glass_on, 100%, 0%)

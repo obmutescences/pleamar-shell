@@ -30,6 +30,7 @@ part Launcher {
         on press la_shield { launch_open = launch_open }
 
         PanelPop(search_fx, la_p, 660, 640) {
+            PanelBackdrop(la.x, la.top, la.w, la.h, 24)
             body {
                 color: panel_bg
                 glass: if(glass_on, 100%, 0%)
@@ -40,6 +41,12 @@ part Launcher {
                 dispersion: glass_disp
                 dome: glass_dome
                 milk: glass_milk
+                smoke: glass_smoke
+                vivid: glass_vivid
+                mirror: glass_mirror
+                highlight: glass_highlight
+                ripple: glass_ripple
+                border: 1.5 * glass_border / 100, ink
                 rim: 1% * glass_edge
                 shine: pointer
                 box { from: la.x, la.top; size: la.w, la.h; corner: 24 }

@@ -86,7 +86,7 @@
 | 打开官方 picker | `pleamar-ipc picker` |
 | 锁屏 | `pleamar-ipc lock` |
 
-页号：`0 FRAME / 1 GLASS / 2 BAR / 3 FONT / 4 WALLPAPER / 5 ALERTS / 6 MOTION / 7 LOCK / 8 IDLE / 9 WEATHER / 10 WINDOWS`。
+页号：`0 FRAME / 1 GLASS / 2 BAR / 3 FONT / 4 WALLPAPER / 5 ALERTS / 6 MOTION / 7 LOCK / 8 IDLE / 9 WEATHER / 10 WINDOWS / 11 THEME`。
 `pleamar-ipc` 在 `bin/pleamar-ipc`，并已链接到 `~/.local/bin/pleamar-ipc`；
 新终端里找不到时用 `./bin/pleamar-ipc …`。两个布局都在运行时默认 Island，
 可用 `PLEAMAR_SCENE=frame pleamar-ipc settings` 指定。
@@ -231,7 +231,7 @@ binds {
 - 用 Frame 就把 `island` 换成 `frame`；不要同时启动两套。
 - 键位可换成 `Mod+D` / `Mod+Shift+C` 等，只要不要和已有 launcher 冲突。
 - 想直接打开某一设置页：`Mod+Shift+G { spawn "pleamar-ipc" "settings" "2"; }`
-  （页号 0–9）。
+  （页号 0–11）。
 - 想直接打开中心面板的某一 tab：`Mod+Shift+V { spawn "pleamar-ipc" "center" "3"; }`
   （tab 0–6）。
 - 改完 niri 配置后 `niri msg action reload-config`；新键立即生效。
@@ -273,7 +273,7 @@ modules/
   frame/glass.plm            连续玻璃框：四条 rail + 四个圆角楔，一个 body
   frame/water.plm            Frame music 的四边水波（当前实现）
   lockscreen/lockscreen.plm  独立锁屏场景（ext-session-lock + PAM）
-  settings/panel.plm         Vitreus 风格设置面板：FRAME MUSIC / GLASS / BAR / FONT / WALLPAPER / NOTIFICATIONS / MOTION / LOCK / IDLE / WEATHER
+  settings/panel.plm         Vitreus 风格设置面板：FRAME MUSIC / GLASS / THEME / BAR / FONT / WALLPAPER / NOTIFICATIONS / MOTION / LOCK / IDLE / WEATHER
   launcher/launcher.plm      Vitreus 风格全功能搜索（apps/files/commands/emoji/clipboard/wallpapers/windows/web/calc）
   notifications/notifications.plm  toast + 通知中心（吸附在 bar 下方）
   center/panel.plm                 7-tab 中心面板（center panel）
@@ -350,7 +350,7 @@ experiments/probe.plm        1×1 基线探针
 环形 knob；开关是 34→38px 的胶囊轨道，22px 高，knob 17px 并在滑动时
 从圆形收成圆角方块。按钮和选项是带 hover 描边的药丸；这些只是视觉
 组件，事实、事件和页面索引保持不变。
-当前保留十一页，原来的临时小面板已删除：
+当前保留十二页，原来的临时小面板已删除：
 
 - **FRAME MUSIC**：Frame music 开关；Amplitude 20–220%；Sensitivity
   80–240%；Ripples 1–10；Wave height 0–300%；Blend 0–100%。
@@ -363,6 +363,11 @@ experiments/probe.plm        1×1 基线探针
   效果，关闭时 UI 标出 `Bend off`）；Edge light 0–100%；Edge thickness
   0–2；Rainbow fringe 0–2；Dome 0–1.5；Milk 0–1。niri 的 compositor
   blur 是全局 `blur {}`，不由这个 slider 控制。
+- **THEME**：Material 预设（Liquid / Clear / Smoked / Milky / Mirror）；
+  Gradient 开关、Linear/Radial、Strength 0–100%；Inner light 0–100%；
+  Inner border 0–100%；Smoke 0–100%；Vivid 0–200%；Mirror 0–200%；
+  Highlight 0–200%；Press ripple 0–100%。所有值都写入 config，重启后保留。
+  渐变和内光是玻璃背后的额外 body，不新增 surface，也不额外捕获。
 - **BAR**：Bar height 32–80px；只作用于 Island 胶囊，默认 44px。
   Frame 布局不再显示这条 bar。
 - **WINDOWS**：窗口 picker。Thumbnail size 140–420px、Per row 2–8、
@@ -426,7 +431,7 @@ experiments/probe.plm        1×1 基线探针
   shell 只看到改名后的字体；所以 bar、设置面板、launcher 的所有文本都会
   跟着变。重启通常 5–7 秒。
 
-面板也可以用终端 IPC 直接打开：`pleamar-ipc settings [0–9]`。
+面板也可以用终端 IPC 直接打开：`pleamar-ipc settings [0–11]`。
 锁屏外观的 `lock_*` 与 IDLE 的 `idle_*` 也写在同一份
 `~/.config/pleamar-shell/config.json`；`pleamar-ipc lock` 会启动独立的
 `lockscreen/lockscreen.plm` 并把设置推进去。IDLE 由 `swayidle` 执行，

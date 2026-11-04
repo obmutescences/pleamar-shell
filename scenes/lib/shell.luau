@@ -107,6 +107,15 @@ function M.start(layout)
         glass_disp = 1,
         glass_dome = 0,
         glass_milk = 0,
+        glass_smoke = 0,
+        glass_vivid = 1.18,
+        glass_mirror = 1,
+        glass_highlight = 1,
+        glass_ripple = 1,
+        glass_light = 0,
+        glass_border = 0,
+        panel_gradient = 0,
+        panel_gradient_strength = 55,
         glass_tint = 58,
         glass_frost = 100,
         glass_edge = 34,
@@ -234,6 +243,15 @@ function M.start(layout)
         cfg.glass_disp = clamp(number(saved.glass_disp, cfg.glass_disp), 0, 2)
         cfg.glass_dome = clamp(number(saved.glass_dome, cfg.glass_dome), 0, 1.5)
         cfg.glass_milk = clamp(number(saved.glass_milk, cfg.glass_milk), 0, 1)
+        cfg.glass_smoke = clamp(number(saved.glass_smoke, cfg.glass_smoke), 0, 1)
+        cfg.glass_vivid = clamp(number(saved.glass_vivid, cfg.glass_vivid), 0, 2)
+        cfg.glass_mirror = clamp(number(saved.glass_mirror, cfg.glass_mirror), 0, 2)
+        cfg.glass_highlight = clamp(number(saved.glass_highlight, cfg.glass_highlight), 0, 2)
+        cfg.glass_ripple = clamp(number(saved.glass_ripple, cfg.glass_ripple), 0, 1)
+        cfg.glass_light = clamp(number(saved.glass_light, cfg.glass_light), 0, 1)
+        cfg.glass_border = clamp(number(saved.glass_border, cfg.glass_border), 0, 100)
+        cfg.panel_gradient = math.floor(clamp(number(saved.panel_gradient, cfg.panel_gradient), 0, 2))
+        cfg.panel_gradient_strength = clamp(number(saved.panel_gradient_strength, cfg.panel_gradient_strength), 0, 100)
         cfg.glass_tint = clamp(number(saved.glass_tint, cfg.glass_tint), 20, 100)
         cfg.glass_frost = clamp(number(saved.glass_frost, cfg.glass_frost), 0, 100)
         cfg.glass_edge = clamp(number(saved.glass_edge, cfg.glass_edge), 0, 100)
@@ -312,6 +330,15 @@ function M.start(layout)
         fact.glass_disp = cfg.glass_disp
         fact.glass_dome = cfg.glass_dome
         fact.glass_milk = cfg.glass_milk
+        fact.glass_smoke = cfg.glass_smoke
+        fact.glass_vivid = cfg.glass_vivid
+        fact.glass_mirror = cfg.glass_mirror
+        fact.glass_highlight = cfg.glass_highlight
+        fact.glass_ripple = cfg.glass_ripple
+        fact.glass_light = cfg.glass_light
+        fact.glass_border = cfg.glass_border
+        fact.panel_gradient = cfg.panel_gradient
+        fact.panel_gradient_strength = cfg.panel_gradient_strength
         fact.glass_tint = cfg.glass_tint
         fact.glass_frost = cfg.glass_frost
         fact.glass_edge = cfg.glass_edge
@@ -383,6 +410,15 @@ function M.start(layout)
             glass_disp = number(fact.glass_disp, 1),
             glass_dome = number(fact.glass_dome, 0),
             glass_milk = number(fact.glass_milk, 0),
+            glass_smoke = number(fact.glass_smoke, 0),
+            glass_vivid = number(fact.glass_vivid, 1.18),
+            glass_mirror = number(fact.glass_mirror, 1),
+            glass_highlight = number(fact.glass_highlight, 1),
+            glass_ripple = number(fact.glass_ripple, 1),
+            glass_light = number(fact.glass_light, 0),
+            glass_border = number(fact.glass_border, 0),
+            panel_gradient = number(fact.panel_gradient, 0),
+            panel_gradient_strength = number(fact.panel_gradient_strength, 55),
             glass_tint = number(fact.glass_tint, 58),
             glass_frost = number(fact.glass_frost, 100),
             glass_edge = number(fact.glass_edge, 34),
@@ -2112,6 +2148,44 @@ function M.start(layout)
     on("fact:glass_disp", function() save() end)
     on("fact:glass_dome", function() save() end)
     on("fact:glass_milk", function() save() end)
+    on("fact:glass_smoke", function() save() end)
+    on("fact:glass_vivid", function() save() end)
+    on("fact:glass_mirror", function() save() end)
+    on("fact:glass_highlight", function() save() end)
+    on("fact:glass_ripple", function() save() end)
+    on("fact:glass_light", function() save() end)
+    on("fact:glass_border", function() save() end)
+    on("fact:panel_gradient", function() save() end)
+    on("fact:panel_gradient_strength", function() save() end)
+
+    --  Material presets: one event sets the shared glass values.  The sliders
+    --  remain authoritative afterwards; this is only a starting point.
+    local GLASS_PRESETS = {
+        { frost = 1.00, refr = 1.00, disp = 1.00, dome = 0.00, milk = 0.00, smoke = 0.00, vivid = 1.18, mirror = 1.00, highlight = 1.00, ripple = 1.00, tint = 58, edge = 34, light = 0.00, border = 0 },
+        { frost = 0.00, refr = 1.60, disp = 1.80, dome = 0.00, milk = 0.00, smoke = 0.00, vivid = 1.20, mirror = 1.20, highlight = 1.10, ripple = 1.00, tint = 30, edge = 55, light = 0.20, border = 20 },
+        { frost = 0.40, refr = 1.00, disp = 1.10, dome = 0.00, milk = 0.00, smoke = 0.75, vivid = 1.10, mirror = 0.80, highlight = 0.80, ripple = 1.00, tint = 55, edge = 30, light = 0.00, border = 0 },
+        { frost = 0.70, refr = 1.00, disp = 1.00, dome = 0.00, milk = 0.80, smoke = 0.00, vivid = 1.00, mirror = 0.80, highlight = 0.80, ripple = 1.00, tint = 25, edge = 35, light = 0.25, border = 0 },
+        { frost = 0.35, refr = 1.30, disp = 1.50, dome = 0.00, milk = 0.10, smoke = 0.20, vivid = 1.25, mirror = 1.80, highlight = 1.60, ripple = 1.00, tint = 35, edge = 60, light = 0.30, border = 30 },
+    }
+    on("glass_preset", function(v)
+        local i = math.floor(clamp(number(v, 0), 0, #GLASS_PRESETS - 1))
+        local p = GLASS_PRESETS[i + 1]
+        fact.glass_frost = p.frost * 100
+        fact.glass_refr = p.refr
+        fact.glass_disp = p.disp
+        fact.glass_dome = p.dome
+        fact.glass_milk = p.milk
+        fact.glass_smoke = p.smoke
+        fact.glass_vivid = p.vivid
+        fact.glass_mirror = p.mirror
+        fact.glass_highlight = p.highlight
+        fact.glass_ripple = p.ripple
+        fact.glass_tint = p.tint
+        fact.glass_edge = p.edge
+        fact.glass_light = p.light
+        fact.glass_border = p.border
+        save()
+    end)
     on("fact:glass_tint", function() save() end)
     on("fact:glass_frost", function() save() end)
     on("fact:glass_edge", function() save() end)
@@ -2410,7 +2484,7 @@ function M.start(layout)
         center.close()
         if page ~= nil and tostring(page) ~= "" then
             local p = math.floor(number(page, 0))
-            if p >= 0 and p <= 10 then fact.settings_page = p end
+            if p >= 0 and p <= 11 then fact.settings_page = p end
         end
         fact.launch_open = false
         fact.nt_center = false

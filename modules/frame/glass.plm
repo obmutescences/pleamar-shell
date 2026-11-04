@@ -19,6 +19,12 @@ part FrameGlass {
             dispersion: glass_disp
             dome: glass_dome
             milk: glass_milk
+            smoke: glass_smoke
+            vivid: glass_vivid
+            mirror: glass_mirror
+            highlight: glass_highlight
+            ripple: glass_ripple
+            border: 1.5 * glass_border / 100, ink
             rim: 1% * glass_edge
             shadow: 0, 2, 12, 24%, glass_shadow
 

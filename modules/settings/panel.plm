@@ -106,6 +106,14 @@ part ConfigPanel {
     let cp.disp_pct = clamp(glass_disp / 2, 0, 1)
     let cp.dome_pct = clamp(glass_dome / 1.5, 0, 1)
     let cp.milk_pct = clamp(glass_milk, 0, 1)
+    let cp.smoke_pct = clamp(glass_smoke, 0, 1)
+    let cp.vivid_pct = clamp(glass_vivid / 2, 0, 1)
+    let cp.mirror_pct = clamp(glass_mirror / 2, 0, 1)
+    let cp.highlight_pct = clamp(glass_highlight / 2, 0, 1)
+    let cp.ripple_pct = clamp(glass_ripple, 0, 1)
+    let cp.light_pct = clamp(glass_light, 0, 1)
+    let cp.border_pct = clamp(glass_border / 100, 0, 1)
+    let cp.grad_pct = clamp(panel_gradient_strength / 100, 0, 1)
     let cp.amp_pct = clamp((wave_amp - 0.2) / 2.0, 0, 1)
     let cp.height_pct = clamp(wave_height / 3, 0, 1)
     let cp.bar_pct = clamp((bar_height - 32) / 48, 0, 1)
@@ -125,13 +133,13 @@ part ConfigPanel {
     prop cp_p = 0 ~gentle
     follow cp_p = panel_open
     //  Sidebar slot of each page, in visual order:
-    //  LOOK: Wallpaper, Glass · SHELL: Bar, Frame music, Typeface, Motion,
-    //  Notifications, Windows · SCREEN: Lock, Idle · SYSTEM: Weather.
+    //  LOOK: Wallpaper, Glass, Theme · SHELL: Bar, Frame music, Typeface,
+    //  Motion, Notifications, Windows · SCREEN: Lock, Idle · SYSTEM: Weather.
     prop cp_nav = 2 ~quick
-    follow cp_nav = pick(settings_page, 5, 2, 4, 6, 1, 8, 7, 11, 12, 14, 9)
+    follow cp_nav = pick(settings_page, 6, 2, 5, 7, 1, 9, 8, 12, 13, 15, 10, 3)
     //  0 LOOK · 1 SHELL · 2 SCREEN · 3 SYSTEM; follows the page's parent.
     prop cp_grp = 0 ~quick
-    follow cp_grp = pick(settings_page, 1, 0, 1, 1, 0, 1, 1, 2, 2, 3, 1)
+    follow cp_grp = pick(settings_page, 1, 0, 1, 1, 0, 1, 1, 2, 2, 3, 1, 0)
 
     surface config_panel {
         size: 860, 820
@@ -150,6 +158,7 @@ part ConfigPanel {
         on press cp_shield { panel_open = panel_open }
 
         PanelPop(panel_fx, cp_p, 860, 820) {
+        PanelBackdrop(0, 0, 860, 820, 26)
         body {
             color: panel_bg
             glass: if(glass_on, 100%, 0%)
@@ -161,6 +170,12 @@ part ConfigPanel {
             dispersion: glass_disp
             dome: glass_dome
             milk: glass_milk
+            smoke: glass_smoke
+            vivid: glass_vivid
+            mirror: glass_mirror
+            highlight: glass_highlight
+            ripple: glass_ripple
+            border: 1.5 * glass_border / 100, ink
             rim: 1% * glass_edge
             shadow: 0, 4, 12, 20%, glass_shadow
             box { from: 0, 0; size: 860, 820; corner: 26 }
@@ -179,9 +194,9 @@ part ConfigPanel {
 
         text "SETTINGS" { at: 76, 45; anchor: left center; size: 21; weight: 700; color: ink; family: "Space Grotesk" }
         path { at: 190, 45; stroke: 1.3; color: faint; move -2, -3.5; line 2, 0; line -2, 3.5 }
-        text pick(settings_page, "SHELL", "LOOK", "SHELL", "SHELL", "LOOK", "SHELL", "SHELL", "SCREEN", "SCREEN", "SYSTEM", "SHELL") { at: 202, 45; anchor: left center; size: 13.5; weight: 700; color: faint; family: "Space Grotesk"; measure: cp_parent }
+        text pick(settings_page, "SHELL", "LOOK", "SHELL", "SHELL", "LOOK", "SHELL", "SHELL", "SCREEN", "SCREEN", "SYSTEM", "SHELL", "LOOK") { at: 202, 45; anchor: left center; size: 13.5; weight: 700; color: faint; family: "Space Grotesk"; measure: cp_parent }
         path { at: 202 + cp_parent.width + 10, 45; stroke: 1.3; color: faint; move -2, -3.5; line 2, 0; line -2, 3.5 }
-        text pick(settings_page, "Frame music", "Glass", "Bar", "Font", "Wallpaper", "Notifications", "Motion", "Lock screen", "Idle", "Weather", "Windows") { at: 202 + cp_parent.width + 22, 45; anchor: left center; size: 14.5; weight: 700; color: cp.mint; family: "Space Grotesk" }
+        text pick(settings_page, "Frame music", "Glass", "Bar", "Font", "Wallpaper", "Notifications", "Motion", "Lock screen", "Idle", "Weather", "Windows", "Theme") { at: 202 + cp_parent.width + 22, 45; anchor: left center; size: 14.5; weight: 700; color: cp.mint; family: "Space Grotesk" }
 
         line { from: 824, 38; to: 834, 48; width: 1.5; color: ink; opacity: 55% + 45% * cp_close.hover }
         line { from: 834, 38; to: 824, 48; width: 1.5; color: ink; opacity: 55% + 45% * cp_close.hover }
@@ -223,8 +238,8 @@ part ConfigPanel {
         }
 
         group {
-            let yy = cp.nav_y + 5 * cp.nav_step
-            let sel = clamp(1 - abs(cp_nav - 5), 0, 1)
+            let yy = cp.nav_y + 6 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 6), 0, 1)
             let sc = mix(faint, cp.mint, sel)
             group {
                 pivot: 54, yy + 14
@@ -253,13 +268,29 @@ part ConfigPanel {
             on press cp_page_glass { emit ui_sound; settings_page = 1 }
         }
 
-        text "SHELL" { at: 44, cp.nav_y + 3 * cp.nav_step + 14; anchor: left center; size: 11.5; weight: 700; color: mix(faint, cp.mint, clamp(1 - abs(cp_grp - 1), 0, 1)); family: "Space Grotesk" }
-        zone box cp_group_shell { from: 38, cp.nav_y + 3 * cp.nav_step; size: 174, 28; corner: 9; cursor: pointer; label: "Shell settings" }
+        group {
+            let yy = cp.nav_y + 3 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 3), 0, 1)
+            let sc = mix(faint, cp.mint, sel)
+            group {
+                pivot: 54, yy + 14
+                scale: 1 + 0.10 * sel
+                ellipse { at: 50, yy + 13; radius: 6; stroke: 1.3; color: sc; opacity: 85% }
+                ellipse { at: 58, yy + 13; radius: 6; stroke: 1.3; color: sc; opacity: 60% }
+                ellipse { at: 54, yy + 19; radius: 6; stroke: 1.3; color: sc; opacity: 45% }
+            }
+            text "Theme" { at: 78, yy + 14; anchor: left center; size: 15; weight: 600; color: mix(faint, cp.mint, sel); opacity: 72% + 28% * sel; family: "Space Grotesk" }
+            zone box cp_page_theme { from: 38, yy; size: 174, 28; corner: 10; cursor: pointer; label: "Theme and material settings" }
+            on press cp_page_theme { emit ui_sound; settings_page = 11 }
+        }
+
+        text "SHELL" { at: 44, cp.nav_y + 4 * cp.nav_step + 14; anchor: left center; size: 11.5; weight: 700; color: mix(faint, cp.mint, clamp(1 - abs(cp_grp - 1), 0, 1)); family: "Space Grotesk" }
+        zone box cp_group_shell { from: 38, cp.nav_y + 4 * cp.nav_step; size: 174, 28; corner: 9; cursor: pointer; label: "Shell settings" }
         on press cp_group_shell { emit ui_sound; settings_page = 2 }
 
         group {
-            let yy = cp.nav_y + 4 * cp.nav_step
-            let sel = clamp(1 - abs(cp_nav - 4), 0, 1)
+            let yy = cp.nav_y + 5 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 5), 0, 1)
             let sc = mix(faint, cp.mint, sel)
             group {
                 pivot: 54, yy + 14
@@ -273,8 +304,8 @@ part ConfigPanel {
         }
 
         group {
-            let yy = cp.nav_y + 6 * cp.nav_step
-            let sel = clamp(1 - abs(cp_nav - 6), 0, 1)
+            let yy = cp.nav_y + 7 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 7), 0, 1)
             let sc = mix(faint, cp.mint, sel)
             group {
                 pivot: 54, yy + 14
@@ -287,8 +318,8 @@ part ConfigPanel {
         }
 
         group {
-            let yy = cp.nav_y + 7 * cp.nav_step
-            let sel = clamp(1 - abs(cp_nav - 7), 0, 1)
+            let yy = cp.nav_y + 8 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 8), 0, 1)
             let sc = mix(faint, cp.mint, sel)
             group {
                 pivot: 54, yy + 14
@@ -303,8 +334,8 @@ part ConfigPanel {
         }
 
         group {
-            let yy = cp.nav_y + 8 * cp.nav_step
-            let sel = clamp(1 - abs(cp_nav - 8), 0, 1)
+            let yy = cp.nav_y + 9 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 9), 0, 1)
             let sc = mix(faint, cp.mint, sel)
             group {
                 pivot: 54, yy + 14
@@ -318,8 +349,8 @@ part ConfigPanel {
         }
 
         group {
-            let yy = cp.nav_y + 9 * cp.nav_step
-            let sel = clamp(1 - abs(cp_nav - 9), 0, 1)
+            let yy = cp.nav_y + 10 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 10), 0, 1)
             let sc = mix(faint, cp.mint, sel)
             group {
                 pivot: 54, yy + 14
@@ -332,13 +363,13 @@ part ConfigPanel {
             on press cp_page_windows { emit ui_sound; settings_page = 10 }
         }
 
-        text "SCREEN" { at: 44, cp.nav_y + 10 * cp.nav_step + 14; anchor: left center; size: 11.5; weight: 700; color: mix(faint, cp.mint, clamp(1 - abs(cp_grp - 2), 0, 1)); family: "Space Grotesk" }
-        zone box cp_group_screen { from: 38, cp.nav_y + 10 * cp.nav_step; size: 174, 28; corner: 9; cursor: pointer; label: "Screen settings" }
+        text "SCREEN" { at: 44, cp.nav_y + 11 * cp.nav_step + 14; anchor: left center; size: 11.5; weight: 700; color: mix(faint, cp.mint, clamp(1 - abs(cp_grp - 2), 0, 1)); family: "Space Grotesk" }
+        zone box cp_group_screen { from: 38, cp.nav_y + 11 * cp.nav_step; size: 174, 28; corner: 9; cursor: pointer; label: "Screen settings" }
         on press cp_group_screen { emit ui_sound; settings_page = 7 }
 
         group {
-            let yy = cp.nav_y + 11 * cp.nav_step
-            let sel = clamp(1 - abs(cp_nav - 11), 0, 1)
+            let yy = cp.nav_y + 12 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 12), 0, 1)
             let sc = mix(faint, cp.mint, sel)
             group {
                 pivot: 54, yy + 14
@@ -352,8 +383,8 @@ part ConfigPanel {
         }
 
         group {
-            let yy = cp.nav_y + 12 * cp.nav_step
-            let sel = clamp(1 - abs(cp_nav - 12), 0, 1)
+            let yy = cp.nav_y + 13 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 13), 0, 1)
             let sc = mix(faint, cp.mint, sel)
             group {
                 pivot: 54, yy + 14
@@ -367,13 +398,13 @@ part ConfigPanel {
             on press cp_page_idle { emit ui_sound; settings_page = 8 }
         }
 
-        text "SYSTEM" { at: 44, cp.nav_y + 13 * cp.nav_step + 14; anchor: left center; size: 11.5; weight: 700; color: mix(faint, cp.mint, clamp(1 - abs(cp_grp - 3), 0, 1)); family: "Space Grotesk" }
-        zone box cp_group_system { from: 38, cp.nav_y + 13 * cp.nav_step; size: 174, 28; corner: 9; cursor: pointer; label: "System settings" }
+        text "SYSTEM" { at: 44, cp.nav_y + 14 * cp.nav_step + 14; anchor: left center; size: 11.5; weight: 700; color: mix(faint, cp.mint, clamp(1 - abs(cp_grp - 3), 0, 1)); family: "Space Grotesk" }
+        zone box cp_group_system { from: 38, cp.nav_y + 14 * cp.nav_step; size: 174, 28; corner: 9; cursor: pointer; label: "System settings" }
         on press cp_group_system { emit ui_sound; settings_page = 9 }
 
         group {
-            let yy = cp.nav_y + 14 * cp.nav_step
-            let sel = clamp(1 - abs(cp_nav - 14), 0, 1)
+            let yy = cp.nav_y + 15 * cp.nav_step
+            let sel = clamp(1 - abs(cp_nav - 15), 0, 1)
             let sc = mix(faint, cp.mint, sel)
             group {
                 pivot: 54, yy + 14
@@ -387,8 +418,8 @@ part ConfigPanel {
         }
 
         //  ── page header ──────────────────────────────────────────────────
-        text pick(settings_page, "Frame music", "Glass", "Bar", "Font", "Wallpaper", "Notifications", "Motion", "Lock screen", "Idle", "Weather", "Windows") { at: 250, 132; anchor: left center; size: 19.5; weight: 700; color: ink; family: "Space Grotesk" }
-        text pick(settings_page, "Changes apply right away.", "Changes apply right away.", "Changes apply right away.", "Apply restarts the shell.", "Click a picture to set it.", "Position, sounds, countdown.", "One pose per panel.", "Lock appearance and a safe test.", "Lock and screen-off timers; no suspend.", "City for the centre panel.", "Grid, letters, reveal and duration.") { at: 820, 132; anchor: right center; size: 15; color: faint; opacity: 80%; family: "Space Grotesk" }
+        text pick(settings_page, "Frame music", "Glass", "Bar", "Font", "Wallpaper", "Notifications", "Motion", "Lock screen", "Idle", "Weather", "Windows", "Theme") { at: 250, 132; anchor: left center; size: 19.5; weight: 700; color: ink; family: "Space Grotesk" }
+        text pick(settings_page, "Changes apply right away.", "Changes apply right away.", "Changes apply right away.", "Apply restarts the shell.", "Click a picture to set it.", "Position, sounds, countdown.", "One pose per panel.", "Lock appearance and a safe test.", "Lock and screen-off timers; no suspend.", "City for the centre panel.", "Grid, letters, reveal and duration.", "Presets, gradient, light and border.") { at: 820, 132; anchor: right center; size: 15; color: faint; opacity: 80%; family: "Space Grotesk" }
 
         //  ── FRAME MUSIC ──────────────────────────────────────────────────
         group {
@@ -1092,6 +1123,101 @@ part ConfigPanel {
             on press cp_weather_apply { emit ui_sound; emit weather_apply }
 
             text "The city is saved with the rest of the settings. Weather refreshes when the centre panel opens and every 15 minutes; a failed request keeps the last result." { at: 266, 330; anchor: left top; size: 13; color: faint; opacity: 78%; width: 540; lines: 3; line_height: 1.35; family: "Space Grotesk" }
+        }
+
+        //  ── THEME / MATERIAL ─────────────────────────────────────────────
+        group {
+            show: settings_page == 11
+
+            CpCard(250, 176, 570, 96)
+            text "Material" { at: 266, 186; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "One click sets the shared glass; tune it below." { at: 266, 204; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            repeat p in 0..5 {
+                let gpx = 266 + p * 102
+                CpPill(gpx, 226, 98, 28, 0, cp_gp_hit.$p.hover, cp.mint, ink)
+                text pick(p, "Liquid", "Clear", "Smoked", "Milky", "Mirror") { at: gpx + 49, 240; anchor: center; size: 11; weight: 600; color: ink; family: "Space Grotesk" }
+                zone box cp_gp_hit.$p { from: gpx, 226; size: 98, 28; corner: 14; cursor: pointer; label: pick(p, "Liquid glass", "Clear glass", "Smoked glass", "Milky glass", "Mirror glass") }
+                on press cp_gp_hit.$p { emit ui_sound; emit glass_preset(p) }
+            }
+
+            CpCard(250, 278, 570, 112)
+            text "Gradient" { at: 266, 288; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "A wallpaper-tinted backdrop behind the glass." { at: 266, 306; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSwitch(770, 291, 44, 24, if(panel_gradient != 0, 1, 0), panel_grad_knob, cp_grad_switch.hover, cp.mint, ink, cp.track)
+            zone box cp_grad_switch { from: 760, 282; size: 64, 38; corner: 19; cursor: pointer; label: "Gradient backdrop" }
+            on press cp_grad_switch { emit ui_sound; panel_gradient = if(panel_gradient == 0, 1, 0) }
+            text "Shape" { at: 266, 336; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpPill(520, 322, 90, 28, if(panel_gradient == 1, 1, 0), cp_grad_linear.hover, cp.mint, ink)
+            text "Linear" { at: 565, 336; anchor: center; size: 12; weight: 600; color: if(panel_gradient == 1, cp.mint, ink); family: "Space Grotesk" }
+            zone box cp_grad_linear { from: 520, 322; size: 90, 28; corner: 14; cursor: pointer; label: "Linear gradient" }
+            on press cp_grad_linear { emit ui_sound; panel_gradient = 1 }
+            CpPill(618, 322, 90, 28, if(panel_gradient == 2, 1, 0), cp_grad_radial.hover, cp.mint, ink)
+            text "Radial" { at: 663, 336; anchor: center; size: 12; weight: 600; color: if(panel_gradient == 2, cp.mint, ink); family: "Space Grotesk" }
+            zone box cp_grad_radial { from: 618, 322; size: 90, 28; corner: 14; cursor: pointer; label: "Radial gradient" }
+            on press cp_grad_radial { emit ui_sound; panel_gradient = 2 }
+            text "Strength" { at: 266, 366; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(520, 366, 200, cp.grad_pct, cp_grad_track.hover, cp.mint, ink, cp.track)
+            text number(panel_gradient_strength, 0, "%") { at: 820, 366; anchor: right center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_grad_track { from: 510, 351; size: 240, 30; cursor: pointer; label: "Gradient strength" }
+            on press cp_grad_track { panel_gradient_strength = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
+            on drag cp_grad_track { panel_gradient_strength = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
+
+            CpCard(250, 396, 570, 70)
+            text "Inner light" { at: 266, 406; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "A soft sheet of light from the top inside the glass." { at: 266, 424; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(520, 455, 200, cp.light_pct, cp_light_track.hover, cp.mint, ink, cp.track)
+            text number(glass_light * 100, 0, "%") { at: 820, 455; anchor: right center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_light_track { from: 510, 440; size: 240, 30; cursor: pointer; label: "Inner light" }
+            on press cp_light_track { glass_light = clamp((pointer.x - 520) / 200, 0, 1) }
+            on drag cp_light_track { glass_light = clamp((pointer.x - 520) / 200, 0, 1) }
+
+            CpCard(250, 472, 570, 70)
+            text "Inner border" { at: 266, 482; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "A hairline just inside the glass edge." { at: 266, 500; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(520, 531, 200, cp.border_pct, cp_border_track.hover, cp.mint, ink, cp.track)
+            text number(glass_border, 0, "%") { at: 820, 531; anchor: right center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_border_track { from: 510, 516; size: 240, 30; cursor: pointer; label: "Inner border" }
+            on press cp_border_track { glass_border = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
+            on drag cp_border_track { glass_border = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
+
+            CpCard(250, 548, 570, 70)
+            text "Smoke" { at: 266, 558; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(340, 582, 120, cp.smoke_pct, cp_smoke_track.hover, cp.mint, ink, cp.track)
+            text number(glass_smoke * 100, 0, "%") { at: 470, 582; anchor: right center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_smoke_track { from: 330, 567; size: 140, 30; cursor: pointer; label: "Smoked glass" }
+            on press cp_smoke_track { glass_smoke = clamp((pointer.x - 340) / 120, 0, 1) }
+            on drag cp_smoke_track { glass_smoke = clamp((pointer.x - 340) / 120, 0, 1) }
+            text "Vivid" { at: 530, 558; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(604, 582, 120, cp.vivid_pct, cp_vivid_track.hover, cp.mint, ink, cp.track)
+            text number(glass_vivid * 100, 0, "%") { at: 734, 582; anchor: right center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_vivid_track { from: 594, 567; size: 140, 30; cursor: pointer; label: "Glass vividness" }
+            on press cp_vivid_track { glass_vivid = clamp((pointer.x - 604) / 120 * 2, 0, 2) }
+            on drag cp_vivid_track { glass_vivid = clamp((pointer.x - 604) / 120 * 2, 0, 2) }
+
+            CpCard(250, 624, 570, 70)
+            text "Mirror" { at: 266, 634; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(340, 658, 120, cp.mirror_pct, cp_mirror_track.hover, cp.mint, ink, cp.track)
+            text number(glass_mirror * 100, 0, "%") { at: 470, 658; anchor: right center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_mirror_track { from: 330, 643; size: 140, 30; cursor: pointer; label: "Mirror rim" }
+            on press cp_mirror_track { glass_mirror = clamp((pointer.x - 340) / 120 * 2, 0, 2) }
+            on drag cp_mirror_track { glass_mirror = clamp((pointer.x - 340) / 120 * 2, 0, 2) }
+            text "Highlight" { at: 530, 634; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(604, 658, 120, cp.highlight_pct, cp_highlight_track.hover, cp.mint, ink, cp.track)
+            text number(glass_highlight * 100, 0, "%") { at: 734, 658; anchor: right center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_highlight_track { from: 594, 643; size: 140, 30; cursor: pointer; label: "Rim highlight" }
+            on press cp_highlight_track { glass_highlight = clamp((pointer.x - 604) / 120 * 2, 0, 2) }
+            on drag cp_highlight_track { glass_highlight = clamp((pointer.x - 604) / 120 * 2, 0, 2) }
+
+            CpCard(250, 700, 570, 70)
+            text "Press ripple" { at: 266, 710; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "A ring of light through the glass when it is pressed." { at: 266, 728; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(520, 752, 200, cp.ripple_pct, cp_ripple_track.hover, cp.mint, ink, cp.track)
+            text number(glass_ripple * 100, 0, "%") { at: 820, 752; anchor: right center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_ripple_track { from: 510, 737; size: 240, 30; cursor: pointer; label: "Press ripple" }
+            on press cp_ripple_track { glass_ripple = clamp((pointer.x - 520) / 200, 0, 1) }
+            on drag cp_ripple_track { glass_ripple = clamp((pointer.x - 520) / 200, 0, 1) }
+
+            text "Presets are a starting point; every slider below stays live." { at: 266, 796; anchor: left center; size: 12; color: faint; opacity: 78%; family: "Space Grotesk" }
         }
         }
 

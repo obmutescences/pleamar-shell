@@ -61,6 +61,21 @@ part Common {
     fact glass_disp: number = 1
     fact glass_dome: number = 0
     fact glass_milk: number = 0
+    //  P0 material controls.  Values are the same units as the renderer:
+    //  smoke/milk/ripple are 0..1, vivid/mirror/highlight are 1 = 100%.
+    fact glass_smoke: number = 0
+    fact glass_vivid: number = 1.18
+    fact glass_mirror: number = 1
+    fact glass_highlight: number = 1
+    fact glass_ripple: number = 1
+    //  Inner light is a soft top sheen; 0 is off.
+    fact glass_light: number = 0
+    //  Inner border width, in percent of 1.5 px.
+    fact glass_border: number = 0
+    //  Panel backdrop behind the glass: off by default, so the current look
+    //  is unchanged until the Theme page turns it on.
+    fact panel_gradient: number = 0          // 0 off, 1 linear, 2 radial
+    fact panel_gradient_strength: number = 55
     //  Shared panel background: 0 uses primary, 1 uses secondary; the depth
     //  is how much of that role is mixed into the panel card.
     fact panel_bg_role: number = 0
@@ -69,6 +84,38 @@ part Common {
     //  The bar and Frame keep their darker chrome base; only the chosen role
     //  and depth are layered over it, so depth 0 is still the old look.
     let bar_bg = mix(tint, pick(panel_bg_role, primary, secondary), panel_bg_tint / 100)
+
+    //  P0 panel backdrop.  One component for every large panel: a wallpaper-
+    //  derived gradient behind the glass, plus an optional soft top light.
+    //  Both are behind the existing glass body, so the card's lens still does
+    //  its job; neither adds a surface or a capture.
+    component PanelBackdrop(x: number, y: number, w: number, h: number, corner: number) {
+        let pb.a = mix(panel_bg, primary, 0.55)
+        let pb.b = mix(panel_bg, secondary, 0.38)
+        let pb.c = mix(panel_bg, deep, 0.22)
+        body {
+            show: panel_gradient == 1 and panel_gradient_strength > 0
+            gradient: x, y to x + w, y + h, pb.a, pb.b 55%, pb.c
+            opacity: panel_gradient_strength / 100
+            box { from: x, y; size: w, h; corner: corner }
+        }
+        body {
+            show: panel_gradient == 2 and panel_gradient_strength > 0
+            gradient: radial x + w / 2, y + h / 2 radius max(w, h) / 2, pb.a, pb.b 55%, pb.c
+            opacity: panel_gradient_strength / 100
+            box { from: x, y; size: w, h; corner: corner }
+        }
+        body {
+            show: glass_light > 0
+            //  `light`'s amount is read once by the engine, so the slider is
+            //  the opacity of this subtle top sheet rather than a rebuild.
+            gradient: x, y to x, y + h, mix(panel_bg, ink, 0.20), mix(panel_bg, ink, 0.04) 38%, panel_bg
+            light: 3%, y, 140
+            opacity: glass_light * 0.55
+            box { from: x, y; size: w, h; corner: corner }
+        }
+    }
+
     fact settings_page: number = 1
     //  Per-panel opening motion (0 fade, 1 spin, 2 unfold, 3 drop,
     //  4 aperture, 5 random).  The *_fx facts are the pose chosen when a
@@ -84,6 +131,8 @@ part Common {
     fact center_fx: number = 0
     fact center_panel_fx: number = 0
     event anim_set ->
+    //  0 Liquid · 1 Clear · 2 Smoked · 3 Milky · 4 Mirror
+    event glass_preset ->
     //  Height of the floating island bar (the capsule reused in Frame), in px.
     fact bar_height: number = 44
     fact glass_tint: number = 58
@@ -166,6 +215,8 @@ part Common {
     follow nt_drift_knob = nt_drift
     prop nt_dnd_knob = 0 ~quick
     follow nt_dnd_knob = nt_dnd
+    prop panel_grad_knob = 0 ~quick
+    follow panel_grad_knob = panel_gradient != 0
 
     //  Small, many waves: the water lives in a 72 px band, the frame rail is
     //  46 px, and the whole edge strip is 120 px.  Depth is a relative scale,

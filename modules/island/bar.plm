@@ -24,6 +24,7 @@ part IslandBar {
         let isl.right = isl.x + isl.w
         let isl.cx = isl.x + isl.w / 2
 
+        PanelBackdrop(isl.x, isl.y, isl.w, isl.h, isl.h / 2)
         body {
             color: bar_bg
             glass: if(glass_on, 100%, 0%)
@@ -34,6 +35,12 @@ part IslandBar {
             dispersion: glass_disp
             dome: glass_dome
             milk: glass_milk
+            smoke: glass_smoke
+            vivid: glass_vivid
+            mirror: glass_mirror
+            highlight: glass_highlight
+            ripple: glass_ripple
+            border: 1.5 * glass_border / 100, ink
             rim: 1% * glass_edge
             shine: pointer
             shadow: 0, 4, 14, 26%, glass_shadow
