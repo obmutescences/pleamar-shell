@@ -365,7 +365,7 @@ experiments/probe.plm        1×1 基线探针
 - **BAR**：Bar height 32–80px；只作用于 Island 胶囊，默认 44px。
   Frame 布局不再显示这条 bar。
 - **WINDOWS**：窗口 picker。Thumbnail size 140–420px、Per row 2–8、
-  Reveal（Orbit / Cascade / Pop / Flip / Unfold / Spin / Random）、
+  Reveal（Gather / Cascade / Pop / Spiral / Unfold / Spin / Random）、
   Duration 160–900ms、Background blur 0–100%，以及参与选窗的字母
   （A–Z、去重）。默认每个窗口一个字母；窗口数超过配置字母时才切换为
   随机双字母；字母组合容量不足时退回 A–Z。背景是打开前抓取的桌面截图，

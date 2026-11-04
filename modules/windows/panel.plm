@@ -15,40 +15,62 @@ part WindowPicker {
         follow hov = hit.hover
         let fx = clamp(winpicker_fx, 0, 5)
         let dir = if(mod(idx, 2) == 0, -1, 1)
-        //  Cascade starts from alternating sides with a stronger stagger;
-        //  Orbit blooms out of the centre; the rest keep the quick stagger.
+        //  Gather comes in from all four sides toward the centre; Cascade
+        //  comes from alternating sides; Spiral starts every card at the
+        //  centre and fans it out along an arc.  The others keep a short
+        //  stagger so the grid settles as one object.
         let lag = if(fx == 1, min(0.34, idx * 0.045),
-                 if(fx == 0, min(0.24, idx * 0.025),
-                 min(0.16, idx * 0.012)))
+                 if(fx == 0, min(0.26, idx * 0.028),
+                 if(fx == 3, min(0.24, idx * 0.022),
+                 min(0.16, idx * 0.012))))
         let p = clamp((winpicker_progress - lag) / max(0.01, 1 - lag), 0, 1)
         let hot = clamp(if(active, 0.72, 0) + 0.28 * hov, 0, 1)
         //  Do not draw the active/hover halos while the cards move: they are
         //  several extra translucent boxes per card and the biggest reveal
         //  cost.  They return once the grid is settled.
         let halo = hot * if(winpicker_progress > 0.985, 1, 0)
-        //  ease-out-back, for Pop: 0 at p = 0, 1 with a small overshoot at p = 1
+        //  ease-out-back, for Pop and the Gather landing: 0 at p = 0, 1 with
+        //  a small overshoot at p = 1.
         let q = p - 1
         let back = 1 + 2.70158 * q * q * q + 1.70158 * q * q
         let pop = if(fx == 2, 0.58 + 0.42 * back, 1)
-        let op = if(fx == 0, clamp(p * 1.25, 0, 1),
+        let gq = p - 1
+        let gather = 1 + 1.6 * gq * gq * gq + 0.6 * gq * gq
+        let op = if(fx == 0, clamp(p * 1.45, 0, 1),
                  if(fx == 1, clamp(p * 1.55, 0, 1),
                  if(fx == 2, clamp(p * 1.8, 0, 1),
-                 if(fx == 3, clamp(p * 1.7, 0, 1), p))))
-        let orbit_x = if(fx == 0, (wp.screen_w / 2 - (x + w / 2)) * (1 - p), 0)
-        let orbit_y = if(fx == 0, (wp.screen_h / 2 - (y + h / 2)) * (1 - p), 0)
+                 if(fx == 3, clamp(p * 1.35, 0, 1), p))))
+        //  Gather: the final card centre, extended outward along its ray from
+        //  the screen centre.  A card at the top comes from above, one at the
+        //  right from the right; the landing uses `gather` for the rebound.
+        let gx = (x + w / 2) - wp.screen_w / 2
+        let gy = (y + h / 2) - wp.screen_h / 2
+        let gr = max(max(abs(gx), abs(gy)), 1)
+        let push = min(2.8, max(wp.screen_w, wp.screen_h) * 0.9 / gr)
+        let gather_x = if(fx == 0, (gx * push - gx) * (1 - gather), 0)
+        let gather_y = if(fx == 0, (gy * push - gy) * (1 - gather), 0)
         let side_x = if(fx == 1, dir * (wp.screen_w * 0.55 + w) * (1 - p), 0)
-        let move_x = orbit_x + side_x
-        let move_y = if(fx == 2, 8 * (1 - p), 0)
-        let scale_x = if(fx == 0, 0.38 + 0.62 * p,
+        //  Spiral: polar position starts at the centre and sweeps to the
+        //  card's own angle while the radius grows.  The card itself turns
+        //  as it arrives.
+        let sdx = (x + w / 2) - wp.screen_w / 2
+        let sdy = (y + h / 2) - wp.screen_h / 2
+        let sr = sqrt(sdx * sdx + sdy * sdy)
+        let sa = atan2(sdy, sdx) + (1 - p) * 1.15
+        let spiral_x = if(fx == 3, wp.screen_w / 2 + cos(sa) * sr * p - (x + w / 2), 0)
+        let spiral_y = if(fx == 3, wp.screen_h / 2 + sin(sa) * sr * p - (y + h / 2), 0)
+        let move_x = gather_x + side_x + spiral_x
+        let move_y = gather_y + spiral_y + if(fx == 2, 8 * (1 - p), 0)
+        let scale_x = if(fx == 0, 0.90 + 0.10 * p,
                       if(fx == 2, pop,
-                      if(fx == 3, 1 - 0.08 * (1 - p),
+                      if(fx == 3, 0.22 + 0.78 * p,
                       if(fx == 5, 0.72 + 0.28 * p, 1))))
-        let scale_y = if(fx == 3, 0.035 + 0.965 * p,
-                      if(fx == 4, 0.02 + 0.98 * p,
-                      if(fx == 2, pop, scale_x)))
-        let rot = if(fx == 0, dir * 12 * (1 - p),
+        let scale_y = if(fx == 4, 0.02 + 0.98 * p,
+                      if(fx == 2, pop, scale_x))
+        let rot = if(fx == 0, dir * 7 * (1 - p),
                  if(fx == 1, dir * 8 * (1 - p),
-                 if(fx == 5, -90 * (1 - p), 0)))
+                 if(fx == 3, -160 * (1 - p),
+                 if(fx == 5, -90 * (1 - p), 0))))
         let lift = 6 * hov
         zone box hit { from: x, y; size: w, h; corner: 18; cursor: pointer; active: winpicker_open; label: title }
         group {
