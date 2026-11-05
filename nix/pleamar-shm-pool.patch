@@ -1,0 +1,14 @@
+--- a/src/platform/wayland.rs
++++ b/src/platform/wayland.rs
+@@ -515,5 +515,11 @@ impl Drop for CaptureBuffer {
+     fn drop(&mut self) {
+         self.buffer.destroy();
++        //  A wl_shm_pool has its own destructor: dropping the proxy only
++        //  forgets it on our side, and the compositor keeps the memfd (and
++        //  its mapping) open for the life of the connection.  Every capture
++        //  whose size changes replaces its buffer, so a panel that changes
++        //  size while it animates leaked one mapping per replacement.
++        self._pool.destroy();
+     }
+ }
+ 

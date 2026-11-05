@@ -34,7 +34,13 @@
       pleamarFor = pkgs:
         let base = pleamar.packages.${pkgs.stdenv.hostPlatform.system}.default;
         in base.overrideAttrs (old: {
-          patches = (old.patches or []) ++ [ ./nix/pleamar-layer-names.patch ];
+          patches = (old.patches or []) ++ [
+            ./nix/pleamar-layer-names.patch
+            #  A replaced backdrop capture dropped its wl_shm_pool proxy
+            #  without sending the pool's destructor, so niri kept the memfd
+            #  and its full-resolution mapping until the shell exited.
+            ./nix/pleamar-shm-pool.patch
+          ];
         });
     in {
       nixosModules.default = { config, lib, pkgs, ... }: import ./nix/nixos-module.nix {
