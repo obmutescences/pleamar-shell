@@ -6,6 +6,9 @@
 # ext-session-lock fallback.  This keeper starts the scene again and, when
 # logind still reports the session locked, tells the fresh scene to lock.
 # There is no polling of compositor state beyond whether the scene is running.
+# The keeper, pleamar-lock and the shell's watchdog share one flock
+# (lock-scene.lock): only one of them can create the scene, so a second locker
+# cannot make niri paint its red "no locker" fallback.
 set -uo pipefail
 
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -55,6 +58,10 @@ lock_if_needed() {
     locked_hint || return 0
     for _ in $(seq 1 80); do
         if "$bin" --say lockscreen "get locked" >/dev/null 2>&1; then
+            #  The socket answers before the first frame; one commit is what
+            #  lets niri attach a buffer to the lock surface instead of its
+            #  red fallback.
+            sleep 0.25
             "$bin" --say lockscreen "fact locked true" >/dev/null 2>&1 || true
             return 0
         fi
@@ -64,6 +71,8 @@ lock_if_needed() {
 }
 
 quick=0
+lock_file="$runtime/pleamar/lock-scene.lock"
+mkdir -p "$runtime/pleamar" 2>/dev/null || true
 while :; do
     compositor_alive || exit 0
     if running; then
@@ -74,11 +83,26 @@ while :; do
         continue
     fi
 
+    #  The same single-owner rule as pleamar-lock.  Whoever holds this file
+    #  starts the scene; a starter that loses the race re-checks and leaves the
+    #  running scene alone instead of adding a second locker.
+    exec 8>>"$lock_file"
+    if ! flock -w 10 8; then
+        sleep 0.5
+        continue
+    fi
+    if running; then
+        flock -u 8
+        sleep 0.5
+        continue
+    fi
+
     started="$(date +%s)"
     echo "keeper   · starting lock scene" >>"$log"
-    PLEAMAR_SWAPCHAIN=1 "$root/bin/pleamar-shell" lock >>"$log" 2>&1 &
+    PLEAMAR_SWAPCHAIN=1 "$root/bin/pleamar-shell" lock >>"$log" 2>&1 8>&- &
     child=$!
-    lock_if_needed >>"$log" 2>&1 &
+    lock_if_needed >>"$log" 2>&1 8>&- &
+    flock -u 8
     wait "$child"
     code=$?
 

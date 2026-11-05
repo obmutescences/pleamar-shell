@@ -65,7 +65,12 @@ scene Lockscreen {
     //  is spun by a condition lets it go idle. It is called `time` so that everything below reads it as before.
     prop time = 0
     let lkf = floor(time * 8)                 // the pencil icons' frame (pencil-glyphs.plm): the hovered ones boil on it
-    spin time by if(locked, 1, 0)
+    //  Only the entrance needs a smooth clock.  Once `settled` is up (and no
+    //  power button is held) the scene must stop repainting: a spin keeps the
+    //  compositor drawing a frame every 8 ms for the whole lock, and its memory
+    //  grows with each one.  Hovering a pencil icon no longer boils after that;
+    //  its colour still changes.
+    spin time by if(locked and (not settled or ph_d0 or ph_d1 or ph_d2), 1, 0)
     text password = ""
     text status = "System Locked"
     text realname = "User"

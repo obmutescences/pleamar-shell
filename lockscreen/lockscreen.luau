@@ -240,6 +240,7 @@ on("media_next", function() sys.call("media.next") end)
 -- were not painted. The blur is smooth, so half the pixels lose nothing; the sharp one is only on screen while it
 -- blurs away.
 local prep_busy = false
+local prep_started = 0
 local made_key = nil
 
 local function hash(str)
@@ -273,8 +274,16 @@ local function publish(s, b, done)
 end
 
 local function prepare_wallpaper()
-    if prep_busy or fact.locked or home == "" then return end
+    --  A `run` callback that never comes (a scene started during a lock race,
+    --  a killed helper) used to leave prep_busy true for the rest of the
+    --  process: every lock after that had no wallpaper at all.
+    if prep_busy then
+        if os.time() - prep_started < 15 then return end
+        prep_busy = false
+    end
+    if fact.locked or home == "" then return end
     prep_busy = true
+    prep_started = os.time()
     local dir = home .. "/.cache/pleamar-shell/lockscreen"
     local function done() prep_busy = false end
     run("cat", { home .. "/.config/pleamar-shell/config.json" }, function(out)
@@ -461,6 +470,10 @@ on("fact:locked", function(v)
         after(2400, function() fact.settled = true end)
     else
         after_unlock()
+        --  The desktop wallpaper may have changed while the lock was up:
+        --  make its pictures again as soon as the lock is gone, instead of
+        --  waiting for the next five-second tick.
+        after(300, prepare_wallpaper)
     end
 end)
 
