@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-# One-surface keyboard helper for the window picker.
-set -euo pipefail
-root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-bin="$("$root/bin/pleamar-shell" --path)"
-export PLEAMAR_WINDOW_PARENT="${PLEAMAR_WINDOW_PARENT:-island}"
-exec "$bin" --scene "$root/scenes/windowkeys.plm" --no-hud

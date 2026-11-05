@@ -19,5 +19,4 @@ scene Pleamar {
     include "../modules/launcher/launcher.plm"
     include "../modules/notifications/notifications.plm"
     include "../modules/center/panel.plm"
-    include "../modules/windows/panel.plm"
 }

@@ -143,13 +143,6 @@ function M.start(layout)
         anim_toast = 0,
         anim_center = 0,
         anim_center_panel = 0,
-        winpicker_size = 320,
-        winpicker_cols = 4,
-        winpicker_mode = 6,
-        winpicker_ms = 460,
-        winpicker_bg_glass = 62,
-        winpicker_bg_blur = 52,
-        winpicker_letters = "asdfghjkl",
         weather_city = "",
     }
 
@@ -285,15 +278,6 @@ function M.start(layout)
         cfg.anim_toast = math.floor(clamp(number(saved.anim_toast, cfg.anim_toast), 0, 5))
         cfg.anim_center = math.floor(clamp(number(saved.anim_center, cfg.anim_center), 0, 5))
         cfg.anim_center_panel = math.floor(clamp(number(saved.anim_center_panel, cfg.anim_center_panel), 0, 5))
-        cfg.winpicker_size = math.floor(clamp(number(saved.winpicker_size, cfg.winpicker_size), 140, 420))
-        cfg.winpicker_cols = math.floor(clamp(number(saved.winpicker_cols, cfg.winpicker_cols), 2, 8))
-        cfg.winpicker_mode = math.floor(clamp(number(saved.winpicker_mode, cfg.winpicker_mode), 0, 6))
-        cfg.winpicker_ms = math.floor(clamp(number(saved.winpicker_ms, cfg.winpicker_ms), 160, 900))
-        cfg.winpicker_bg_glass = math.floor(clamp(number(saved.winpicker_bg_glass, cfg.winpicker_bg_glass), 0, 100))
-        cfg.winpicker_bg_blur = math.floor(clamp(number(saved.winpicker_bg_blur, cfg.winpicker_bg_blur), 0, 100))
-        if type(saved.winpicker_letters) == "string" and saved.winpicker_letters ~= "" then
-            cfg.winpicker_letters = saved.winpicker_letters
-        end
         if type(saved.weather_city) == "string" then
             cfg.weather_city = saved.weather_city:gsub("^%s+", ""):gsub("%s+$", "")
         end
@@ -370,13 +354,6 @@ function M.start(layout)
         fact.anim_toast = cfg.anim_toast
         fact.anim_center = cfg.anim_center
         fact.anim_center_panel = cfg.anim_center_panel
-        fact.winpicker_size = cfg.winpicker_size
-        fact.winpicker_cols = cfg.winpicker_cols
-        fact.winpicker_mode = cfg.winpicker_mode
-        fact.winpicker_ms = cfg.winpicker_ms
-        fact.winpicker_bg_glass = cfg.winpicker_bg_glass
-        fact.winpicker_bg_blur = cfg.winpicker_bg_blur
-        text.winpicker_letters = cfg.winpicker_letters
     end
 
     local save_pending, save_running = nil, false
@@ -446,13 +423,6 @@ function M.start(layout)
             anim_toast = number(fact.anim_toast, 0),
             anim_center = number(fact.anim_center, 0),
             anim_center_panel = number(fact.anim_center_panel, 0),
-            winpicker_size = number(fact.winpicker_size, 320),
-            winpicker_cols = number(fact.winpicker_cols, 4),
-            winpicker_mode = number(fact.winpicker_mode, 6),
-            winpicker_ms = number(fact.winpicker_ms, 460),
-            winpicker_bg_glass = number(fact.winpicker_bg_glass, 62),
-            winpicker_bg_blur = number(fact.winpicker_bg_blur, 52),
-            winpicker_letters = tostring(text.winpicker_letters or "asdfghjkl"),
         }
         --  One writer at a time, latest snapshot wins.  A wallpaper apply and
         --  the colour read that follows it both save; without this queue a
@@ -573,8 +543,6 @@ function M.start(layout)
         local field, value
         if page == 9 then
             field, value = "weather_city", tostring(text.weather_city or "")
-        elseif page == 10 then
-            field, value = "winpicker_letters", tostring(text.winpicker_letters or "")
         elseif page == 3 then
             field, value = "font_query", tostring(text.font_query or "")
         else
@@ -603,464 +571,6 @@ function M.start(layout)
             log("settings key helper could not start: " .. tostring(id))
         end
     end
-
-    --  The picker surface cannot keep layer keyboard focus in this multi-
-    --  surface scene, so a one-surface process owns the keyboard and sends
-    --  letters and Escape back through the scene socket.
-    local window_key_helper = nil
-    local function stop_windowkeys()
-        if window_key_helper then
-            kill(window_key_helper, "term")
-            window_key_helper = nil
-        end
-    end
-    local function start_windowkeys()
-        if window_key_helper or not truthy(fact.winpicker_open) then return end
-        if shell_root == "" then
-            log("window key helper: PLEAMAR_SHELL_ROOT is empty")
-            return
-        end
-        local parent = string.lower(tostring(text.layout or "island"))
-        local cmd = "PLEAMAR_WINDOW_PARENT=" .. sq(parent)
-            .. " exec " .. sq(shell_root .. "/bin/pleamar-windowkeys")
-        local mine
-        local ok, id = pcall(spawn, "sh", { "-c", cmd }, function() end, function()
-            if window_key_helper == mine then window_key_helper = nil end
-        end)
-        if ok then
-            window_key_helper = id
-            mine = id
-        else
-            log("window key helper could not start: " .. tostring(id))
-        end
-    end
-
-    --  ── window picker ──────────────────────────────────────────────────
-    --  niri already knows every toplevel; Pleamar's own `thumbnails` service
-    --  does not produce pictures under niri, so bin/pleamar-window-previews
-    --  captures them through `niri msg action screenshot-window` and restores
-    --  the clipboard afterwards.  This module only holds the state and keys.
-    local win_pick = {
-        rows = {},
-        letters = "ASDFGHJKL",
-        single = true,
-        prefix = "",
-        prefix_serial = 0,
-        anim_serial = 0,
-        capture_serial = 0,
-        capture_done = false,
-        rows_ready = false,
-        animation_started = false,
-        animation_pending = false,
-        bg_serial = 0,
-        opening = false,
-        previews = {},
-        suppress_nt_until = 0,
-    }
-
-    local FULL_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-    local function win_normalize_letters(value)
-        local out, seen = {}, {}
-        for ch in tostring(value or ""):upper():gmatch("[A-Z]") do
-            if not seen[ch] then
-                seen[ch] = true
-                out[#out + 1] = ch
-            end
-        end
-        if #out < 2 then return FULL_LETTERS end
-        return table.concat(out)
-    end
-
-    local function win_make_codes(count, configured)
-        local letters = win_normalize_letters(configured)
-        local used = letters
-        local single = count <= #letters
-        local codes = {}
-        if single then
-            --  One letter each, in the configured order.  This is the normal
-            --  path: nine or fewer windows with the default alphabet.
-            for i = 1, count do codes[i] = letters:sub(i, i) end
-        else
-            --  More windows than letters: every card gets a random two-letter
-            --  code.  Keep the pairs distinct.  If the configured alphabet is
-            --  too small for that many pairs, fall back to A–Z (still random).
-            if count > #letters * (#letters - 1) then
-                used = FULL_LETTERS
-            end
-            local pool = {}
-            for a = 1, #used do
-                for b = 1, #used do
-                    if a ~= b then
-                        pool[#pool + 1] = used:sub(a, a) .. used:sub(b, b)
-                    end
-                end
-            end
-            if count > #pool then
-                for a = 1, #used do
-                    for b = 1, #used do
-                        if a == b then pool[#pool + 1] = used:sub(a, a) .. used:sub(b, b) end
-                    end
-                end
-            end
-            for i = #pool, 2, -1 do
-                local j = math.random(i)
-                pool[i], pool[j] = pool[j], pool[i]
-            end
-            for i = 1, count do codes[i] = pool[i] or "" end
-        end
-        return codes, single, used
-    end
-
-    local function win_choose_fx()
-        local mode = math.floor(clamp(number(fact.winpicker_mode, 6), 0, 6))
-        if mode >= 6 then return math.floor(math.random() * 6) end
-        return mode
-    end
-
-    local function win_update_hint()
-        local n = #win_pick.rows
-        if n == 0 then
-            text.winpicker_hint = "No windows open"
-        elseif win_pick.single then
-            text.winpicker_hint = "Type one letter · Esc closes"
-        else
-            text.winpicker_hint = "Type two letters · Esc closes"
-        end
-    end
-
-    local function win_focus(id)
-        id = tostring(id or "")
-        if id == "" then return end
-        run("sh", { "-c", "niri msg action focus-window --id " .. sq(id) .. " 2>/dev/null" }, function() end)
-    end
-
-    local function win_animate(target, done)
-        win_pick.anim_serial = win_pick.anim_serial + 1
-        local serial = win_pick.anim_serial
-        local duration = math.floor(clamp(number(fact.winpicker_ms, 460), 160, 900))
-        local start = clamp(number(fact.winpicker_progress, 0), 0, 1)
-        local elapsed = 0
-        local function step()
-            if serial ~= win_pick.anim_serial then return end
-            elapsed = elapsed + 16
-            local t = clamp(elapsed / duration, 0, 1)
-            --  Smoothstep: brisk at the ends, no overshoot, same curve for
-            --  opening and closing so the close is the exact reverse.
-            local e = t * t * (3 - 2 * t)
-            local nextv = clamp(start + (target - start) * e, 0, 1)
-            fact.winpicker_progress = nextv
-            if t < 1 then
-                after(16, step)
-            elseif done then
-                done()
-            end
-        end
-        step()
-    end
-
-    local function win_start_animation()
-        if win_pick.animation_started or win_pick.animation_pending
-            or not win_pick.rows_ready then return end
-        if not truthy(fact.winpicker_open) then return end
-        -- Start animation immediately when rows are ready; previews can load later
-        win_pick.animation_pending = true
-        after(80, function()
-            win_pick.animation_pending = false
-            if win_pick.animation_started or not win_pick.rows_ready
-                or not truthy(fact.winpicker_open) then return end
-            win_pick.animation_started = true
-            win_animate(1)
-        end)
-    end
-
-    local function win_close(focus_id)
-        if not truthy(fact.winpicker_open) and number(fact.winpicker_progress, 0) <= 0.001 then
-            return
-        end
-        fact.winpicker_open = false
-        stop_windowkeys()
-        text.winpicker_key = ""
-        fact.winpicker_prefix_num = 0
-        win_pick.prefix = ""
-        win_pick.prefix_serial = win_pick.prefix_serial + 1
-        win_update_hint()
-        if focus_id ~= nil then
-            after(40, function() win_focus(focus_id) end)
-        end
-        win_animate(0, function()
-            if not truthy(fact.winpicker_open) and number(fact.winpicker_progress, 0) <= 0.001 then
-                model.win_cards = {}
-                fact.winpicker_count = 0
-                text.winpicker_hint = "Type a letter to jump"
-                model.win_bg = {}
-                fact.quiet = not (truthy(fact.wave_on) and truthy(fact.music_on))
-                    and not truthy(fact.panel_open) and not truthy(fact.launch_open)
-            end
-        end)
-    end
-
-    local function win_pick_at(index)
-        local at = math.floor(number(index, -1)) + 1
-        local row = win_pick.rows[at]
-        if row then win_close(row.id) end
-    end
-
-    local function win_handle_letter(ch)
-        ch = tostring(ch or ""):upper()
-        if ch == "" or not win_pick.letters:find(ch, 1, true) then return end
-        local function find_code(code)
-            for _, row in ipairs(win_pick.rows) do
-                if row.code == code then return row end
-            end
-        end
-        if win_pick.single then
-            fact.winpicker_prefix_num = 0
-            local row = find_code(ch)
-            if row then win_pick_at(row.index) end
-            return
-        end
-        if win_pick.prefix == "" then
-            for _, row in ipairs(win_pick.rows) do
-                if row.code:sub(1, 1) == ch then
-                    win_pick.prefix = ch
-                    fact.winpicker_prefix_num = string.byte(ch) - 64
-                    text.winpicker_hint = ch .. " · type the second letter"
-                    win_pick.prefix_serial = win_pick.prefix_serial + 1
-                    local serial = win_pick.prefix_serial
-                    after(900, function()
-                        if serial == win_pick.prefix_serial and truthy(fact.winpicker_open) then
-                            win_pick.prefix = ""
-                            fact.winpicker_prefix_num = 0
-                            win_update_hint()
-                        end
-                    end)
-                    return
-                end
-            end
-        else
-            local code = win_pick.prefix .. ch
-            local row = find_code(code)
-            win_pick.prefix = ""
-            fact.winpicker_prefix_num = 0
-            if row then win_pick_at(row.index) else win_update_hint() end
-        end
-    end
-
-    local function win_capture()
-        if shell_root == "" then
-            win_pick.capture_done = true
-            return
-        end
-        win_pick.capture_serial = win_pick.capture_serial + 1
-        local serial = win_pick.capture_serial
-        local helper = shell_root .. "/bin/pleamar-window-previews"
-        run("sh", { "-c", sq(helper) .. " 2>/dev/null" }, function(out)
-            if serial ~= win_pick.capture_serial
-                or (not truthy(fact.winpicker_open) and not win_pick.opening) then return end
-            win_pick.capture_done = true
-            local paths = {}
-            for line in tostring(out or ""):gmatch("[^\n]+") do
-                local id, path = line:match("^([^\t]+)\t(.+)$")
-                if id and path then paths[id] = path end
-            end
-            if next(paths) == nil then
-                win_start_animation()
-                return
-            end
-            --  The helper may finish before the niri window query.  Keep the
-            --  paths so the rows can pick them up when they are made.
-            win_pick.previews = paths
-            for _, row in ipairs(win_pick.rows) do
-                if paths[row.id] then
-                    row.picture = paths[row.id]
-                    row.has_pic = true
-                end
-            end
-            if #win_pick.rows > 0 then
-                model.win_cards = win_pick.rows
-            end
-        end)
-    end
-
-
-    local function win_open_now()
-        if truthy(fact.winpicker_open) then return end
-        if truthy(fact.panel_open) then fact.panel_open = false end
-        if truthy(fact.launch_open) then fact.launch_open = false end
-        if truthy(fact.nt_center) then fact.nt_center = false end
-        center.close()
-        stop_settingskeys()
-
-        win_pick.rows = {}
-        win_pick.prefix = ""
-        win_pick.prefix_serial = win_pick.prefix_serial + 1
-        win_pick.rows_ready = false
-        win_pick.animation_started = false
-        win_pick.animation_pending = false
-        win_pick.suppress_nt_until = os.time() + 15
-        fact.winpicker_open = true
-        start_windowkeys()
-        after(400, start_windowkeys)
-        fact.quiet = false
-        fact.winpicker_progress = 0
-        fact.winpicker_count = 0
-        fact.winpicker_fx = win_choose_fx()
-        model.win_cards = {}
-        text.winpicker_hint = "Reading windows…"
-
-        run("sh", { "-c", "niri msg -j focused-output 2>/dev/null" }, function(out)
-            local ok, output = pcall(json.decode, out or "{}")
-            if ok and type(output) == "table" and type(output.logical) == "table" then
-                local w = tonumber(output.logical.width)
-                local h = tonumber(output.logical.height)
-                if w and h then
-                    fact.winpicker_screen_w = w
-                    fact.winpicker_screen_h = h
-                end
-            end
-        end)
-        run("sh", { "-c", "niri msg -j windows 2>/dev/null" }, function(out)
-            if not truthy(fact.winpicker_open) then return end
-            local ok, list = pcall(json.decode, out or "[]")
-            if not ok or type(list) ~= "table" then list = {} end
-            local windows = {}
-            for _, w in ipairs(list) do
-                if type(w) == "table" and w.id ~= nil then windows[#windows + 1] = w end
-            end
-            table.sort(windows, function(a, b)
-                local wa, wb = tonumber(a.workspace_id) or 0, tonumber(b.workspace_id) or 0
-                if wa ~= wb then return wa < wb end
-                local pa = a.layout and a.layout.pos_in_scrolling_layout or {}
-                local pb = b.layout and b.layout.pos_in_scrolling_layout or {}
-                local ac, ar = tonumber(pa[1]) or 0, tonumber(pa[2]) or 0
-                local bc, br = tonumber(pb[1]) or 0, tonumber(pb[2]) or 0
-                if ac ~= bc then return ac < bc end
-                if ar ~= br then return ar < br end
-                return (tonumber(a.id) or 0) < (tonumber(b.id) or 0)
-            end)
-            if #windows > 32 then
-                for i = #windows, 33, -1 do table.remove(windows, i) end
-            end
-            local codes, single, used = win_make_codes(#windows, text.winpicker_letters)
-            win_pick.rows = {}
-            win_pick.letters = used
-            win_pick.single = single
-            for i, w in ipairs(windows) do
-                local title = tostring(w.title or "")
-                local app = tostring(w.app_id or "")
-                local wid = tostring(w.id)
-                local picture = win_pick.previews[wid]
-                local code = codes[i] or ""
-                local first = code:sub(1, 1):upper()
-                local lead = first ~= "" and (string.byte(first) - 64) or 0
-                win_pick.rows[i] = {
-                    index = i - 1,
-                    id = wid,
-                    title = title ~= "" and title or app,
-                    app = app,
-                    code = code,
-                    lead = lead,
-                    active = w.is_focused == true,
-                    has_pic = picture ~= nil,
-                    picture = picture or "",
-                }
-            end
-            fact.winpicker_count = #win_pick.rows
-            model.win_cards = win_pick.rows
-            win_update_hint()
-            win_pick.rows_ready = true
-            win_start_animation()
-        end)
-    end
-
-
-    --  Capture the desktop before the picker surface maps, then open.  The
-    --  raw screenshot keeps the windows visible while the blurred version is
-    --  being written; neither path uses glass or the compositor's blur.
-    local function win_open()
-        if truthy(fact.winpicker_open) or win_pick.opening then return end
-        if truthy(fact.panel_open) then fact.panel_open = false end
-        if truthy(fact.launch_open) then fact.launch_open = false end
-        if truthy(fact.nt_center) then fact.nt_center = false end
-        center.close()
-        stop_settingskeys()
-
-        win_pick.opening = true
-        fact.winpicker_prefix_num = 0
-        win_pick.capture_serial = win_pick.capture_serial + 1
-        win_pick.capture_done = false
-        win_pick.previews = {}
-        win_pick.suppress_nt_until = os.time() + 15
-        model.win_bg = {}
-        local helper = shell_root ~= "" and (shell_root .. "/bin/pleamar-window-backdrop") or ""
-        local w = math.floor(number(fact.winpicker_screen_w, 2560))
-        local h = math.floor(number(fact.winpicker_screen_h, 1440))
-        if helper == "" then
-            log("window backdrop: PLEAMAR_SHELL_ROOT is empty")
-            win_pick.opening = false
-            win_open_now()
-            return
-        end
-        run("sh", { "-c", sq(helper) .. " capture 2>/dev/null" }, function(out)
-            if truthy(fact.winpicker_open) then
-                win_pick.opening = false
-                return
-            end
-            local raw = tostring(out or ""):match("^([^\n]+)")
-            if not (raw and raw:sub(1, 1) == "/") then
-                log("window backdrop: screen capture returned no path")
-            end
-            --  The backdrop capture restores the clipboard before it exits;
-            --  only now is it safe to start the window-preview helper, which
-            --  saves and restores the clipboard too.  Its images load before
-            --  the reveal instead of arriving during the scale/opacity pass.
-            win_capture()
-            local function show(path)
-                win_pick.opening = false
-                if path and path:sub(1, 1) == "/" then model.win_bg = { { picture = path } } end
-                win_open_now()
-            end
-            if not (raw and raw:sub(1, 1) == "/") then
-                show(nil)
-                return
-            end
-            --  Resolve the blur before the surface maps: the model is written
-            --  once, so no later row replacement can leave the sharp frame in
-            --  place (which is what happened with the first backdrop pass).
-            run("sh", { "-c", sq(helper) .. " blur " .. sq(raw) .. " " .. w .. " " .. h .. " " .. math.floor(clamp(number(fact.winpicker_bg_blur, 52), 0, 100)) .. " 2>/dev/null" }, function(blurred)
-                local path = tostring(blurred or ""):match("^([^\n]+)")
-                if not (path and path:sub(1, 1) == "/") then path = raw end
-                show(path)
-            end)
-        end)
-    end
-
-
-    on("ipc_open_windows", function() win_open() end)
-    on("ipc_toggle_windows", function()
-        if truthy(fact.winpicker_open) then
-            win_close(nil)
-        elseif not win_pick.opening then
-            win_open()
-        end
-    end)
-    on("winpicker_close", function() win_close(nil) end)
-    on("winpicker_pick", function(index) win_pick_at(index) end)
-    on("text:winpicker_key", function()
-        local typed = tostring(text.winpicker_key or "")
-        if typed == "" then return end
-        text.winpicker_key = ""
-        if not truthy(fact.winpicker_open) then return end
-        for ch in typed:upper():gmatch("[A-Z]") do win_handle_letter(ch) end
-    end)
-    on("fact:winpicker_size", function() save() end)
-    on("fact:winpicker_cols", function() save() end)
-    on("fact:winpicker_mode", function() save() end)
-    on("fact:winpicker_ms", function() save() end)
-    on("fact:winpicker_bg_glass", function() save() end)
-    on("fact:winpicker_bg_blur", function() save() end)
-    on("text:winpicker_letters", function() save() end)
 
     --  The panel click is Vitreus's own `assets/panel.wav`; one at a time even
     --  when a click changes several things.
@@ -1509,22 +1019,15 @@ function M.start(layout)
             local n = list[i]
             if not nt_seen[n.id] then
                 nt_seen[n.id] = true
-                local capture_note = os.time() <= number(win_pick.suppress_nt_until, 0)
-                    and tostring(n.app or "") == "niri"
-                    and tostring(n.title or "") == "Screenshot captured"
-                if capture_note then
+                nt_add_hist(n)
+                if nt_first then
+                    pcall(sys.call, "notifications.dismiss", n.id)   -- backlog from before login
+                elseif truthy(fact.nt_dnd) then
                     pcall(sys.call, "notifications.dismiss", n.id)
                 else
-                    nt_add_hist(n)
-                    if nt_first then
-                        pcall(sys.call, "notifications.dismiss", n.id)   -- backlog from before login
-                    elseif truthy(fact.nt_dnd) then
-                        pcall(sys.call, "notifications.dismiss", n.id)
-                    else
-                        nt_queue[#nt_queue + 1] = n
-                    end
-                    oldest = false
+                    nt_queue[#nt_queue + 1] = n
                 end
+                oldest = false
             end
         end
         nt_first = false
@@ -1545,13 +1048,10 @@ function M.start(layout)
     local function recompute_quiet()
         local playing = truthy(fact.wave_on) and truthy(fact.music_on)
         local open = truthy(fact.panel_open) or truthy(fact.launch_open)
-            or truthy(fact.winpicker_open) or number(fact.winpicker_progress, 0) > 0.01
         local q = (not playing) and (not open)
         if truthy(fact.quiet) ~= q then fact.quiet = q end
     end
     recompute_quiet()
-    on("fact:winpicker_open", function() recompute_quiet() end)
-    on("fact:winpicker_progress", function() recompute_quiet() end)
 
     --  A bar that appears under the pointer can receive the tail of a click
     --  meant for the window beneath it.  The scene takes its own presses only
@@ -2465,7 +1965,6 @@ function M.start(layout)
     --  query after it has had one frame to appear.  Focusing a field also
     --  asks the compositor for the keyboard, so the search is usable at once.
     on("ipc_open_search", function()
-        if truthy(fact.winpicker_open) then win_close(nil) end
         center.close()
         fact.panel_open = false
         stop_settingskeys()
@@ -2476,11 +1975,10 @@ function M.start(layout)
         search_now()
     end)
     on("ipc_open_settings", function(page)
-        if truthy(fact.winpicker_open) then win_close(nil) end
         center.close()
         if page ~= nil and tostring(page) ~= "" then
             local p = math.floor(number(page, 0))
-            if p >= 0 and p <= 11 then fact.settings_page = p end
+            if p >= 0 and p <= 10 then fact.settings_page = p end
         end
         fact.launch_open = false
         fact.nt_center = false
@@ -2489,11 +1987,9 @@ function M.start(layout)
         start_settingskeys()
     end)
     on("ipc_open_center", function()
-        if truthy(fact.winpicker_open) then win_close(nil) end
         stop_settingskeys()
     end)
     on("center_toggle", function()
-        if truthy(fact.winpicker_open) then win_close(nil) end
         stop_settingskeys()
     end)
     on("lock_now", function()
@@ -2525,7 +2021,6 @@ function M.start(layout)
         end)
     end)
     on("ipc_open_notifications", function()
-        if truthy(fact.winpicker_open) then win_close(nil) end
         center.close()
         fact.panel_open = false
         stop_settingskeys()
@@ -2567,9 +2062,6 @@ function M.start(layout)
     every(700, function()
         if truthy(fact.panel_open) and settings_key_helper then
             pcall(sys.call, "say", "settingskeys", "emit key_ping")
-        end
-        if truthy(fact.winpicker_open) and window_key_helper then
-            pcall(sys.call, "say", "windowkeys", "emit key_ping")
         end
     end)
 end

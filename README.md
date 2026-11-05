@@ -10,7 +10,6 @@ A small, animated Wayland shell for [niri](https://github.com/YaLTeR/niri), buil
 - **Frame** — a continuous glass border with bars on every edge.
 - **Launcher** — search apps, files, commands, emoji, clipboard history, wallpapers, windows, the web, and calculations.
 - **Notifications** — desktop toasts and a notification center.
-- **Window picker** — blurred desktop backdrop, live previews, letter shortcuts, and reveal animations.
 - **Settings** — appearance, layout, font, motion, notifications, lock screen, idle, weather, and wallpapers.
 - **Lock screen** — a separate PAM-backed session-lock scene.
 - **Wallpaper and palette** — shader transitions with colors sampled from the current wallpaper.

@@ -12,7 +12,6 @@ done
 "$p" --check "$root/lockscreen/lockscreen.plm"
 "$p" --check "$root/scenes/centerkeys.plm"
 "$p" --check "$root/scenes/settingskeys.plm"
-"$p" --check "$root/scenes/windowkeys.plm"
 "$p" --check "$root/experiments/wrap.plm"
 "$p" --check "$root/experiments/probe.plm"
 

@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # Open a pleamar-shell panel from a terminal.
 #   pleamar-ipc search
-#   pleamar-ipc settings [0..11]
+#   pleamar-ipc settings [0..10]
 #   pleamar-ipc center [toggle|0..6]
 #   pleamar-ipc notifications
-#   pleamar-ipc windows [open|toggle]
 #   pleamar-ipc wallpaper /path/to/image.png
 #   pleamar-ipc picker
 #   pleamar-ipc lock
@@ -23,9 +22,9 @@ if [[ "$action" == "--scene" ]]; then
     shift 2 || true
 fi
 case "$action" in
-    search|settings|center|notifications|windows|wallpaper|picker|lock) ;;
+    search|settings|center|notifications|wallpaper|picker|lock) ;;
     *)
-        echo "usage: $0 search | settings [0..11] | center [toggle|0..6] | notifications | windows [open|toggle] | wallpaper <image> | picker | lock" >&2
+        echo "usage: $0 search | settings [0..10] | center [toggle|0..6] | notifications | wallpaper <image> | picker | lock" >&2
         exit 2
         ;;
 esac
@@ -82,7 +81,7 @@ case "$action" in
     settings)
         page="${2:-}"
         if [[ -n "$page" ]]; then
-            [[ "$page" =~ ^(11|10|[0-9])$ ]] || { echo "settings page must be 0..11" >&2; exit 2; }
+            [[ "$page" =~ ^(10|[0-9])$ ]] || { echo "settings page must be 0..10" >&2; exit 2; }
             command="emit ipc_open_settings $page"
         else
             command="emit ipc_open_settings"
@@ -108,17 +107,6 @@ case "$action" in
         esac
         ;;
     notifications) command="emit ipc_open_notifications" ;;
-    windows)
-        mode="${2:-open}"
-        case "$mode" in
-            ""|open) command="emit ipc_open_windows" ;;
-            toggle) command="emit ipc_toggle_windows" ;;
-            *)
-                echo "windows must be open or toggle" >&2
-                exit 2
-                ;;
-        esac
-        ;;
 esac
 
 bin="$("$root/bin/pleamar-shell" --path)"
