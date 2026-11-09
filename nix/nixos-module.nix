@@ -21,8 +21,8 @@ in
     };
 
     layout = lib.mkOption {
-      type = lib.types.enum [ "island" "frame" ];
-      default = "island";
+      type = lib.types.enum [ "island" "frame" "notches" ];
+      default = "notches";
       description = "Pleamar layout to start.";
     };
 

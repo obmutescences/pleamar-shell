@@ -1,0 +1,114 @@
+part NotchFrame {
+    //  One full-screen surface for the Notches shell: the ring, the clock,
+    //  and the music bars all live here.  There are no water strips and no
+    //  bar surface; the drawer panels are the only overlays.
+    prop nf_sec_ones = 1 ~quick
+    prop nf_sec_tens = 1 ~quick
+
+    surface notch_frame {
+        size: full, full
+        anchor: top_left
+        reserve: 0
+        level: top
+        open: true
+        rate: 120, 60 while music_frame_on and music_on, 30 while quiet
+        keyboard: none
+
+        let nf.w = notch_frame.width
+        let nf.h = notch_frame.height
+        let nf.cx = nf.w / 2
+        let nf.clock_w = 220
+        let nf.clock_h = 56
+        let nf.clock_y = 27
+        let nf.clock_x0 = nf.cx - nf.clock_w / 2
+
+        //  ── the ring ─────────────────────────────────────────────────────
+        body {
+            color: bar_bg
+            glass: if(glass_on, 100%, 0%)
+            opacity: 1% * glass_tint
+            lens: glass_on and glass_bend
+            frost: glass_frost / 100
+            refraction: glass_refr
+            dispersion: glass_disp
+            dome: glass_dome
+            milk: glass_milk
+            smoke: glass_smoke
+            vivid: glass_vivid
+            mirror: glass_mirror
+            highlight: glass_highlight
+            ripple: glass_ripple
+            border: 1.5 * glass_border / 100, ink
+            rim: 1% * glass_edge
+            shadow: 0, 2, 12, 24%, glass_shadow
+
+            box { from: 0, 0; size: nf.w, 22 }
+            box { from: 0, nf.h - 22; size: nf.w, 22 }
+            box { from: 0, 22; size: 22, nf.h - 44 }
+            box { from: nf.w - 22, 22; size: 22, nf.h - 44 }
+
+            path { at: 0, 0; move 44, 22; curve 22, 44 via 22, 22; line 22, 22; close }
+            path { at: 0, 0; move nf.w - 44, 22; curve nf.w - 22, 44 via nf.w - 22, 22; line nf.w - 22, 22; close }
+            path { at: 0, 0; move 44, nf.h - 22; curve 22, nf.h - 44 via 22, nf.h - 22; line 22, nf.h - 22; close }
+            path { at: 0, 0; move nf.w - 44, nf.h - 22; curve nf.w - 22, nf.h - 44 via nf.w - 22, nf.h - 22; line nf.w - 22, nf.h - 22; close }
+
+            //  The clock notch is part of the same glass: the top rail swells
+            //  down into it, with no separate capsule and no seam.
+            box { from: nf.cx - nf.clock_w / 2, 0; size: nf.clock_w, nf.clock_h; corner: 20; blend: 34 }
+            box { from: nf.cx - nf.clock_w / 2 + 14, nf.clock_h - 2; size: nf.clock_w - 28, 1; corner: 0.5 }
+        }
+
+        //  ── music band ───────────────────────────────────────────────────
+
+        //  One continuous glass band round all four edges.  Each side is
+        //  one piece, and the four overlap at the corners in the same body:
+        //  the centre stays empty and the frame moves as one block.
+
+        let nf.top_h = 22 + 38 * band.s.0
+        let nf.bottom_h = if(music_frame_sides == 1, 22 + 38 * band.s.5, 0.1)
+        let nf.left_w = if(music_frame_sides == 1, 22 + 38 * band.s.2, 0.1)
+        let nf.right_w = if(music_frame_sides == 1, 22 + 38 * band.s.4, 0.1)
+
+        body {
+            show: music_frame_on and music_on
+            color: mix(bar_bg, aqua, 0.65)
+            glass: if(glass_on, 100%, 0%)
+            opacity: 74%
+            rim: 24%
+            border: 1.2 * glass_border / 100, ink
+            shadow: 0, 0, 12, 18%, glass_shadow
+            box { from: 0, 0; size: nf.w, nf.top_h; corner: 6 }
+            box { from: 0, nf.h - nf.bottom_h; size: nf.w, nf.bottom_h; corner: 6 }
+            box { from: 0, 0; size: nf.left_w, nf.h; corner: 6 }
+            box { from: nf.w - nf.right_w, 0; size: nf.right_w, nf.h; corner: 6 }
+        }
+
+        //  The clock text sits in the frame's notch; its body is the ring above.
+        row {
+            at: nf.cx, nf.clock_y
+            anchor: center
+            gap: 0
+            align: end
+            text "{floor(tick.hour / 10)}" { size: 19; weight: 600; color: aqua; family: "Space Grotesk" }
+            text "{mod(tick.hour, 10)}" { size: 19; weight: 600; color: aqua; family: "Space Grotesk" }
+            text ":" { size: 19; weight: 600; color: azure; family: "Space Grotesk" }
+            text "{floor(tick.minute / 10)}" { size: 19; weight: 600; color: aqua; family: "Space Grotesk" }
+            text "{mod(tick.minute, 10)}" { size: 19; weight: 600; color: aqua; family: "Space Grotesk" }
+            space 1
+            text "{floor(tick.second / 10)}" { size: 11; weight: 600; color: azure; family: "Space Grotesk"; letter_move: 0, -3 + (1 - nf_sec_tens) * 4; letter_scale: 0.88 + 0.12 * nf_sec_tens }
+            text "{mod(tick.second, 10)}" { size: 11; weight: 600; color: azure; family: "Space Grotesk"; letter_move: 0, -3 + (1 - nf_sec_ones) * 4; letter_scale: 0.88 + 0.12 * nf_sec_ones }
+        }
+        on change tick.second {
+            nf_sec_ones: 0 ~10ms
+            nf_sec_ones: 1 ~190ms after 10ms
+        }
+        on change floor(tick.second / 10) {
+            nf_sec_tens: 0 ~10ms
+            nf_sec_tens: 1 ~190ms after 10ms
+        }
+
+        zone box nf_clock { from: nf.cx - nf.clock_w / 2, 0; size: nf.clock_w, nf.clock_h; corner: 20; cursor: pointer; label: "Open centre panel" }
+        on press nf_clock { emit ui_sound; emit center_toggle }
+
+    }
+}

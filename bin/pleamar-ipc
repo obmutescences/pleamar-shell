@@ -7,7 +7,7 @@
 #   pleamar-ipc wallpaper /path/to/image.png
 #   pleamar-ipc picker
 #   pleamar-ipc lock
-# The running scene is discovered; use PLEAMAR_SCENE=frame when both run.
+# The running scene is discovered; use PLEAMAR_SCENE=notches when more than one runs.
 # `picker` opens skwd-wall v2's own UI (its animations, filters and views).
 set -euo pipefail
 
@@ -66,6 +66,8 @@ if [[ -z "$scene" ]]; then
         scene=island
     elif pgrep -f -- "pleamar --scene .*/scenes/frame.plm" >/dev/null; then
         scene=frame
+    elif pgrep -f -- "pleamar --scene .*/scenes/notches.plm" >/dev/null; then
+        scene=notches
     else
         echo "no pleamar-shell scene is running" >&2
         exit 1

@@ -139,8 +139,8 @@ part ConfigPanel {
     let cp.idle_off_pct = clamp(idle_off_i / 16, 0, 1)
     measure cp_parent
     let wp.min_pct = clamp((wall_minutes - 1) / 59, 0, 1)
-    prop cp_p = 0 ~gentle
-    follow cp_p = panel_open
+    prop cp_np = 0 ~notch_drip
+    follow cp_np = panel_open
     //  Sidebar slot of each page, in visual order:
     //  LOOK: Wallpaper, Glass, Theme · SHELL: Bar, Frame music, Typeface,
     //  Motion, Notifications · SCREEN: Lock, Idle · SYSTEM: Weather.
@@ -151,22 +151,22 @@ part ConfigPanel {
     follow cp_grp = pick(settings_page, 1, 0, 1, 1, 0, 1, 1, 2, 2, 3, 0)
 
     surface config_panel {
-        size: 860, 820
-        anchor: center
+        size: full, 900
+        anchor: top_left
+        reserve: 0
         level: overlay
-        open: panel_open or cp_p > 0.01
-        rate: 120, 30 while quiet
+        open: panel_open or cp_np > 0.01
+        rate: 120, 30 while quiet and not panel_open and cp_np < 0.01
         //  The invisible settingskeys helper owns the keyboard; main
         //  Pleamar scenes with many surfaces do not receive layer keys.
         keyboard: none
 
-        //  A full-surface shield under the controls, so a click on an empty
-        //  part of the page is still the panel's and never reaches the window
-        //  behind it.  It is declared first; the real controls are above it.
+        //  The panel grows out of the top edge like the reference's time
+        //  notch.  The shield moves with the card, so the transparent top of
+        //  the full-width layer does not swallow desktop clicks.
+        NotchDrawer(cp_np, 860) {
         zone box cp_shield { from: 0, 0; size: 860, 820; active: panel_open; label: "Settings" }
         on press cp_shield { panel_open = panel_open }
-
-        PanelPop(panel_fx, cp_p, 860, 820) {
         PanelBackdrop(0, 0, 860, 820, 26)
         body {
             color: panel_bg
@@ -419,12 +419,44 @@ part ConfigPanel {
         group {
             show: settings_page == 0
 
-            CpCard(250, 176, 570, 62)
-            text "Frame music" { at: 266, 186; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "Let the four-edge wave follow the system sink." { at: 266, 204; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            CpSwitch(770, 195, 44, 24, if(wave_on, 1, 0), cfg_knob, cp_music_switch.hover, cp.mint, ink, cp.track)
-            zone box cp_music_switch { from: 760, 186; size: 64, 38; corner: 19; cursor: pointer; label: "Frame music" }
-            on press cp_music_switch { emit ui_sound; toggle wave_on }
+            //  The Notches mode uses the same six bands for its frame bars.
+            //  The old shader water is kept in the tree but is not included in
+            //  the Notches scene; these two choices are the new surface.
+            group {
+                show: notch_mode
+
+                CpCard(250, 176, 570, 62)
+                text "Frame music" { at: 266, 186; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+                text "The notch frame answers the system sink at 60 fps." { at: 266, 204; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+                CpSwitch(770, 195, 44, 24, if(music_frame_on, 1, 0), music_frame_knob, cp_notch_switch.hover, cp.mint, ink, cp.track)
+                zone box cp_notch_switch { from: 760, 186; size: 64, 38; corner: 19; cursor: pointer; label: "Notch frame music" }
+                on press cp_notch_switch { emit ui_sound; toggle music_frame_on }
+
+                CpCard(250, 242, 570, 94)
+                text "Coverage" { at: 266, 252; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+                text "Top edge only, or all four sides of the frame." { at: 266, 270; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+                CpPill(520, 286, 100, 30, if(music_frame_sides == 0, 1, 0), cp_notch_top.hover, cp.mint, ink)
+                text "Top edge" { at: 570, 301; anchor: center; size: 12; weight: 700; color: if(music_frame_sides == 0, cp.mint, ink); family: "Space Grotesk" }
+                zone box cp_notch_top { from: 510, 280; size: 120, 38; corner: 19; cursor: pointer; label: "Music on the top edge only" }
+                on press cp_notch_top { emit ui_sound; music_frame_sides = 0 }
+
+                CpPill(640, 286, 112, 30, if(music_frame_sides == 1, 1, 0), cp_notch_four.hover, cp.mint, ink)
+                text "Four sides" { at: 696, 301; anchor: center; size: 12; weight: 700; color: if(music_frame_sides == 1, cp.mint, ink); family: "Space Grotesk" }
+                zone box cp_notch_four { from: 630, 280; size: 132, 38; corner: 19; cursor: pointer; label: "Music on all four frame sides" }
+                on press cp_notch_four { emit ui_sound; music_frame_sides = 1 }
+
+                text "The bars stop when the sink is silent; the frame itself stays still." { at: 266, 336; anchor: left center; size: 13; color: faint; family: "Space Grotesk" }
+            }
+
+            group {
+                show: not notch_mode
+
+                CpCard(250, 176, 570, 62)
+                text "Frame music" { at: 266, 186; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+                text "Let the four-edge wave follow the system sink." { at: 266, 204; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+                CpSwitch(770, 195, 44, 24, if(wave_on, 1, 0), cfg_knob, cp_music_switch.hover, cp.mint, ink, cp.track)
+                zone box cp_music_switch { from: 760, 186; size: 64, 38; corner: 19; cursor: pointer; label: "Frame music" }
+                on press cp_music_switch { emit ui_sound; toggle wave_on }
 
             CpCard(250, 242, 570, 62)
             text "Amplitude" { at: 266, 252; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
@@ -470,6 +502,7 @@ part ConfigPanel {
             zone box cp_blend_track { from: 510, 538; size: 240, 30; cursor: pointer; label: "Blend" }
             on press cp_blend_track { wave_blend = clamp((pointer.x - 520) / 200, 0, 1) }
             on drag cp_blend_track { wave_blend = clamp((pointer.x - 520) / 200, 0, 1) }
+            }
         }
 
         //  ── GLASS ────────────────────────────────────────────────────────

@@ -116,6 +116,38 @@ part Common {
         }
     }
 
+    //  A panel that grows out of the top edge of the screen: the glass neck
+    //  and its two water rings, then the caller's card below it.  The caller
+    //  supplies its own glass body; this only draws the connection.
+    component NotchDrawer(p: number, w: number) {
+        let nd.p = clamp(p, 0, 1)
+        let nd.cx = screen.width / 2
+        let nd.y = 68
+        let nd.neck = mix(34, 104, min(1, nd.p * 1.5))
+        let nd.rip = clamp(1 - nd.p, 0, 1) + 0.16
+        body {
+            color: mix(bar_bg, aqua, 0.28)
+            glass: if(glass_on, 100%, 0%)
+            opacity: 1% * max(glass_tint, 82)
+            frost: glass_frost / 100
+            refraction: glass_refr
+            dispersion: glass_disp
+            border: 1.5 * glass_border / 100, ink
+            rim: 18%
+            shadow: 0, 4, 12, 20%, glass_shadow
+            box { from: nd.cx - nd.neck / 2, 0; size: nd.neck, 24; corner: 12; blend: 18 * nd.p }
+            box { from: nd.cx - max(18, nd.neck * 0.52) / 2, 18; size: max(18, nd.neck * 0.52), 48; corner: 12; blend: 18 * nd.p }
+        }
+        ellipse { at: nd.cx - nd.neck * 0.52, nd.y; radius: 10 + 15 * nd.rip; stroke: 1.2; color: aqua; opacity: 12% + 42% * nd.rip }
+        ellipse { at: nd.cx + nd.neck * 0.52, nd.y; radius: 10 + 15 * nd.rip; stroke: 1.2; color: azure; opacity: 10% + 36% * nd.rip }
+        ellipse { at: nd.cx, nd.y + 1; radius: 18 + 26 * nd.rip; stroke: 0.9; color: aqua; opacity: 8% + 26% * nd.rip }
+        group {
+            move: nd.cx - w / 2, nd.y - (1 - nd.p) * 12
+            opacity: clamp(nd.p * 1.5, 0, 1)
+            children
+        }
+    }
+
     fact settings_page: number = 1
     //  Per-panel opening motion (0 fade, 1 spin, 2 unfold, 3 drop,
     //  4 aperture, 5 random).  The *_fx facts are the pose chosen when a
@@ -149,6 +181,11 @@ part Common {
     //  Height of the ripples themselves, independent of the overall reach.
     //  0 is a smooth meniscus; 3 is a rough, crest-heavy edge.
     fact wave_height: number = 1.6
+
+    //  The Notches frame's music: the old shader water can stay off while
+    //  the six-band bars draw on the frame.  0 is the top edge; 1 is all four.
+    fact music_frame_on = true
+    fact music_frame_sides: number = 1
 
     //  Lock screen settings.  The lock scene is a separate process, so these
     //  live in the shell config and are pushed to it when it opens.
@@ -201,6 +238,11 @@ part Common {
     //  The config panel's switch knob.
     prop cfg_knob = 0 ~quick
     follow cfg_knob = wave_on
+    //  A slower, underdamped spring for the Notches drawer: the neck stretches
+    //  and settles like the reference's drip, instead of easing like a card.
+    spring notch_drip = 170, 18
+    prop music_frame_knob = 0 ~quick
+    follow music_frame_knob = music_frame_on
     prop glass_knob = 0 ~quick
     follow glass_knob = glass_on
     prop bend_knob = 0 ~quick
@@ -234,6 +276,7 @@ part Common {
     //  Panels and the launcher.  They share the bar's facts and the same glass.
     fact panel_open = false
     fact launch_open = false
+    fact notch_mode = false
     text layout = ""
     text query = ""
     //  Global typeface.  Every text is drawn in "Space Grotesk"; the launch

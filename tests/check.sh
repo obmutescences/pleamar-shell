@@ -6,7 +6,7 @@ if [[ -z "$p" || ! -x "$p" ]]; then
     p="$(ls -d /nix/store/*-pleamar-*/bin/pleamar 2>/dev/null | sort -V | tail -1)"
 fi
 [[ -n "$p" && -x "$p" ]] || { echo "pleamar not found; set PLEAMAR" >&2; exit 1; }
-for scene in island frame; do
+for scene in island frame notches; do
     "$p" --check "$root/scenes/$scene.plm"
 done
 "$p" --check "$root/lockscreen/lockscreen.plm"

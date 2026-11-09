@@ -22,6 +22,7 @@ end
 
 function M.start(layout)
     text.layout = layout
+    fact.notch_mode = layout == "NOTCHES"
 
     --  skwd-wall v2's shader names, in its own catalog order.  Index 0 is
     --  "off"; the shell sends the selected name with every wallpaper apply.
@@ -126,6 +127,8 @@ function M.start(layout)
         wave_amp = 1.4,
         wave_ripples = 1,
         wave_height = 1.6,
+        music_frame_on = true,
+        music_frame_sides = 1,
         lock_blur = 36,
         lock_12h = true,
         lock_ampm = true,
@@ -255,6 +258,8 @@ function M.start(layout)
         cfg.wave_amp = clamp(number(saved.wave_amp, cfg.wave_amp), 0.2, 2.2)
         cfg.wave_ripples = math.floor(clamp(number(saved.wave_ripples, cfg.wave_ripples), 1, 10))
         cfg.wave_height = clamp(number(saved.wave_height, cfg.wave_height), 0, 3)
+        if type(saved.music_frame_on) == "boolean" then cfg.music_frame_on = saved.music_frame_on end
+        cfg.music_frame_sides = math.floor(clamp(number(saved.music_frame_sides, cfg.music_frame_sides), 0, 1))
         cfg.lock_blur = clamp(number(saved.lock_blur, cfg.lock_blur), 0, 120)
         if type(saved.lock_12h) == "boolean" then cfg.lock_12h = saved.lock_12h end
         if type(saved.lock_ampm) == "boolean" then cfg.lock_ampm = saved.lock_ampm end
@@ -333,6 +338,8 @@ function M.start(layout)
         fact.wave_amp = cfg.wave_amp
         fact.wave_ripples = cfg.wave_ripples
         fact.wave_height = cfg.wave_height
+        fact.music_frame_on = cfg.music_frame_on
+        fact.music_frame_sides = cfg.music_frame_sides
         fact.lock_blur = cfg.lock_blur
         fact.lock_12h = cfg.lock_12h
         fact.lock_ampm = cfg.lock_ampm
@@ -406,6 +413,8 @@ function M.start(layout)
             wave_amp = number(fact.wave_amp, 1.4),
             wave_ripples = number(fact.wave_ripples, 1),
             wave_height = number(fact.wave_height, 1.6),
+            music_frame_on = truthy(fact.music_frame_on),
+            music_frame_sides = number(fact.music_frame_sides, 1),
             lock_blur = number(fact.lock_blur, 36),
             lock_12h = truthy(fact.lock_12h),
             lock_ampm = truthy(fact.lock_ampm),
@@ -1046,7 +1055,8 @@ function M.start(layout)
 
     --  ── quiet: the scene only runs hot while the water can move ─────────
     local function recompute_quiet()
-        local playing = truthy(fact.wave_on) and truthy(fact.music_on)
+        local wave_wanted = if truthy(fact.notch_mode) then truthy(fact.music_frame_on) else truthy(fact.wave_on)
+        local playing = wave_wanted and truthy(fact.music_on)
         local open = truthy(fact.panel_open) or truthy(fact.launch_open)
         local q = (not playing) and (not open)
         if truthy(fact.quiet) ~= q then fact.quiet = q end
@@ -1183,8 +1193,12 @@ function M.start(layout)
 
     --  Start when the waves are on; stop when they are not.  The timer restarts
     --  cava if it ever leaves on its own.
+    local function cava_wanted()
+        if truthy(fact.notch_mode) then return truthy(fact.music_frame_on) end
+        return truthy(fact.wave_on)
+    end
     local function cava_want()
-        if truthy(fact.wave_on) then
+        if cava_wanted() then
             start_cava()
         else
             stop_cava()
@@ -1192,7 +1206,7 @@ function M.start(layout)
     end
     cava_want()
     every(5000, function()
-        if truthy(fact.wave_on) and not cava then start_cava() end
+        if cava_wanted() and not cava then start_cava() end
     end)
 
     --  ── launcher: one search for apps, files, commands, emoji, clipboard,
@@ -1701,6 +1715,11 @@ function M.start(layout)
     on("fact:wave_amp", function() save() end)
     on("fact:wave_ripples", function() save() end)
     on("fact:wave_height", function() save() end)
+    on("fact:music_frame_on", function()
+        save()
+        cava_want()
+    end)
+    on("fact:music_frame_sides", function() save() end)
     on("fact:lock_blur", function() save() end)
     on("fact:lock_12h", function() save() end)
     on("fact:lock_ampm", function() save() end)

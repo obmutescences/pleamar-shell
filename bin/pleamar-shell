@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Local dev runner: ./bin/pleamar-shell island|frame [pleamar args...]
+# Local dev runner: ./bin/pleamar-shell island|frame|notches [pleamar args...]
 # PLEAMAR=/path/to/pleamar overrides discovery.
 set -euo pipefail
 
@@ -71,11 +71,11 @@ if [[ "${1:-}" == "--path" ]]; then
     exit 0
 fi
 
-mode="${1:-island}"
+mode="${1:-notches}"
 case "$mode" in
-    island|frame|lock) ;;
+    island|frame|notches|lock) ;;
     *)
-        echo "usage: $0 island|frame|lock [pleamar args...]" >&2
+        echo "usage: $0 island|frame|notches|lock [pleamar args...]" >&2
         exit 2
         ;;
 esac

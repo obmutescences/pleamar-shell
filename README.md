@@ -2,12 +2,12 @@
 
 [![pleamar-shell showcase](showcase-preview.gif)](showcase.mp4)
 
-A small, animated Wayland shell for [niri](https://github.com/YaLTeR/niri), built on the [Pleamar](https://github.com/k4ditano/pleamar) engine. It combines glass surfaces, wallpaper-derived colors, and music-reactive edges in two layouts: **Island** and **Frame**.
+A small, animated Wayland shell for [niri](https://github.com/YaLTeR/niri), built on the [Pleamar](https://github.com/k4ditano/pleamar) engine. Its main layout is **Notches**: one continuous glass frame, a clock at the top centre, and music-reactive glass bands around the edges.
 
 ## Features
 
-- **Island** — a floating top bar with a clock and music-reactive edge waves.
-- **Frame** — a continuous glass border with bars on every edge.
+- **Notches** — a continuous four-sided glass frame with a top-centre clock and a music band on the top edge or all four edges.
+- **Notch drawers** — Settings and the centre panel grow out of the top edge with a liquid throat and water rings.
 - **Launcher** — search apps, files, commands, emoji, clipboard history, wallpapers, windows, the web, and calculations.
 - **Notifications** — desktop toasts and a notification center.
 - **Settings** — appearance, layout, font, motion, notifications, lock screen, idle, weather, and wallpapers.
@@ -24,19 +24,20 @@ A small, animated Wayland shell for [niri](https://github.com/YaLTeR/niri), buil
 
 ```sh
 nix build .#default
-./result/bin/pleamar-shell island
+./result/bin/pleamar-shell notches
 ```
 
-Use `frame` instead of `island` for the frame layout:
+The old `island` and `frame` layouts remain available for comparison:
 
 ```sh
+./result/bin/pleamar-shell island
 ./result/bin/pleamar-shell frame
 ```
 
 For local development, the repository launcher works too:
 
 ```sh
-./bin/pleamar-shell island
+./bin/pleamar-shell notches
 ```
 
 ## NixOS
@@ -64,7 +65,7 @@ Add the flake input and the NixOS module:
 # configuration.nix
 services.pleamar-shell = {
   enable = true;
-  layout = "island"; # or "frame"
+  layout = "notches"; # or "island" / "frame"
 };
 ```
 
@@ -91,7 +92,7 @@ Settings are stored in:
 ~/.config/pleamar-shell/config.json
 ```
 
-Use the settings panel for normal changes. Window previews, notification sounds, and wallpaper transitions are handled by helpers installed with the package.
+Use the settings panel for normal changes. Its **Frame music** page chooses **Top edge** or **Four sides**. Window previews, notification sounds, and wallpaper transitions are handled by helpers installed with the package.
 
 ## Credits
 

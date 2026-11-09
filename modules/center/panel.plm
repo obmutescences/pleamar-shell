@@ -171,8 +171,8 @@ part CenterPanel {
     event center_power_do ->
     event ipc_open_center ->
 
-    prop ct_p = 0 ~gentle
-    follow ct_p = center_open
+    prop ct_np = 0 ~notch_drip
+    follow ct_np = center_open
     prop ct_tab = 0 ~quick
     follow ct_tab = center_tab
     prop ct_page = 1 ~quick
@@ -190,19 +190,20 @@ part CenterPanel {
     }
 
     surface center_panel {
-        size: 1120, 720
-        anchor: center
+        size: full, 900
+        anchor: top_left
+        reserve: 0
         level: overlay
-        open: center_open or ct_p > 0.01
-        rate: 120, 30 while quiet
+        open: center_open or ct_np > 0.01
+        rate: 120, 30 while quiet and not center_open and ct_np < 0.01
         keyboard: none
 
-        //  The body is the whole surface; the shield keeps presses inside it
-        //  from falling through to the windows behind the card.
+        //  The panel grows out of the top edge like the reference's time
+        //  notch.  The shield moves with the card, so clicks on the empty
+        //  top of the full-width layer still pass through it.
+        NotchDrawer(ct_np, 1120) {
         zone box ct_shield { from: 0, 0; size: 1120, 720; active: center_open; label: "Centre panel" }
         on press ct_shield { center_open = center_open }
-
-        PanelPop(center_panel_fx, ct_p, 1120, 720) {
             //  The body's lens samples the backdrop as one rectangle.  Without
             //  this rounded clip that sample leaks into the four corners and
             //  shows as a square dark backing under the 30 px border.
