@@ -150,21 +150,7 @@ part ConfigPanel {
     prop cp_grp = 0 ~quick
     follow cp_grp = pick(settings_page, 1, 0, 1, 1, 0, 1, 1, 2, 2, 3, 0)
 
-    surface config_panel {
-        size: full, 900
-        anchor: top_left
-        reserve: 0
-        level: overlay
-        open: panel_open or cp_np > 0.01
-        rate: 120, 30 while quiet and not panel_open and cp_np < 0.01
-        //  The invisible settingskeys helper owns the keyboard; main
-        //  Pleamar scenes with many surfaces do not receive layer keys.
-        keyboard: none
-
-        //  The panel grows out of the top edge like the reference's time
-        //  notch.  The shield moves with the card, so the transparent top of
-        //  the full-width layer does not swallow desktop clicks.
-        NotchDrawer(cp_np, 860) {
+    component ConfigPanelContent() {
         zone box cp_shield { from: 0, 0; size: 860, 820; active: panel_open; label: "Settings" }
         on press cp_shield { panel_open = panel_open }
         PanelBackdrop(0, 0, 860, 820, 26)
@@ -1183,7 +1169,19 @@ part ConfigPanel {
 
             text "Presets are a starting point; every slider below stays live." { at: 266, 796; anchor: left center; size: 12; color: faint; opacity: 78%; family: "Space Grotesk" }
         }
-        }
 
+    }
+    surface config_panel {
+        size: full, 900
+        anchor: top_left
+        reserve: 0
+        level: overlay
+        open: not notch_mode and (panel_open or cp_np > 0.01)
+        rate: 120, 30 while quiet and not panel_open and cp_np < 0.01
+        keyboard: none
+        group {
+            NotchDrawerRipples(cp_np)
+            NotchDrawerContent(cp_np, 860) { ConfigPanelContent() }
+        }
     }
 }

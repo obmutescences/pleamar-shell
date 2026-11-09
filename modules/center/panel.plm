@@ -189,19 +189,7 @@ part CenterPanel {
         ct_page: 1 ~260ms after 10ms
     }
 
-    surface center_panel {
-        size: full, 900
-        anchor: top_left
-        reserve: 0
-        level: overlay
-        open: center_open or ct_np > 0.01
-        rate: 120, 30 while quiet and not center_open and ct_np < 0.01
-        keyboard: none
-
-        //  The panel grows out of the top edge like the reference's time
-        //  notch.  The shield moves with the card, so clicks on the empty
-        //  top of the full-width layer still pass through it.
-        NotchDrawer(ct_np, 1120) {
+    component CenterPanelContent() {
         zone box ct_shield { from: 0, 0; size: 1120, 720; active: center_open; label: "Centre panel" }
         on press ct_shield { center_open = center_open }
             //  The body's lens samples the backdrop as one rectangle.  Without
@@ -1159,11 +1147,23 @@ part CenterPanel {
 
             //  Keyboard help, subtle, bottom left.
             text "1–7  TABS   ·   TAB  NEXT   ·   ESC  CLOSE" { at: 36, 697; anchor: left center; size: 9; weight: 700; color: faint; opacity: 45%; family: "Space Grotesk" }
-        }
-
         //  Output picker: its own overlay surface so glass can frost the
         //  centre panel behind it, like the session dialog.
         on key Escape while center_open { emit center_close }
+    }
+
+    surface center_panel {
+        size: full, 900
+        anchor: top_left
+        reserve: 0
+        level: overlay
+        open: not notch_mode and (center_open or ct_np > 0.01)
+        rate: 120, 30 while quiet and not center_open and ct_np < 0.01
+        keyboard: none
+        group {
+            NotchDrawerRipples(ct_np)
+            NotchDrawerContent(ct_np, 1120) { CenterPanelContent() }
+        }
     }
 
     //  The confirmation lives on its own layer surface: glass can only frost

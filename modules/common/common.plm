@@ -94,19 +94,19 @@ part Common {
         let pb.b = mix(panel_bg, secondary, 0.38)
         let pb.c = mix(panel_bg, deep, 0.22)
         body {
-            show: panel_gradient == 1 and panel_gradient_strength > 0
+            show: not notch_mode and panel_gradient == 1 and panel_gradient_strength > 0
             gradient: x, y to x + w, y + h, pb.a, pb.b 55%, pb.c
             opacity: panel_gradient_strength / 100
             box { from: x, y; size: w, h; corner: corner }
         }
         body {
-            show: panel_gradient == 2 and panel_gradient_strength > 0
+            show: not notch_mode and panel_gradient == 2 and panel_gradient_strength > 0
             gradient: radial x + w / 2, y + h / 2 radius max(w, h) / 2, pb.a, pb.b 55%, pb.c
             opacity: panel_gradient_strength / 100
             box { from: x, y; size: w, h; corner: corner }
         }
         body {
-            show: glass_light > 0
+            show: not notch_mode and glass_light > 0
             //  `light`'s amount is read once by the engine, so the slider is
             //  the opacity of this subtle top sheet rather than a rebuild.
             gradient: x, y to x, y + h, mix(panel_bg, ink, 0.20), mix(panel_bg, ink, 0.04) 38%, panel_bg
@@ -116,37 +116,33 @@ part Common {
         }
     }
 
-    //  A panel that grows out of the top edge of the screen: the glass neck
-    //  and its two water rings, then the caller's card below it.  The caller
-    //  supplies its own glass body; this only draws the connection.
-    component NotchDrawer(p: number, w: number) {
+    component NotchDrawerContent(p: number, w: number) {
+        let nd.p = clamp(p, 0, 1)
+        let nd.cx = screen.width / 2
+        let nd.y = 68
+        group {
+            move: nd.cx - w / 2, nd.y
+            pivot: w / 2, 0
+            scale: 1, max(nd.p, 0.015)
+            opacity: clamp(nd.p * 1.5, 0, 1)
+            children
+        }
+    }
+
+    component NotchDrawerRipples(p: number) {
         let nd.p = clamp(p, 0, 1)
         let nd.cx = screen.width / 2
         let nd.y = 68
         let nd.neck = mix(34, 104, min(1, nd.p * 1.5))
         let nd.rip = clamp(1 - nd.p, 0, 1) + 0.16
-        body {
-            color: mix(bar_bg, aqua, 0.28)
-            glass: if(glass_on, 100%, 0%)
-            opacity: 1% * max(glass_tint, 82)
-            frost: glass_frost / 100
-            refraction: glass_refr
-            dispersion: glass_disp
-            border: 1.5 * glass_border / 100, ink
-            rim: 18%
-            shadow: 0, 4, 12, 20%, glass_shadow
-            box { from: nd.cx - nd.neck / 2, 0; size: nd.neck, 24; corner: 12; blend: 18 * nd.p }
-            box { from: nd.cx - max(18, nd.neck * 0.52) / 2, 18; size: max(18, nd.neck * 0.52), 48; corner: 12; blend: 18 * nd.p }
-        }
         ellipse { at: nd.cx - nd.neck * 0.52, nd.y; radius: 10 + 15 * nd.rip; stroke: 1.2; color: aqua; opacity: 12% + 42% * nd.rip }
         ellipse { at: nd.cx + nd.neck * 0.52, nd.y; radius: 10 + 15 * nd.rip; stroke: 1.2; color: azure; opacity: 10% + 36% * nd.rip }
         ellipse { at: nd.cx, nd.y + 1; radius: 18 + 26 * nd.rip; stroke: 0.9; color: aqua; opacity: 8% + 26% * nd.rip }
-        group {
-            move: nd.cx - w / 2, nd.y - (1 - nd.p) * 12
-            opacity: clamp(nd.p * 1.5, 0, 1)
-            children
-        }
     }
+
+    //  Legacy panels draw their own neck.  Notches reuses only the content
+    //  pose and shares the glass silhouette with the full-screen frame.
+    //  Note: NotchDrawer is not used in notch_mode; the frame handles everything.
 
     fact settings_page: number = 1
     //  Per-panel opening motion (0 fade, 1 spin, 2 unfold, 3 drop,
