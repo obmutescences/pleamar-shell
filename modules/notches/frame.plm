@@ -56,10 +56,10 @@ part NotchFrame {
         let nf.bw = 17 * mix(0.8, 1.9, music_frame_blend / 100)
         //  blend pixels: mix(10, 32, fw_bl) in Vitreus
         let nf.bbl = mix(10, 32, music_frame_blend / 100)
-        //  The engine's smoke only takes down bright content seen through the
-        //  glass.  Mix the glass tint towards black too, so Smoke 100% reads
-        //  as smoked glass over a dark wallpaper as well.
-        let nf.smoke_bg = mix(bar_bg, #000000, glass_smoke * 0.65)
+        //  The frame keeps its neutral glass base.  `bar_bg` carries the Bar
+        //  page's Tint depth, so using it here would colour the clock/time
+        //  ring while the music bars stayed glass and make the frame split.
+        let nf.smoke_bg = mix(tint, #000000, glass_smoke * 0.65)
 
         let nf6.b.0 = abs(2 * (0.5 / 6) - 1) * 23
         let nf6.l.0 = clamp(floor(nf6.b.0), 0, 22)
@@ -838,7 +838,7 @@ part NotchFrame {
         }
         body {
             show: glass_on and glass_light > 0
-            gradient: 0, 0 to 0, nf.h, mix(bar_bg, ink, 0.20), mix(bar_bg, ink, 0.04) 38%, bar_bg
+            gradient: 0, 0 to 0, nf.h, mix(tint, ink, 0.20), mix(tint, ink, 0.04) 38%, tint
             light: 45%, 0, 140
             opacity: glass_light * 0.30
             box { from: 0 - nf.over / 2, 0 - nf.over / 2; size: nf.w + nf.over, nf.h + nf.over; corner: nf.inner_r + (nf.rail + nf.over) / 2; stroke: nf.rail + nf.over }
