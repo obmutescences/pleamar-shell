@@ -122,6 +122,8 @@ function M.start(layout)
         wave_gain = 1.4,
         music_frame_on = true,
         music_frame_sides = 1,
+        notch_tint_on = false,
+        notch_tint_depth = 55,
         music_frame_sens = 1,
         music_frame_hgt = 50,
         music_frame_blend = 100,
@@ -251,6 +253,8 @@ function M.start(layout)
         cfg.glass_edge = clamp(number(saved.glass_edge, cfg.glass_edge), 0, 100)
         cfg.wave_gain = clamp(number(saved.wave_gain, cfg.wave_gain), 0.8, 2.4)
         if type(saved.music_frame_on) == "boolean" then cfg.music_frame_on = saved.music_frame_on end
+        if type(saved.notch_tint_on) == "boolean" then cfg.notch_tint_on = saved.notch_tint_on end
+        cfg.notch_tint_depth = clamp(number(saved.notch_tint_depth, cfg.notch_tint_depth), 0, 100)
         cfg.music_frame_sides = math.floor(clamp(number(saved.music_frame_sides, cfg.music_frame_sides), 0, 1))
         cfg.music_frame_sens = clamp(number(saved.music_frame_sens, cfg.music_frame_sens), 0.3, 3.0)
         cfg.music_frame_hgt = math.floor(clamp(number(saved.music_frame_hgt, cfg.music_frame_hgt), 10, 120))
@@ -330,6 +334,8 @@ function M.start(layout)
         fact.glass_edge = cfg.glass_edge
         fact.wave_gain = cfg.wave_gain
         fact.music_frame_on = cfg.music_frame_on
+        fact.notch_tint_on = cfg.notch_tint_on
+        fact.notch_tint_depth = cfg.notch_tint_depth
         fact.music_frame_sides = cfg.music_frame_sides
         fact.music_frame_sens = cfg.music_frame_sens
         fact.music_frame_hgt = cfg.music_frame_hgt
@@ -404,6 +410,8 @@ function M.start(layout)
             glass_edge = number(fact.glass_edge, 34),
             wave_gain = number(fact.wave_gain, 1.4),
             music_frame_on = truthy(fact.music_frame_on),
+            notch_tint_on = truthy(fact.notch_tint_on),
+            notch_tint_depth = number(fact.notch_tint_depth, 55),
             music_frame_sides = number(fact.music_frame_sides, 1),
             music_frame_sens = number(fact.music_frame_sens, 1),
             music_frame_hgt = number(fact.music_frame_hgt, 50),
@@ -1748,6 +1756,8 @@ function M.start(layout)
         save()
         cava_want()
     end)
+    on("fact:notch_tint_on", function() save() end)
+    on("fact:notch_tint_depth", function() save() end)
     on("fact:music_frame_sides",  function() save() end)
     on("fact:music_frame_sens",   function() save() end)
     on("fact:music_frame_hgt",    function() save() end)

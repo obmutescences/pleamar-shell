@@ -60,6 +60,8 @@ part NotchFrame {
         //  page's Tint depth, so using it here would colour the clock/time
         //  ring while the music bars stayed glass and make the frame split.
         let nf.smoke_bg = mix(tint, #000000, glass_smoke * 0.65)
+        let nf.frame_color = mix(nf.smoke_bg, primary,
+            if(notch_tint_on, clamp(notch_tint_depth / 100, 0, 1), 0))
 
         let nf6.b.0 = abs(2 * (0.5 / 6) - 1) * 23
         let nf6.l.0 = clamp(floor(nf6.b.0), 0, 22)
@@ -336,7 +338,7 @@ part NotchFrame {
         let nf48.h.47 = if(47 < nf.nuse, min(1, pow(mix(pick(nf48.l.47, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.47, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.47 - nf48.l.47), 1.4) * nf.sm) * clamp(min(47.5, 48 - 47 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
 
         body {
-            color: nf.smoke_bg
+            color: nf.frame_color
             glass: if(glass_on, 100%, 0%)
             opacity: 1% * glass_tint
             lens: glass_on and glass_bend
@@ -397,7 +399,7 @@ part NotchFrame {
         }
 
         body {
-            color: nf.smoke_bg
+            color: nf.frame_color
             glass: if(glass_on, 100%, 0%)
             opacity: 1% * glass_tint
             lens: glass_on and glass_bend
@@ -480,7 +482,7 @@ part NotchFrame {
         }
 
         body {
-            color: nf.smoke_bg
+            color: nf.frame_color
             glass: if(glass_on, 100%, 0%)
             opacity: 1% * glass_tint
             lens: glass_on and glass_bend
@@ -611,7 +613,7 @@ part NotchFrame {
         }
 
         body {
-            color: nf.smoke_bg
+            color: nf.frame_color
             glass: if(glass_on, 100%, 0%)
             opacity: 1% * glass_tint
             lens: glass_on and glass_bend
@@ -835,19 +837,6 @@ part NotchFrame {
             box { at: nf.w - nf.rail - nf48.h.45 / 2 + if(nf.all_sides and nf48.h.45 > 1, 0, 30000), nf.h * 45.5 / 48; size: nf48.h.45, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
             box { at: nf.w - nf.rail - nf48.h.46 / 2 + if(nf.all_sides and nf48.h.46 > 1, 0, 30000), nf.h * 46.5 / 48; size: nf48.h.46, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
             box { at: nf.w - nf.rail - nf48.h.47 / 2 + if(nf.all_sides and nf48.h.47 > 1, 0, 30000), nf.h * 47.5 / 48; size: nf48.h.47, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
-        }
-        body {
-            show: glass_on and glass_light > 0
-            gradient: 0, 0 to 0, nf.h, mix(tint, ink, 0.20), mix(tint, ink, 0.04) 38%, tint
-            light: 45%, 0, 140
-            opacity: glass_light * 0.30
-            box { from: 0 - nf.over / 2, 0 - nf.over / 2; size: nf.w + nf.over, nf.h + nf.over; corner: nf.inner_r + (nf.rail + nf.over) / 2; stroke: nf.rail + nf.over }
-            box { from: nf.cx - nf.clock_w / 2, 0; size: nf.clock_w, nf.clock_h; corner: 20; blend: 34 }
-            box { from: nf.cx - nf.clock_w / 2 + 14, nf.clock_h - 2; size: nf.clock_w - 28, 1; corner: 0.5 }
-            box { from: nf.cx - nf.cp_w / 2 + if(panel_open or nf.cp_p > 0.01, 0, 30000), 0; size: nf.cp_w, max(0.3, nf.cp_h); corner: mix(20, 26, nf.cp_p); blend: mix(34, 36, nf.cp_p) * nf.cp_p }
-            box { from: nf.cx - nf.ct_w / 2 + if(center_open or nf.ct_p > 0.01, 0, 30000), 0; size: nf.ct_w, max(0.3, nf.ct_h); corner: mix(20, 30, nf.ct_p); blend: mix(34, 36, nf.ct_p) * nf.ct_p }
-            box { from: nf.cx - mix(nf.clock_w, 620, nf.launch_p) / 2 + if(launch_open or nf.launch_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 620, nf.launch_p), max(0.3, nf.search_h * nf.launch_p); corner: mix(20, 24, nf.launch_p); blend: mix(34, 36, nf.launch_p) * nf.launch_p }
-            box { from: nf.cx - mix(nf.clock_w, 480, nf.ntc_p) / 2 + if(nt_center or nf.ntc_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 480, nf.ntc_p), max(0.3, nf.notify_h * nf.ntc_p); corner: mix(20, 26, nf.ntc_p); blend: mix(34, 36, nf.ntc_p) * nf.ntc_p }
         }
 
         //  Clock text vertically centred in the notch.

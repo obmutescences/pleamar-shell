@@ -477,6 +477,22 @@ part ConfigPanel {
                 text "48" { at: 704, 533; anchor: center; size: 13; weight: 700; color: if(music_frame_cols == 48, cp.mint, ink); family: "Space Grotesk" }
                 zone box cp_nf_c48 { from: 676, 520; size: 56, 26; corner: 13; cursor: pointer; label: "48 columns" }
                 on press cp_nf_c48 { emit ui_sound; music_frame_cols = 48 }
+
+                CpCard(250, 572, 570, 62)
+                text "Frame colour" { at: 266, 582; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+                text "Off keeps the neutral glass; on mixes the theme primary into the frame." { at: 266, 600; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+                CpSwitch(770, 591, 44, 24, if(notch_tint_on, 1, 0), notch_tint_knob, cp_notch_tint_switch.hover, cp.mint, ink, cp.track)
+                zone box cp_notch_tint_switch { from: 760, 582; size: 64, 38; corner: 19; cursor: pointer; label: "Frame colour" }
+                on press cp_notch_tint_switch { emit ui_sound; toggle notch_tint_on }
+
+                CpCard(250, 638, 570, 72)
+                text "Colour depth" { at: 266, 648; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+                text "Higher is brighter; lower keeps more of the dark glass." { at: 266, 666; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+                CpSlider(520, 675, 200, clamp(notch_tint_depth / 100, 0, 1), cp_notch_tint_depth_track.hover, cp.mint, ink, cp.track)
+                text number(notch_tint_depth, 0, "%") { at: 736, 675; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
+                zone box cp_notch_tint_depth_track { from: 510, 660; size: 240, 30; cursor: pointer; label: "Frame colour depth" }
+                on press cp_notch_tint_depth_track { notch_tint_depth = clamp((pointer.x - cp.sx - 520) / 200 * 100, 0, 100) }
+                on drag cp_notch_tint_depth_track { notch_tint_depth = clamp((pointer.x - cp.sx - 520) / 200 * 100, 0, 100) }
             }
 
         }
@@ -1114,15 +1130,6 @@ part ConfigPanel {
             zone box cp_grad_track { from: 510, 351; size: 240, 30; cursor: pointer; label: "Gradient strength" }
             on press cp_grad_track { panel_gradient_strength = clamp((pointer.x - cp.sx - 520) / 200 * 100, 0, 100) }
             on drag cp_grad_track { panel_gradient_strength = clamp((pointer.x - cp.sx - 520) / 200 * 100, 0, 100) }
-
-            CpCard(250, 396, 570, 70)
-            text "Inner light" { at: 266, 406; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "A soft sheet of light from the top inside the glass." { at: 266, 424; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            CpSlider(520, 455, 200, cp.light_pct, cp_light_track.hover, cp.mint, ink, cp.track)
-            text number(glass_light * 100, 0, "%") { at: 736, 455; anchor: left center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
-            zone box cp_light_track { from: 510, 440; size: 240, 30; cursor: pointer; label: "Inner light" }
-            on press cp_light_track { glass_light = clamp((pointer.x - cp.sx - 520) / 200, 0, 1) }
-            on drag cp_light_track { glass_light = clamp((pointer.x - cp.sx - 520) / 200, 0, 1) }
 
             CpCard(250, 472, 570, 70)
             text "Inner border" { at: 266, 482; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }

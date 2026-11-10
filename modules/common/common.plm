@@ -168,6 +168,10 @@ part Common {
     //  0 is the top edge; 1 is all four sides.
     fact music_frame_on = true
     fact music_frame_sides: number = 1
+    //  Optional colour for the whole unified frame body.  Off keeps the
+    //  neutral glass; depth mixes the palette primary into it.
+    fact notch_tint_on = false
+    fact notch_tint_depth: number = 55
     //  Music frame visual parameters — mirrors Vitreus fw_* settings.
     fact music_frame_sens: number = 1          // sensitivity multiplier 0.3–3.0
     fact music_frame_hgt: number = 50          // max bar height in px, 10–120
@@ -306,6 +310,8 @@ part Common {
     spring notch_drip = 170, 18
     prop music_frame_knob = 0 ~quick
     follow music_frame_knob = music_frame_on
+    prop notch_tint_knob = 0 ~quick
+    follow notch_tint_knob = notch_tint_on
     prop glass_knob = 0 ~quick
     follow glass_knob = glass_on
     prop bend_knob = 0 ~quick
