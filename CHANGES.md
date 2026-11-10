@@ -1,3 +1,20 @@
+# Pleamar 0.8-exp adoption
+
+- The flake follows the upstream `exp2` branch; the lockfile currently pins
+  `aeaad83770ae3f9ace6c64395422bba67e0aeddd` (`0.8.0-exp.1`).
+- The audio output picker is now a real `popup` with `keyboard: true`, so it
+  owns its layer, closes on Escape/outside click, and can frost the centre
+  panel underneath.
+- The centre pages take a `blur: 3` group effect while a modal is open, giving
+  the dialog focus without a second full-screen surface.
+- Alpha colours (`#00000075`) replace a separate black box plus opacity.
+- The destructive power confirmation is marked `agent: no`.
+- Engine-level 0.8 behaviour also applies without scene changes: glass frosts
+  what the same scene painted under it, popups get their own surface, and text
+  fields gain IME and undo/redo.
+
+---
+
 # Notches Frame Music Visualization - Implementation Complete
 
 ## ✅ 完成的修改

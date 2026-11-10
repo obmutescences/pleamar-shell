@@ -10,6 +10,17 @@ find_pleamar() {
         printf '%s\n' "$PLEAMAR"
         return 0
     fi
+    #  In a checkout, use the engine from the last `nix build`: the scenes on
+    #  this branch use 0.8-exp syntax, while the system profile may still have
+    #  0.7.27 and reject them.
+    if [[ -x "$root/result/bin/pleamar-shell" ]]; then
+        local built
+        built="$("$root/result/bin/pleamar-shell" --path 2>/dev/null || true)"
+        if [[ -n "$built" && -x "$built" ]]; then
+            printf '%s\n' "$built"
+            return 0
+        fi
+    fi
     if command -v pleamar >/dev/null 2>&1; then
         command -v pleamar
         return 0

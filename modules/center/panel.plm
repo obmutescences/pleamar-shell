@@ -317,6 +317,9 @@ part CenterPanel {
             group {
                 opacity: ct_page
                 move: 0, 8 * (1 - ct_page)
+                //  0.8 group effect: the page falls out of focus while a
+                //  modal dialog is up; at 0 it costs no layer.
+                blur: if(center_power_confirm >= 0 or audio_pick_open, 3, 0)
 
                 //  ── 01 OVERVIEW ─────────────────────────────────────────────
                 group {
@@ -1207,7 +1210,7 @@ part CenterPanel {
     component CenterDialogs() {
         group {
             show: center_open and center_power_confirm >= 0
-            box { from: 0, 0; size: 1120, 720; corner: 30; color: #000000; opacity: 46% }
+            box { from: 0, 0; size: 1120, 720; corner: 30; color: #00000075 }
             zone box ct_power_shield { from: 0, 0; size: 1120, 720; label: "Dismiss session confirmation" }
             on press ct_power_shield { emit center_power_cancel }
             group {
@@ -1244,59 +1247,66 @@ part CenterPanel {
                 on press ct_power_cancel { emit ui_sound; emit center_power_cancel }
                 box { from: 402, 194; size: 130, 34; corner: 17; color: alert; opacity: 76% + 24% * ct_power_confirm.hover }
                 text "Confirm" { at: 467, 211; anchor: center; size: 12; weight: 700; color: ct.card; family: "Space Grotesk" }
-                zone box ct_power_confirm { from: 402, 194; size: 130, 34; corner: 17; cursor: pointer; label: "Confirm power action" }
+                zone box ct_power_confirm { from: 402, 194; size: 130, 34; corner: 17; cursor: pointer; agent: no; label: "Confirm power action" }
                 on press ct_power_confirm { emit ui_sound; emit center_power_do }
             }
         }
         group {
             show: center_open and audio_pick_open and center_tab == 4
-            box { from: 0, 0; size: 1120, 720; corner: 30; color: #000000; opacity: 46% }
+            box { from: 0, 0; size: 1120, 720; corner: 30; color: #00000075 }
             zone box ap_shield { from: 0, 0; size: 1120, 720; label: "Close output picker" }
             on press ap_shield { audio_pick_open = false }
-            group {
-                move: 314, -42
-                zone box ap_body { from: 36, 152; size: 420, 500; corner: 18; label: "Output devices" }
-                on press ap_body { audio_pick_open = audio_pick_open }
-                body {
-                    color: mix(ct.card2, ct.primary, 0.45)
-                    opacity: 1% * max(glass_tint, 84)
-                    glass: if(glass_on, 100%, 0%)
-                    lens: glass_on and glass_bend
-                    frost: glass_frost / 100
-                    refraction: glass_refr
-                    dispersion: glass_disp
-                    dome: glass_dome
-                    milk: glass_milk
-                    smoke: glass_smoke
-                    vivid: glass_vivid
-                    mirror: glass_mirror
-                    highlight: glass_highlight
-                    ripple: glass_ripple
-                    border: 1.5 * glass_border / 100, ink
-                    shine: pointer
-                    shadow: 0, 10, 28, 24%, glass_shadow
-                    box { from: 36, 152; size: 420, 500; corner: 18 }
-                }
-                box { from: 36, 152; size: 420, 500; corner: 18; stroke: 1.5; color: ct.primary; opacity: 34% }
-                text "OUTPUT DEVICE" { at: 58, 178; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
-                line { from: 58, 196; to: 434, 196; width: 1; color: ink; opacity: 10% }
-                repeat o in 0..8 {
-                    let oy = 208 + o * 46
-                    group {
-                        show: o < audio_outputs.count
-                        box { from: 52, oy; size: 388, 38; corner: 9; color: if(audio_outputs.$o.current, ct.primary, ink); opacity: if(audio_outputs.$o.current, 12%, 3%) }
-                        ellipse { at: 70, oy + 19; radius: 4; color: if(audio_outputs.$o.current, ct.primary, faint); opacity: 80% }
-                        text audio_outputs.$o.name { at: 84, oy + 19; anchor: left center; size: 12; weight: if(audio_outputs.$o.current, 700, 500); color: if(audio_outputs.$o.current, ct.primary, ink); width: 330; lines: 1; family: "Space Grotesk" }
-                        zone box ct_audio_out.$o { from: 52, oy; size: 388, 38; corner: 9; cursor: pointer; label: audio_outputs.$o.name }
-                        on press ct_audio_out.$o { emit ui_sound; emit center_audio_default(o) }
-                    }
-                }
-                text "No output devices." { at: 58, 222; anchor: left center; size: 12; color: faint; show: audio_outputs.count < 1; family: "Space Grotesk" }
-                line { from: 58, 584; to: 434, 584; width: 1; color: ink; opacity: 10% }
-                text "Cancel" { at: 246, 608; anchor: center; size: 11; weight: 700; color: faint; family: "Space Grotesk" }
-                zone box ct_audio_pick_close { from: 150, 590; size: 192, 36; corner: 18; cursor: pointer; label: "Close output picker" }
-                on press ct_audio_pick_close { audio_pick_open = false }
-            }
         }
     }
+
+    //  0.8 popup: its own child surface, with keyboard and a glass that can
+    //  frost the centre panel underneath instead of being merged into it.
+    popup audio_picker {
+            at: 1070, 140
+            size: 420, 500
+            open: audio_pick_open
+            keyboard: true
+
+            zone box ap_body { from: 0, 0; size: 420, 500; corner: 18; label: "Output devices" }
+            on press ap_body { audio_pick_open = audio_pick_open }
+            body {
+                color: mix(ct.card2, ct.primary, 0.45)
+                opacity: 1% * max(glass_tint, 84)
+                glass: if(glass_on, 100%, 0%)
+                lens: glass_on and glass_bend
+                frost: glass_frost / 100
+                refraction: glass_refr
+                dispersion: glass_disp
+                dome: glass_dome
+                milk: glass_milk
+                smoke: glass_smoke
+                vivid: glass_vivid
+                mirror: glass_mirror
+                highlight: glass_highlight
+                ripple: glass_ripple
+                border: 1.5 * glass_border / 100, ink
+                shine: pointer
+                shadow: 0, 10, 28, 24%, glass_shadow
+                box { from: 0, 0; size: 420, 500; corner: 18 }
+            }
+            box { from: 0, 0; size: 420, 500; corner: 18; stroke: 1.5; color: ct.primary; opacity: 34% }
+            text "OUTPUT DEVICE" { at: 22, 26; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
+            line { from: 22, 44; to: 398, 44; width: 1; color: ink; opacity: 10% }
+            repeat o in 0..8 {
+                let oy = 56 + o * 46
+                group {
+                    show: o < audio_outputs.count
+                    box { from: 16, oy; size: 388, 38; corner: 9; color: if(audio_outputs.$o.current, ct.primary, ink); opacity: if(audio_outputs.$o.current, 12%, 3%) }
+                    ellipse { at: 34, oy + 19; radius: 4; color: if(audio_outputs.$o.current, ct.primary, faint); opacity: 80% }
+                    text audio_outputs.$o.name { at: 48, oy + 19; anchor: left center; size: 12; weight: if(audio_outputs.$o.current, 700, 500); color: if(audio_outputs.$o.current, ct.primary, ink); width: 330; lines: 1; family: "Space Grotesk" }
+                    zone box ct_audio_out.$o { from: 16, oy; size: 388, 38; corner: 9; cursor: pointer; label: audio_outputs.$o.name }
+                    on press ct_audio_out.$o { emit ui_sound; emit center_audio_default(o) }
+                }
+            }
+            text "No output devices." { at: 22, 70; anchor: left center; size: 12; color: faint; show: audio_outputs.count < 1; family: "Space Grotesk" }
+            line { from: 22, 432; to: 398, 432; width: 1; color: ink; opacity: 10% }
+            text "Cancel" { at: 210, 456; anchor: center; size: 11; weight: 700; color: faint; family: "Space Grotesk" }
+            zone box ct_audio_pick_close { from: 114, 438; size: 192, 36; corner: 18; cursor: pointer; label: "Close output picker" }
+            on press ct_audio_pick_close { audio_pick_open = false }
+        }
 }

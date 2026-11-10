@@ -4,10 +4,10 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     #  The engine, built from its Git source instead of whichever pleamar
-    #  happens to be in /nix/store.  The input follows upstream main; the
-    #  lockfile pins the latest fetched revision until `nix flake update pleamar`.
+    #  happens to be in /nix/store.  This branch tracks the 0.8 experimental
+    #  line; the lockfile still pins a revision until `nix flake update pleamar`.
     pleamar = {
-      url = "github:k4ditano/pleamar";
+      url = "github:k4ditano/pleamar/exp2";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     #  The released skwd-wall v2 binaries.  Its daemon owns the background
