@@ -528,8 +528,8 @@ part CenterPanel {
                     show: center_tab == 1
 
                     text "SYSTEM MONITOR" { at: 36, 119; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
-                    text sys_host { at: 36, 137; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-                    text sys_cpu_name { at: 300, 137; anchor: left center; size: 11; color: faint; width: 500; lines: 1; family: "Space Grotesk" }
+                    text sys_host { at: 36, 137; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk"; selectable: true }
+                    text sys_cpu_name { at: 300, 137; anchor: left center; size: 11; color: faint; width: 500; lines: 1; family: "Space Grotesk"; selectable: true }
                     ellipse { at: 988, 119; radius: 3; color: if(sys_ready, ct.primary, faint); opacity: 85% }
                     text pick(sys_ready, "WAITING FOR SAMPLER", "LIVE · 1 S") { at: 998, 119; anchor: left center; size: 10; weight: 700; color: faint; family: "Space Grotesk" }
 
@@ -544,13 +544,13 @@ part CenterPanel {
                         box { from: 36, 152; size: 508, 90; corner: 14; color: ink; opacity: 4% }
                         box { from: 36, 152; size: 508, 90; corner: 14; stroke: 1; color: ink; opacity: 7% }
                         text "HOST" { at: 52, 170; anchor: left center; size: 9; weight: 700; color: ct.secondary; family: "Space Grotesk" }
-                        text sys_host { at: 52, 190; anchor: left center; size: 18; weight: 700; color: ink; width: 480; lines: 1; family: "Space Grotesk" }
+                        text sys_host { at: 52, 190; anchor: left center; size: 18; weight: 700; color: ink; width: 480; lines: 1; family: "Space Grotesk"; selectable: true }
                         text "UPTIME" { at: 52, 220; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
                         text sys_uptime { at: 100, 220; anchor: left center; size: 12; weight: 600; color: ink; family: "Space Grotesk" }
                         text "LOAD" { at: 190, 220; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
                         text sys_load { at: 228, 220; anchor: left center; size: 12; weight: 600; color: ink; family: "Space Grotesk" }
                         text "KERNEL" { at: 350, 220; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
-                        text sys_kernel { at: 400, 220; anchor: left center; size: 12; weight: 600; color: ink; width: 128; lines: 1; family: "Space Grotesk" }
+                        text sys_kernel { at: 400, 220; anchor: left center; size: 12; weight: 600; color: ink; width: 128; lines: 1; family: "Space Grotesk"; selectable: true }
 
                         //  ── processor ──────────────────────────────────────
                         box { from: 36, 254; size: 508, 278; corner: 14; color: ink; opacity: 4% }
@@ -623,7 +623,7 @@ part CenterPanel {
                         box { from: 556, 152; size: 524, 228; corner: 14; color: ink; opacity: 4% }
                         box { from: 556, 152; size: 524, 228; corner: 14; stroke: 1; color: ink; opacity: 7% }
                         text "GRAPHICS" { at: 572, 172; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
-                        text sys_gpu_name { at: 1064, 172; anchor: right center; size: 10; color: faint; width: 300; lines: 1; family: "Space Grotesk" }
+                        text sys_gpu_name { at: 1064, 172; anchor: right center; size: 10; color: faint; width: 300; lines: 1; family: "Space Grotesk"; selectable: true }
                         group {
                             show: sys_gpu_on
                             arc { at: 628, 248; radius: 40; span: 360deg; width: 7; color: ink; opacity: 9% }
@@ -657,7 +657,7 @@ part CenterPanel {
                         text "NETWORK" { at: 572, 410; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
                         text sys_iface { at: 1064, 410; anchor: right center; size: 10; color: faint; family: "Space Grotesk" }
                         text pick(sys_net_up, "Offline", net.name) { at: 572, 436; anchor: left center; size: 17; weight: 700; color: ink; width: 240; lines: 1; family: "Space Grotesk" }
-                        text sys_ip { at: 572, 456; anchor: left center; size: 10; color: faint; family: "Space Grotesk" }
+                        text sys_ip { at: 572, 456; anchor: left center; size: 10; color: faint; family: "Space Grotesk"; selectable: true }
                         text "DOWNLOAD" { at: 820, 432; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
                         text sys_rx_txt { at: 820, 450; anchor: left center; size: 18; weight: 700; color: ct.primary; family: "Space Grotesk" }
                         text sys_rx_total { at: 820, 466; anchor: left center; size: 9; color: faint; family: "Space Grotesk" }
@@ -965,7 +965,6 @@ part CenterPanel {
                     on press ct_tray_shield { emit center_tray_menu_close }
 
                     //  Left: the StatusNotifier items.
-                    box { from: 36, 160; size: 300, 488; corner: 20; color: #000000; opacity: 12% }
                     box {
                         from: 36, 160; size: 300, 488; corner: 20
                         color: ct.card2; opacity: 58%
@@ -1012,7 +1011,6 @@ part CenterPanel {
 
                     //  Middle: the hovered app's actions.  Same card recipe as
                     //  the left pane: flat tint, one inner rim, no lens.
-                    box { from: 352, 160; size: 420, 488; corner: 20; color: #000000; opacity: 12% }
                     box {
                         from: 352, 160; size: 420, 488; corner: 20
                         color: ct.card2; opacity: 58%
@@ -1053,7 +1051,6 @@ part CenterPanel {
                     //  Right: a submenu, in its own glass card.  It stays put
                     //  while the pointer crosses the gap, so the child rows
                     //  never slide away from the cursor.
-                    box { from: 788, 160; size: 296, 488; corner: 20; color: #000000; opacity: 12% }
                     box {
                         from: 788, 160; size: 296, 488; corner: 20
                         color: ct.card2; opacity: 58%
@@ -1179,7 +1176,7 @@ part CenterPanel {
                     }
 
                     line { from: 36, 578; to: 1072, 578; width: 1; color: ink; opacity: 10% }
-                    text "Power actions ask for confirmation. No suspend or sleep action lives here." { at: 36, 602; anchor: left center; size: 11; color: faint; family: "Space Grotesk" }
+                    text "**Power actions** ask for confirmation. No suspend or sleep action lives here." { at: 36, 602; anchor: left center; size: 11; color: faint; family: "Space Grotesk"; markdown: true; selectable: true }
                     text "Esc or the cross closes the panel." { at: 1064, 602; anchor: right center; size: 10; color: faint; opacity: 70%; family: "Space Grotesk" }
 
 
