@@ -1286,7 +1286,7 @@ function M.start(layout)
     local function set_rows(list, mode, msg)
         results = list or {}
         local rows = {}
-        for i = 1, math.min(#results, 8) do
+        for i = 1, math.min(#results, 10) do
             local r = results[i]
             rows[i] = { name = r.name, sub = r.sub, exec = r.exec, icon = r.icon,
                         glyph = r.glyph, has_glyph = r.has_glyph, kind = r.kind }
@@ -1809,7 +1809,10 @@ function M.start(layout)
         end
         recompute_quiet()
     end)
-    on("launch_close", function() fact.launch_open = false end)
+    on("launch_close", function()
+        fact.launch_open = false
+        stop_searchkeys()
+    end)
     on("fact:anim_search", function() config_changed("search") end)
     on("fact:anim_panel", function() config_changed("panel") end)
     on("fact:anim_toast", function() config_changed("toast") end)
@@ -2034,6 +2037,10 @@ function M.start(layout)
         fact.launch_open = true
         text.query = ""
         search_now()
+        --  A fact written by our own logic does not wake `fact:launch_open`
+        --  in 0.8-exp; start the keyboard helper here so the first keystroke
+        --  is not lost.
+        start_searchkeys()
     end)
     on("ipc_open_settings", function(page)
         center.close()
@@ -2121,6 +2128,11 @@ function M.start(layout)
         end)
     end)
     every(700, function()
+        if truthy(fact.launch_open) and truthy(fact.notch_mode) and shell_root ~= "" and not search_key_helper then
+            start_searchkeys()
+        elseif (not truthy(fact.launch_open) or not truthy(fact.notch_mode)) and search_key_helper then
+            stop_searchkeys()
+        end
         if truthy(fact.panel_open) and settings_key_helper then
             pcall(sys.call, "say", "settingskeys", "emit key_ping")
         end

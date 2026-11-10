@@ -416,7 +416,7 @@ part Common {
     event wall_refresh ->
     //  The launcher is a search, not an app list: rows carry what they need
     //  to be drawn and what the logic runs when one is picked.
-    model la_apps max 8 { name: text; sub: text; exec: text; icon: image 22, 22; glyph: text; has_glyph: bool; kind: text }
+    model la_apps max 10 { name: text; sub: text; exec: text; icon: image 22, 22; glyph: text; has_glyph: bool; kind: text }
     fact la_sel: number = 0
     text la_mode = "APPS"
     text la_hint = "Search apps…"

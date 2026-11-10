@@ -82,7 +82,7 @@ part Launcher {
                 on press lhint2_hit.$j { emit ui_sound; emit la_hint(j + 5) }
             }
 
-            repeat k in 0..7 {
+            repeat k in 0..9 {
                 let la.y = la.top + 150 + k * 42
                 group {
                     show: k < la_apps.count
