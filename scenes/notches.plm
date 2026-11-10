@@ -13,9 +13,9 @@ scene Pleamar {
     service network as net { online: bool; wifi: bool; name: text; strength: number }
 
     include "../modules/common/common.plm"
-    include "../modules/notches/frame.plm"
     include "../modules/settings/panel.plm"
     include "../modules/launcher/launcher.plm"
     include "../modules/notifications/notifications.plm"
     include "../modules/center/panel.plm"
+    include "../modules/notches/frame.plm"
 }

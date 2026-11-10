@@ -1,7 +1,4 @@
 part NotchFrame {
-    //  One full-screen surface for the Notches shell: the ring, the clock,
-    //  and the music bars all live here.  There are no water strips and no
-    //  bar surface; the drawer panels are the only overlays.
     prop nf_sec_ones = 1 ~quick
     prop nf_sec_tens = 1 ~quick
 
@@ -9,42 +6,344 @@ part NotchFrame {
         size: full, full
         anchor: top_left
         reserve: 0
-        level: top, overlay while panel_open or center_open
+        level: top, overlay while panel_open or center_open or launch_open or nt_center
         open: true
         rate: 120, 60 while music_frame_on and music_on, 30 while quiet
-        keyboard: none
+        keyboard: on_demand while nt_center
 
         let nf.w = notch_frame.width
         let nf.h = notch_frame.height
         let nf.cx = nf.w / 2
-        let nf.clock_w = 220
-        let nf.clock_h = 56
-        let nf.clock_y = 27
-        let nf.rail = 10
-        let nf.corner = 32
+        let nf.clock_w = notch_clock_w
+        let nf.clock_h = notch_clock_h
+        let nf.settings_h = notch_clock_h + 820
+        let nf.center_h = notch_clock_h + 720
+        //  anchor:center places the row's top edge at y in plm.
+        //  To visually centre 19px text, shift up by ~half the text height.
+        let nf.clock_y = nf.clock_h / 2 - 12
+        let nf.rail = 8
+        let nf.inner_r = 23
+        let nf.over = 50
         let nf.music = music_frame_on and music_on
-        let nf.top_only = music_frame_sides == 0
         let nf.all_sides = music_frame_sides == 1
         let nf.cp_p = clamp(cp_np, 0, 1)
         let nf.ct_p = clamp(ct_np, 0, 1)
-        let nf.cp_neck = mix(34, 104, min(1, nf.cp_p * 1.5))
-        let nf.ct_neck = mix(34, 104, min(1, nf.ct_p * 1.5))
+        let nf.launch_p = clamp(la_p, 0, 1)
+        let nf.ntc_p = clamp(ntc_p, 0, 1)
+        let nf.search_h = notch_clock_h + 600
+        let nf.notify_h = notch_clock_h + 650
+        //  The drawer glass follows the selected opening motion as well as
+        //  the content: Flow is linear, Bloom opens fast, Unfold is slow
+        //  vertically, Cascade drops in, Iris opens mostly sideways.
+        let nf.cp_w = mix(nf.clock_w, 860,
+            if(panel_fx == 4, pow(nf.cp_p, 1.60),
+            if(panel_fx == 1, pow(nf.cp_p, 0.70), nf.cp_p)))
+        let nf.cp_h = nf.settings_h * (if(panel_fx == 2, pow(nf.cp_p, 1.45),
+            if(panel_fx == 3, pow(nf.cp_p, 0.65),
+            if(panel_fx == 1, pow(nf.cp_p, 0.85), nf.cp_p))))
+        let nf.ct_w = mix(nf.clock_w, 1120,
+            if(center_panel_fx == 4, pow(nf.ct_p, 1.60),
+            if(center_panel_fx == 1, pow(nf.ct_p, 0.70), nf.ct_p)))
+        let nf.ct_h = nf.center_h * (if(center_panel_fx == 2, pow(nf.ct_p, 1.45),
+            if(center_panel_fx == 3, pow(nf.ct_p, 0.65),
+            if(center_panel_fx == 1, pow(nf.ct_p, 0.85), nf.ct_p))))
+        let nf.sm = music_frame_sens
+        let nf.hm = music_frame_hgt
+        let nf.bon = if(nf.music, 1, 0)
+        //  nuse is clamped to the actual column count per body block.
+        let nf.nuse = music_frame_cols
+        //  Bar width and blend — same formula as Vitreus: fw.wf mixes 0.8..1.9
+        let nf.bw = 17 * mix(0.8, 1.9, music_frame_blend / 100)
+        //  blend pixels: mix(10, 32, fw_bl) in Vitreus
+        let nf.bbl = mix(10, 32, music_frame_blend / 100)
+        //  The engine's smoke only takes down bright content seen through the
+        //  glass.  Mix the glass tint towards black too, so Smoke 100% reads
+        //  as smoked glass over a dark wallpaper as well.
+        let nf.smoke_bg = mix(bar_bg, #000000, glass_smoke * 0.65)
 
-        //  Music visualization levels - same as Vitreus pattern
-        let nf.bw = 13
-        let nf.sens = 42
-        let nf.level0 = nf.sens * band.s.0
-        let nf.level1 = nf.sens * band.s.1
-        let nf.level2 = nf.sens * band.s.2
-        let nf.level3 = nf.sens * band.s.3
-        let nf.level4 = nf.sens * band.s.4
-        let nf.level5 = nf.sens * band.s.5
+        let nf6.b.0 = abs(2 * (0.5 / 6) - 1) * 23
+        let nf6.l.0 = clamp(floor(nf6.b.0), 0, 22)
+        let nf6.h.0 = if(0 < nf.nuse, min(1, pow(mix(pick(nf6.l.0, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf6.l.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf6.b.0 - nf6.l.0), 1.4) * nf.sm) * clamp(min(0.5, 6 - 0 - 0.5) / (0.30000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf6.b.1 = abs(2 * (1.5 / 6) - 1) * 23
+        let nf6.l.1 = clamp(floor(nf6.b.1), 0, 22)
+        let nf6.h.1 = if(1 < nf.nuse, min(1, pow(mix(pick(nf6.l.1, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf6.l.1, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf6.b.1 - nf6.l.1), 1.4) * nf.sm) * clamp(min(1.5, 6 - 1 - 0.5) / (0.30000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf6.b.2 = abs(2 * (2.5 / 6) - 1) * 23
+        let nf6.l.2 = clamp(floor(nf6.b.2), 0, 22)
+        let nf6.h.2 = if(2 < nf.nuse, min(1, pow(mix(pick(nf6.l.2, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf6.l.2, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf6.b.2 - nf6.l.2), 1.4) * nf.sm) * clamp(min(2.5, 6 - 2 - 0.5) / (0.30000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf6.b.3 = abs(2 * (3.5 / 6) - 1) * 23
+        let nf6.l.3 = clamp(floor(nf6.b.3), 0, 22)
+        let nf6.h.3 = if(3 < nf.nuse, min(1, pow(mix(pick(nf6.l.3, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf6.l.3, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf6.b.3 - nf6.l.3), 1.4) * nf.sm) * clamp(min(3.5, 6 - 3 - 0.5) / (0.30000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf6.b.4 = abs(2 * (4.5 / 6) - 1) * 23
+        let nf6.l.4 = clamp(floor(nf6.b.4), 0, 22)
+        let nf6.h.4 = if(4 < nf.nuse, min(1, pow(mix(pick(nf6.l.4, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf6.l.4, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf6.b.4 - nf6.l.4), 1.4) * nf.sm) * clamp(min(4.5, 6 - 4 - 0.5) / (0.30000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf6.b.5 = abs(2 * (5.5 / 6) - 1) * 23
+        let nf6.l.5 = clamp(floor(nf6.b.5), 0, 22)
+        let nf6.h.5 = if(5 < nf.nuse, min(1, pow(mix(pick(nf6.l.5, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf6.l.5, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf6.b.5 - nf6.l.5), 1.4) * nf.sm) * clamp(min(5.5, 6 - 5 - 0.5) / (0.30000000000000004), 0, 1) * nf.hm * nf.bon, 0)
 
-        //  ── the ring ─────────────────────────────────────────────────────
+        let nf12.b.0 = abs(2 * (0.5 / 12) - 1) * 23
+        let nf12.l.0 = clamp(floor(nf12.b.0), 0, 22)
+        let nf12.h.0 = if(0 < nf.nuse, min(1, pow(mix(pick(nf12.l.0, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf12.l.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf12.b.0 - nf12.l.0), 1.4) * nf.sm) * clamp(min(0.5, 12 - 0 - 0.5) / (0.6000000000000001), 0, 1) * nf.hm * nf.bon, 0)
+        let nf12.b.1 = abs(2 * (1.5 / 12) - 1) * 23
+        let nf12.l.1 = clamp(floor(nf12.b.1), 0, 22)
+        let nf12.h.1 = if(1 < nf.nuse, min(1, pow(mix(pick(nf12.l.1, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf12.l.1, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf12.b.1 - nf12.l.1), 1.4) * nf.sm) * clamp(min(1.5, 12 - 1 - 0.5) / (0.6000000000000001), 0, 1) * nf.hm * nf.bon, 0)
+        let nf12.b.2 = abs(2 * (2.5 / 12) - 1) * 23
+        let nf12.l.2 = clamp(floor(nf12.b.2), 0, 22)
+        let nf12.h.2 = if(2 < nf.nuse, min(1, pow(mix(pick(nf12.l.2, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf12.l.2, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf12.b.2 - nf12.l.2), 1.4) * nf.sm) * clamp(min(2.5, 12 - 2 - 0.5) / (0.6000000000000001), 0, 1) * nf.hm * nf.bon, 0)
+        let nf12.b.3 = abs(2 * (3.5 / 12) - 1) * 23
+        let nf12.l.3 = clamp(floor(nf12.b.3), 0, 22)
+        let nf12.h.3 = if(3 < nf.nuse, min(1, pow(mix(pick(nf12.l.3, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf12.l.3, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf12.b.3 - nf12.l.3), 1.4) * nf.sm) * clamp(min(3.5, 12 - 3 - 0.5) / (0.6000000000000001), 0, 1) * nf.hm * nf.bon, 0)
+        let nf12.b.4 = abs(2 * (4.5 / 12) - 1) * 23
+        let nf12.l.4 = clamp(floor(nf12.b.4), 0, 22)
+        let nf12.h.4 = if(4 < nf.nuse, min(1, pow(mix(pick(nf12.l.4, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf12.l.4, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf12.b.4 - nf12.l.4), 1.4) * nf.sm) * clamp(min(4.5, 12 - 4 - 0.5) / (0.6000000000000001), 0, 1) * nf.hm * nf.bon, 0)
+        let nf12.b.5 = abs(2 * (5.5 / 12) - 1) * 23
+        let nf12.l.5 = clamp(floor(nf12.b.5), 0, 22)
+        let nf12.h.5 = if(5 < nf.nuse, min(1, pow(mix(pick(nf12.l.5, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf12.l.5, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf12.b.5 - nf12.l.5), 1.4) * nf.sm) * clamp(min(5.5, 12 - 5 - 0.5) / (0.6000000000000001), 0, 1) * nf.hm * nf.bon, 0)
+        let nf12.b.6 = abs(2 * (6.5 / 12) - 1) * 23
+        let nf12.l.6 = clamp(floor(nf12.b.6), 0, 22)
+        let nf12.h.6 = if(6 < nf.nuse, min(1, pow(mix(pick(nf12.l.6, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf12.l.6, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf12.b.6 - nf12.l.6), 1.4) * nf.sm) * clamp(min(6.5, 12 - 6 - 0.5) / (0.6000000000000001), 0, 1) * nf.hm * nf.bon, 0)
+        let nf12.b.7 = abs(2 * (7.5 / 12) - 1) * 23
+        let nf12.l.7 = clamp(floor(nf12.b.7), 0, 22)
+        let nf12.h.7 = if(7 < nf.nuse, min(1, pow(mix(pick(nf12.l.7, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf12.l.7, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf12.b.7 - nf12.l.7), 1.4) * nf.sm) * clamp(min(7.5, 12 - 7 - 0.5) / (0.6000000000000001), 0, 1) * nf.hm * nf.bon, 0)
+        let nf12.b.8 = abs(2 * (8.5 / 12) - 1) * 23
+        let nf12.l.8 = clamp(floor(nf12.b.8), 0, 22)
+        let nf12.h.8 = if(8 < nf.nuse, min(1, pow(mix(pick(nf12.l.8, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf12.l.8, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf12.b.8 - nf12.l.8), 1.4) * nf.sm) * clamp(min(8.5, 12 - 8 - 0.5) / (0.6000000000000001), 0, 1) * nf.hm * nf.bon, 0)
+        let nf12.b.9 = abs(2 * (9.5 / 12) - 1) * 23
+        let nf12.l.9 = clamp(floor(nf12.b.9), 0, 22)
+        let nf12.h.9 = if(9 < nf.nuse, min(1, pow(mix(pick(nf12.l.9, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf12.l.9, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf12.b.9 - nf12.l.9), 1.4) * nf.sm) * clamp(min(9.5, 12 - 9 - 0.5) / (0.6000000000000001), 0, 1) * nf.hm * nf.bon, 0)
+        let nf12.b.10 = abs(2 * (10.5 / 12) - 1) * 23
+        let nf12.l.10 = clamp(floor(nf12.b.10), 0, 22)
+        let nf12.h.10 = if(10 < nf.nuse, min(1, pow(mix(pick(nf12.l.10, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf12.l.10, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf12.b.10 - nf12.l.10), 1.4) * nf.sm) * clamp(min(10.5, 12 - 10 - 0.5) / (0.6000000000000001), 0, 1) * nf.hm * nf.bon, 0)
+        let nf12.b.11 = abs(2 * (11.5 / 12) - 1) * 23
+        let nf12.l.11 = clamp(floor(nf12.b.11), 0, 22)
+        let nf12.h.11 = if(11 < nf.nuse, min(1, pow(mix(pick(nf12.l.11, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf12.l.11, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf12.b.11 - nf12.l.11), 1.4) * nf.sm) * clamp(min(11.5, 12 - 11 - 0.5) / (0.6000000000000001), 0, 1) * nf.hm * nf.bon, 0)
+
+        let nf24.b.0 = abs(2 * (0.5 / 24) - 1) * 23
+        let nf24.l.0 = clamp(floor(nf24.b.0), 0, 22)
+        let nf24.h.0 = if(0 < nf.nuse, min(1, pow(mix(pick(nf24.l.0, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.0 - nf24.l.0), 1.4) * nf.sm) * clamp(min(0.5, 24 - 0 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.1 = abs(2 * (1.5 / 24) - 1) * 23
+        let nf24.l.1 = clamp(floor(nf24.b.1), 0, 22)
+        let nf24.h.1 = if(1 < nf.nuse, min(1, pow(mix(pick(nf24.l.1, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.1, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.1 - nf24.l.1), 1.4) * nf.sm) * clamp(min(1.5, 24 - 1 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.2 = abs(2 * (2.5 / 24) - 1) * 23
+        let nf24.l.2 = clamp(floor(nf24.b.2), 0, 22)
+        let nf24.h.2 = if(2 < nf.nuse, min(1, pow(mix(pick(nf24.l.2, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.2, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.2 - nf24.l.2), 1.4) * nf.sm) * clamp(min(2.5, 24 - 2 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.3 = abs(2 * (3.5 / 24) - 1) * 23
+        let nf24.l.3 = clamp(floor(nf24.b.3), 0, 22)
+        let nf24.h.3 = if(3 < nf.nuse, min(1, pow(mix(pick(nf24.l.3, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.3, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.3 - nf24.l.3), 1.4) * nf.sm) * clamp(min(3.5, 24 - 3 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.4 = abs(2 * (4.5 / 24) - 1) * 23
+        let nf24.l.4 = clamp(floor(nf24.b.4), 0, 22)
+        let nf24.h.4 = if(4 < nf.nuse, min(1, pow(mix(pick(nf24.l.4, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.4, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.4 - nf24.l.4), 1.4) * nf.sm) * clamp(min(4.5, 24 - 4 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.5 = abs(2 * (5.5 / 24) - 1) * 23
+        let nf24.l.5 = clamp(floor(nf24.b.5), 0, 22)
+        let nf24.h.5 = if(5 < nf.nuse, min(1, pow(mix(pick(nf24.l.5, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.5, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.5 - nf24.l.5), 1.4) * nf.sm) * clamp(min(5.5, 24 - 5 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.6 = abs(2 * (6.5 / 24) - 1) * 23
+        let nf24.l.6 = clamp(floor(nf24.b.6), 0, 22)
+        let nf24.h.6 = if(6 < nf.nuse, min(1, pow(mix(pick(nf24.l.6, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.6, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.6 - nf24.l.6), 1.4) * nf.sm) * clamp(min(6.5, 24 - 6 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.7 = abs(2 * (7.5 / 24) - 1) * 23
+        let nf24.l.7 = clamp(floor(nf24.b.7), 0, 22)
+        let nf24.h.7 = if(7 < nf.nuse, min(1, pow(mix(pick(nf24.l.7, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.7, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.7 - nf24.l.7), 1.4) * nf.sm) * clamp(min(7.5, 24 - 7 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.8 = abs(2 * (8.5 / 24) - 1) * 23
+        let nf24.l.8 = clamp(floor(nf24.b.8), 0, 22)
+        let nf24.h.8 = if(8 < nf.nuse, min(1, pow(mix(pick(nf24.l.8, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.8, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.8 - nf24.l.8), 1.4) * nf.sm) * clamp(min(8.5, 24 - 8 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.9 = abs(2 * (9.5 / 24) - 1) * 23
+        let nf24.l.9 = clamp(floor(nf24.b.9), 0, 22)
+        let nf24.h.9 = if(9 < nf.nuse, min(1, pow(mix(pick(nf24.l.9, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.9, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.9 - nf24.l.9), 1.4) * nf.sm) * clamp(min(9.5, 24 - 9 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.10 = abs(2 * (10.5 / 24) - 1) * 23
+        let nf24.l.10 = clamp(floor(nf24.b.10), 0, 22)
+        let nf24.h.10 = if(10 < nf.nuse, min(1, pow(mix(pick(nf24.l.10, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.10, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.10 - nf24.l.10), 1.4) * nf.sm) * clamp(min(10.5, 24 - 10 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.11 = abs(2 * (11.5 / 24) - 1) * 23
+        let nf24.l.11 = clamp(floor(nf24.b.11), 0, 22)
+        let nf24.h.11 = if(11 < nf.nuse, min(1, pow(mix(pick(nf24.l.11, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.11, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.11 - nf24.l.11), 1.4) * nf.sm) * clamp(min(11.5, 24 - 11 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.12 = abs(2 * (12.5 / 24) - 1) * 23
+        let nf24.l.12 = clamp(floor(nf24.b.12), 0, 22)
+        let nf24.h.12 = if(12 < nf.nuse, min(1, pow(mix(pick(nf24.l.12, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.12, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.12 - nf24.l.12), 1.4) * nf.sm) * clamp(min(12.5, 24 - 12 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.13 = abs(2 * (13.5 / 24) - 1) * 23
+        let nf24.l.13 = clamp(floor(nf24.b.13), 0, 22)
+        let nf24.h.13 = if(13 < nf.nuse, min(1, pow(mix(pick(nf24.l.13, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.13, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.13 - nf24.l.13), 1.4) * nf.sm) * clamp(min(13.5, 24 - 13 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.14 = abs(2 * (14.5 / 24) - 1) * 23
+        let nf24.l.14 = clamp(floor(nf24.b.14), 0, 22)
+        let nf24.h.14 = if(14 < nf.nuse, min(1, pow(mix(pick(nf24.l.14, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.14, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.14 - nf24.l.14), 1.4) * nf.sm) * clamp(min(14.5, 24 - 14 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.15 = abs(2 * (15.5 / 24) - 1) * 23
+        let nf24.l.15 = clamp(floor(nf24.b.15), 0, 22)
+        let nf24.h.15 = if(15 < nf.nuse, min(1, pow(mix(pick(nf24.l.15, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.15, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.15 - nf24.l.15), 1.4) * nf.sm) * clamp(min(15.5, 24 - 15 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.16 = abs(2 * (16.5 / 24) - 1) * 23
+        let nf24.l.16 = clamp(floor(nf24.b.16), 0, 22)
+        let nf24.h.16 = if(16 < nf.nuse, min(1, pow(mix(pick(nf24.l.16, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.16, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.16 - nf24.l.16), 1.4) * nf.sm) * clamp(min(16.5, 24 - 16 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.17 = abs(2 * (17.5 / 24) - 1) * 23
+        let nf24.l.17 = clamp(floor(nf24.b.17), 0, 22)
+        let nf24.h.17 = if(17 < nf.nuse, min(1, pow(mix(pick(nf24.l.17, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.17, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.17 - nf24.l.17), 1.4) * nf.sm) * clamp(min(17.5, 24 - 17 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.18 = abs(2 * (18.5 / 24) - 1) * 23
+        let nf24.l.18 = clamp(floor(nf24.b.18), 0, 22)
+        let nf24.h.18 = if(18 < nf.nuse, min(1, pow(mix(pick(nf24.l.18, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.18, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.18 - nf24.l.18), 1.4) * nf.sm) * clamp(min(18.5, 24 - 18 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.19 = abs(2 * (19.5 / 24) - 1) * 23
+        let nf24.l.19 = clamp(floor(nf24.b.19), 0, 22)
+        let nf24.h.19 = if(19 < nf.nuse, min(1, pow(mix(pick(nf24.l.19, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.19, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.19 - nf24.l.19), 1.4) * nf.sm) * clamp(min(19.5, 24 - 19 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.20 = abs(2 * (20.5 / 24) - 1) * 23
+        let nf24.l.20 = clamp(floor(nf24.b.20), 0, 22)
+        let nf24.h.20 = if(20 < nf.nuse, min(1, pow(mix(pick(nf24.l.20, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.20, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.20 - nf24.l.20), 1.4) * nf.sm) * clamp(min(20.5, 24 - 20 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.21 = abs(2 * (21.5 / 24) - 1) * 23
+        let nf24.l.21 = clamp(floor(nf24.b.21), 0, 22)
+        let nf24.h.21 = if(21 < nf.nuse, min(1, pow(mix(pick(nf24.l.21, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.21, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.21 - nf24.l.21), 1.4) * nf.sm) * clamp(min(21.5, 24 - 21 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.22 = abs(2 * (22.5 / 24) - 1) * 23
+        let nf24.l.22 = clamp(floor(nf24.b.22), 0, 22)
+        let nf24.h.22 = if(22 < nf.nuse, min(1, pow(mix(pick(nf24.l.22, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.22, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.22 - nf24.l.22), 1.4) * nf.sm) * clamp(min(22.5, 24 - 22 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+        let nf24.b.23 = abs(2 * (23.5 / 24) - 1) * 23
+        let nf24.l.23 = clamp(floor(nf24.b.23), 0, 22)
+        let nf24.h.23 = if(23 < nf.nuse, min(1, pow(mix(pick(nf24.l.23, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf24.l.23, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf24.b.23 - nf24.l.23), 1.4) * nf.sm) * clamp(min(23.5, 24 - 23 - 0.5) / (1.2000000000000002), 0, 1) * nf.hm * nf.bon, 0)
+
+        let nf48.b.0 = abs(2 * (0.5 / 48) - 1) * 23
+        let nf48.l.0 = clamp(floor(nf48.b.0), 0, 22)
+        let nf48.h.0 = if(0 < nf.nuse, min(1, pow(mix(pick(nf48.l.0, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.0 - nf48.l.0), 1.4) * nf.sm) * clamp(min(0.5, 48 - 0 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.1 = abs(2 * (1.5 / 48) - 1) * 23
+        let nf48.l.1 = clamp(floor(nf48.b.1), 0, 22)
+        let nf48.h.1 = if(1 < nf.nuse, min(1, pow(mix(pick(nf48.l.1, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.1, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.1 - nf48.l.1), 1.4) * nf.sm) * clamp(min(1.5, 48 - 1 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.2 = abs(2 * (2.5 / 48) - 1) * 23
+        let nf48.l.2 = clamp(floor(nf48.b.2), 0, 22)
+        let nf48.h.2 = if(2 < nf.nuse, min(1, pow(mix(pick(nf48.l.2, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.2, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.2 - nf48.l.2), 1.4) * nf.sm) * clamp(min(2.5, 48 - 2 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.3 = abs(2 * (3.5 / 48) - 1) * 23
+        let nf48.l.3 = clamp(floor(nf48.b.3), 0, 22)
+        let nf48.h.3 = if(3 < nf.nuse, min(1, pow(mix(pick(nf48.l.3, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.3, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.3 - nf48.l.3), 1.4) * nf.sm) * clamp(min(3.5, 48 - 3 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.4 = abs(2 * (4.5 / 48) - 1) * 23
+        let nf48.l.4 = clamp(floor(nf48.b.4), 0, 22)
+        let nf48.h.4 = if(4 < nf.nuse, min(1, pow(mix(pick(nf48.l.4, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.4, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.4 - nf48.l.4), 1.4) * nf.sm) * clamp(min(4.5, 48 - 4 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.5 = abs(2 * (5.5 / 48) - 1) * 23
+        let nf48.l.5 = clamp(floor(nf48.b.5), 0, 22)
+        let nf48.h.5 = if(5 < nf.nuse, min(1, pow(mix(pick(nf48.l.5, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.5, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.5 - nf48.l.5), 1.4) * nf.sm) * clamp(min(5.5, 48 - 5 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.6 = abs(2 * (6.5 / 48) - 1) * 23
+        let nf48.l.6 = clamp(floor(nf48.b.6), 0, 22)
+        let nf48.h.6 = if(6 < nf.nuse, min(1, pow(mix(pick(nf48.l.6, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.6, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.6 - nf48.l.6), 1.4) * nf.sm) * clamp(min(6.5, 48 - 6 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.7 = abs(2 * (7.5 / 48) - 1) * 23
+        let nf48.l.7 = clamp(floor(nf48.b.7), 0, 22)
+        let nf48.h.7 = if(7 < nf.nuse, min(1, pow(mix(pick(nf48.l.7, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.7, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.7 - nf48.l.7), 1.4) * nf.sm) * clamp(min(7.5, 48 - 7 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.8 = abs(2 * (8.5 / 48) - 1) * 23
+        let nf48.l.8 = clamp(floor(nf48.b.8), 0, 22)
+        let nf48.h.8 = if(8 < nf.nuse, min(1, pow(mix(pick(nf48.l.8, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.8, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.8 - nf48.l.8), 1.4) * nf.sm) * clamp(min(8.5, 48 - 8 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.9 = abs(2 * (9.5 / 48) - 1) * 23
+        let nf48.l.9 = clamp(floor(nf48.b.9), 0, 22)
+        let nf48.h.9 = if(9 < nf.nuse, min(1, pow(mix(pick(nf48.l.9, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.9, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.9 - nf48.l.9), 1.4) * nf.sm) * clamp(min(9.5, 48 - 9 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.10 = abs(2 * (10.5 / 48) - 1) * 23
+        let nf48.l.10 = clamp(floor(nf48.b.10), 0, 22)
+        let nf48.h.10 = if(10 < nf.nuse, min(1, pow(mix(pick(nf48.l.10, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.10, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.10 - nf48.l.10), 1.4) * nf.sm) * clamp(min(10.5, 48 - 10 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.11 = abs(2 * (11.5 / 48) - 1) * 23
+        let nf48.l.11 = clamp(floor(nf48.b.11), 0, 22)
+        let nf48.h.11 = if(11 < nf.nuse, min(1, pow(mix(pick(nf48.l.11, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.11, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.11 - nf48.l.11), 1.4) * nf.sm) * clamp(min(11.5, 48 - 11 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.12 = abs(2 * (12.5 / 48) - 1) * 23
+        let nf48.l.12 = clamp(floor(nf48.b.12), 0, 22)
+        let nf48.h.12 = if(12 < nf.nuse, min(1, pow(mix(pick(nf48.l.12, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.12, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.12 - nf48.l.12), 1.4) * nf.sm) * clamp(min(12.5, 48 - 12 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.13 = abs(2 * (13.5 / 48) - 1) * 23
+        let nf48.l.13 = clamp(floor(nf48.b.13), 0, 22)
+        let nf48.h.13 = if(13 < nf.nuse, min(1, pow(mix(pick(nf48.l.13, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.13, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.13 - nf48.l.13), 1.4) * nf.sm) * clamp(min(13.5, 48 - 13 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.14 = abs(2 * (14.5 / 48) - 1) * 23
+        let nf48.l.14 = clamp(floor(nf48.b.14), 0, 22)
+        let nf48.h.14 = if(14 < nf.nuse, min(1, pow(mix(pick(nf48.l.14, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.14, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.14 - nf48.l.14), 1.4) * nf.sm) * clamp(min(14.5, 48 - 14 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.15 = abs(2 * (15.5 / 48) - 1) * 23
+        let nf48.l.15 = clamp(floor(nf48.b.15), 0, 22)
+        let nf48.h.15 = if(15 < nf.nuse, min(1, pow(mix(pick(nf48.l.15, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.15, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.15 - nf48.l.15), 1.4) * nf.sm) * clamp(min(15.5, 48 - 15 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.16 = abs(2 * (16.5 / 48) - 1) * 23
+        let nf48.l.16 = clamp(floor(nf48.b.16), 0, 22)
+        let nf48.h.16 = if(16 < nf.nuse, min(1, pow(mix(pick(nf48.l.16, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.16, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.16 - nf48.l.16), 1.4) * nf.sm) * clamp(min(16.5, 48 - 16 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.17 = abs(2 * (17.5 / 48) - 1) * 23
+        let nf48.l.17 = clamp(floor(nf48.b.17), 0, 22)
+        let nf48.h.17 = if(17 < nf.nuse, min(1, pow(mix(pick(nf48.l.17, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.17, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.17 - nf48.l.17), 1.4) * nf.sm) * clamp(min(17.5, 48 - 17 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.18 = abs(2 * (18.5 / 48) - 1) * 23
+        let nf48.l.18 = clamp(floor(nf48.b.18), 0, 22)
+        let nf48.h.18 = if(18 < nf.nuse, min(1, pow(mix(pick(nf48.l.18, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.18, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.18 - nf48.l.18), 1.4) * nf.sm) * clamp(min(18.5, 48 - 18 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.19 = abs(2 * (19.5 / 48) - 1) * 23
+        let nf48.l.19 = clamp(floor(nf48.b.19), 0, 22)
+        let nf48.h.19 = if(19 < nf.nuse, min(1, pow(mix(pick(nf48.l.19, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.19, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.19 - nf48.l.19), 1.4) * nf.sm) * clamp(min(19.5, 48 - 19 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.20 = abs(2 * (20.5 / 48) - 1) * 23
+        let nf48.l.20 = clamp(floor(nf48.b.20), 0, 22)
+        let nf48.h.20 = if(20 < nf.nuse, min(1, pow(mix(pick(nf48.l.20, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.20, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.20 - nf48.l.20), 1.4) * nf.sm) * clamp(min(20.5, 48 - 20 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.21 = abs(2 * (21.5 / 48) - 1) * 23
+        let nf48.l.21 = clamp(floor(nf48.b.21), 0, 22)
+        let nf48.h.21 = if(21 < nf.nuse, min(1, pow(mix(pick(nf48.l.21, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.21, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.21 - nf48.l.21), 1.4) * nf.sm) * clamp(min(21.5, 48 - 21 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.22 = abs(2 * (22.5 / 48) - 1) * 23
+        let nf48.l.22 = clamp(floor(nf48.b.22), 0, 22)
+        let nf48.h.22 = if(22 < nf.nuse, min(1, pow(mix(pick(nf48.l.22, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.22, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.22 - nf48.l.22), 1.4) * nf.sm) * clamp(min(22.5, 48 - 22 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.23 = abs(2 * (23.5 / 48) - 1) * 23
+        let nf48.l.23 = clamp(floor(nf48.b.23), 0, 22)
+        let nf48.h.23 = if(23 < nf.nuse, min(1, pow(mix(pick(nf48.l.23, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.23, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.23 - nf48.l.23), 1.4) * nf.sm) * clamp(min(23.5, 48 - 23 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.24 = abs(2 * (24.5 / 48) - 1) * 23
+        let nf48.l.24 = clamp(floor(nf48.b.24), 0, 22)
+        let nf48.h.24 = if(24 < nf.nuse, min(1, pow(mix(pick(nf48.l.24, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.24, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.24 - nf48.l.24), 1.4) * nf.sm) * clamp(min(24.5, 48 - 24 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.25 = abs(2 * (25.5 / 48) - 1) * 23
+        let nf48.l.25 = clamp(floor(nf48.b.25), 0, 22)
+        let nf48.h.25 = if(25 < nf.nuse, min(1, pow(mix(pick(nf48.l.25, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.25, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.25 - nf48.l.25), 1.4) * nf.sm) * clamp(min(25.5, 48 - 25 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.26 = abs(2 * (26.5 / 48) - 1) * 23
+        let nf48.l.26 = clamp(floor(nf48.b.26), 0, 22)
+        let nf48.h.26 = if(26 < nf.nuse, min(1, pow(mix(pick(nf48.l.26, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.26, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.26 - nf48.l.26), 1.4) * nf.sm) * clamp(min(26.5, 48 - 26 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.27 = abs(2 * (27.5 / 48) - 1) * 23
+        let nf48.l.27 = clamp(floor(nf48.b.27), 0, 22)
+        let nf48.h.27 = if(27 < nf.nuse, min(1, pow(mix(pick(nf48.l.27, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.27, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.27 - nf48.l.27), 1.4) * nf.sm) * clamp(min(27.5, 48 - 27 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.28 = abs(2 * (28.5 / 48) - 1) * 23
+        let nf48.l.28 = clamp(floor(nf48.b.28), 0, 22)
+        let nf48.h.28 = if(28 < nf.nuse, min(1, pow(mix(pick(nf48.l.28, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.28, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.28 - nf48.l.28), 1.4) * nf.sm) * clamp(min(28.5, 48 - 28 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.29 = abs(2 * (29.5 / 48) - 1) * 23
+        let nf48.l.29 = clamp(floor(nf48.b.29), 0, 22)
+        let nf48.h.29 = if(29 < nf.nuse, min(1, pow(mix(pick(nf48.l.29, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.29, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.29 - nf48.l.29), 1.4) * nf.sm) * clamp(min(29.5, 48 - 29 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.30 = abs(2 * (30.5 / 48) - 1) * 23
+        let nf48.l.30 = clamp(floor(nf48.b.30), 0, 22)
+        let nf48.h.30 = if(30 < nf.nuse, min(1, pow(mix(pick(nf48.l.30, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.30, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.30 - nf48.l.30), 1.4) * nf.sm) * clamp(min(30.5, 48 - 30 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.31 = abs(2 * (31.5 / 48) - 1) * 23
+        let nf48.l.31 = clamp(floor(nf48.b.31), 0, 22)
+        let nf48.h.31 = if(31 < nf.nuse, min(1, pow(mix(pick(nf48.l.31, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.31, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.31 - nf48.l.31), 1.4) * nf.sm) * clamp(min(31.5, 48 - 31 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.32 = abs(2 * (32.5 / 48) - 1) * 23
+        let nf48.l.32 = clamp(floor(nf48.b.32), 0, 22)
+        let nf48.h.32 = if(32 < nf.nuse, min(1, pow(mix(pick(nf48.l.32, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.32, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.32 - nf48.l.32), 1.4) * nf.sm) * clamp(min(32.5, 48 - 32 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.33 = abs(2 * (33.5 / 48) - 1) * 23
+        let nf48.l.33 = clamp(floor(nf48.b.33), 0, 22)
+        let nf48.h.33 = if(33 < nf.nuse, min(1, pow(mix(pick(nf48.l.33, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.33, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.33 - nf48.l.33), 1.4) * nf.sm) * clamp(min(33.5, 48 - 33 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.34 = abs(2 * (34.5 / 48) - 1) * 23
+        let nf48.l.34 = clamp(floor(nf48.b.34), 0, 22)
+        let nf48.h.34 = if(34 < nf.nuse, min(1, pow(mix(pick(nf48.l.34, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.34, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.34 - nf48.l.34), 1.4) * nf.sm) * clamp(min(34.5, 48 - 34 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.35 = abs(2 * (35.5 / 48) - 1) * 23
+        let nf48.l.35 = clamp(floor(nf48.b.35), 0, 22)
+        let nf48.h.35 = if(35 < nf.nuse, min(1, pow(mix(pick(nf48.l.35, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.35, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.35 - nf48.l.35), 1.4) * nf.sm) * clamp(min(35.5, 48 - 35 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.36 = abs(2 * (36.5 / 48) - 1) * 23
+        let nf48.l.36 = clamp(floor(nf48.b.36), 0, 22)
+        let nf48.h.36 = if(36 < nf.nuse, min(1, pow(mix(pick(nf48.l.36, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.36, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.36 - nf48.l.36), 1.4) * nf.sm) * clamp(min(36.5, 48 - 36 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.37 = abs(2 * (37.5 / 48) - 1) * 23
+        let nf48.l.37 = clamp(floor(nf48.b.37), 0, 22)
+        let nf48.h.37 = if(37 < nf.nuse, min(1, pow(mix(pick(nf48.l.37, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.37, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.37 - nf48.l.37), 1.4) * nf.sm) * clamp(min(37.5, 48 - 37 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.38 = abs(2 * (38.5 / 48) - 1) * 23
+        let nf48.l.38 = clamp(floor(nf48.b.38), 0, 22)
+        let nf48.h.38 = if(38 < nf.nuse, min(1, pow(mix(pick(nf48.l.38, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.38, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.38 - nf48.l.38), 1.4) * nf.sm) * clamp(min(38.5, 48 - 38 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.39 = abs(2 * (39.5 / 48) - 1) * 23
+        let nf48.l.39 = clamp(floor(nf48.b.39), 0, 22)
+        let nf48.h.39 = if(39 < nf.nuse, min(1, pow(mix(pick(nf48.l.39, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.39, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.39 - nf48.l.39), 1.4) * nf.sm) * clamp(min(39.5, 48 - 39 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.40 = abs(2 * (40.5 / 48) - 1) * 23
+        let nf48.l.40 = clamp(floor(nf48.b.40), 0, 22)
+        let nf48.h.40 = if(40 < nf.nuse, min(1, pow(mix(pick(nf48.l.40, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.40, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.40 - nf48.l.40), 1.4) * nf.sm) * clamp(min(40.5, 48 - 40 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.41 = abs(2 * (41.5 / 48) - 1) * 23
+        let nf48.l.41 = clamp(floor(nf48.b.41), 0, 22)
+        let nf48.h.41 = if(41 < nf.nuse, min(1, pow(mix(pick(nf48.l.41, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.41, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.41 - nf48.l.41), 1.4) * nf.sm) * clamp(min(41.5, 48 - 41 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.42 = abs(2 * (42.5 / 48) - 1) * 23
+        let nf48.l.42 = clamp(floor(nf48.b.42), 0, 22)
+        let nf48.h.42 = if(42 < nf.nuse, min(1, pow(mix(pick(nf48.l.42, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.42, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.42 - nf48.l.42), 1.4) * nf.sm) * clamp(min(42.5, 48 - 42 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.43 = abs(2 * (43.5 / 48) - 1) * 23
+        let nf48.l.43 = clamp(floor(nf48.b.43), 0, 22)
+        let nf48.h.43 = if(43 < nf.nuse, min(1, pow(mix(pick(nf48.l.43, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.43, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.43 - nf48.l.43), 1.4) * nf.sm) * clamp(min(43.5, 48 - 43 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.44 = abs(2 * (44.5 / 48) - 1) * 23
+        let nf48.l.44 = clamp(floor(nf48.b.44), 0, 22)
+        let nf48.h.44 = if(44 < nf.nuse, min(1, pow(mix(pick(nf48.l.44, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.44, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.44 - nf48.l.44), 1.4) * nf.sm) * clamp(min(44.5, 48 - 44 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.45 = abs(2 * (45.5 / 48) - 1) * 23
+        let nf48.l.45 = clamp(floor(nf48.b.45), 0, 22)
+        let nf48.h.45 = if(45 < nf.nuse, min(1, pow(mix(pick(nf48.l.45, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.45, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.45 - nf48.l.45), 1.4) * nf.sm) * clamp(min(45.5, 48 - 45 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.46 = abs(2 * (46.5 / 48) - 1) * 23
+        let nf48.l.46 = clamp(floor(nf48.b.46), 0, 22)
+        let nf48.h.46 = if(46 < nf.nuse, min(1, pow(mix(pick(nf48.l.46, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.46, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.46 - nf48.l.46), 1.4) * nf.sm) * clamp(min(46.5, 48 - 46 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+        let nf48.b.47 = abs(2 * (47.5 / 48) - 1) * 23
+        let nf48.l.47 = clamp(floor(nf48.b.47), 0, 22)
+        let nf48.h.47 = if(47 < nf.nuse, min(1, pow(mix(pick(nf48.l.47, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.47, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.47 - nf48.l.47), 1.4) * nf.sm) * clamp(min(47.5, 48 - 47 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
+
+        //  Theme fills share this frame body silhouette, so they stay on the
+        //  existing full-screen surface and never add another lens capture.
+        let nf.pb.a = mix(bar_bg, primary, 0.78)
+        let nf.pb.b = mix(bar_bg, secondary, 0.58)
+        let nf.pb.c = mix(bar_bg, deep, 0.34)
         body {
-            color: bar_bg
+            color: nf.smoke_bg
             glass: if(glass_on, 100%, 0%)
-            opacity: 1% * max(glass_tint, if(panel_open or center_open, 84, 0))
+            opacity: 1% * glass_tint
             lens: glass_on and glass_bend
             frost: glass_frost / 100
             refraction: glass_refr
@@ -59,91 +358,531 @@ part NotchFrame {
             border: 1.5 * glass_border / 100, ink
             rim: 1% * glass_edge
             shadow: 0, 2, 12, 24%, glass_shadow
+            show: music_frame_cols == 6
 
-            //  Filled rails keep every edge visible; the corner pieces round
-            //  the opening while leaving this one continuous glass body.
-            box { from: 0, 0; size: nf.w, nf.rail }
-            box { from: 0, nf.h - nf.rail; size: nf.w, nf.rail }
-            box { from: 0, nf.rail; size: nf.rail, nf.h - nf.rail * 2 }
-            box { from: nf.w - nf.rail, nf.rail; size: nf.rail, nf.h - nf.rail * 2 }
-            path { at: 0, 0; move nf.corner, nf.rail; curve nf.rail, nf.corner via nf.rail, nf.rail; line nf.rail, nf.rail; close }
-            path { at: 0, 0; move nf.w - nf.corner, nf.rail; curve nf.w - nf.rail, nf.corner via nf.w - nf.rail, nf.rail; line nf.w - nf.rail, nf.rail; close }
-            path { at: 0, 0; move nf.corner, nf.h - nf.rail; curve nf.rail, nf.h - nf.corner via nf.rail, nf.h - nf.rail; line nf.rail, nf.h - nf.rail; close }
-            path { at: 0, 0; move nf.w - nf.corner, nf.h - nf.rail; curve nf.w - nf.rail, nf.h - nf.corner via nf.w - nf.rail, nf.h - nf.rail; line nf.w - nf.rail, nf.h - nf.rail; close }
-
-            //  The clock notch is part of the same glass: the top rail swells
-            //  down into it, with no separate capsule and no seam.
+            //  Ring
+            box { from: 0 - nf.over / 2, 0 - nf.over / 2; size: nf.w + nf.over, nf.h + nf.over; corner: nf.inner_r + (nf.rail + nf.over) / 2; stroke: nf.rail + nf.over }
+            //  Clock notch
             box { from: nf.cx - nf.clock_w / 2, 0; size: nf.clock_w, nf.clock_h; corner: 20; blend: 34 }
             box { from: nf.cx - nf.clock_w / 2 + 14, nf.clock_h - 2; size: nf.clock_w - 28, 1; corner: 0.5 }
+            //  Settings drawer — single box growing from clock-width to full 860px,
+            //  starting at y=0 so the entire top edge connects to the frame.
+            box { from: nf.cx - nf.cp_w / 2 + if(panel_open or nf.cp_p > 0.01, 0, 30000), 0; size: nf.cp_w, max(0.3, nf.cp_h); corner: mix(20, 26, nf.cp_p); blend: mix(34, 36, nf.cp_p) * nf.cp_p }
+            //  Centre drawer — same pattern, full width 1120px.
+            box { from: nf.cx - nf.ct_w / 2 + if(center_open or nf.ct_p > 0.01, 0, 30000), 0; size: nf.ct_w, max(0.3, nf.ct_h); corner: mix(20, 30, nf.ct_p); blend: mix(34, 36, nf.ct_p) * nf.ct_p }
+            //  Search and notifications share this glass body, while their
+            //  toasts remain independent surfaces.
+            box { from: nf.cx - mix(nf.clock_w, 620, nf.launch_p) / 2 + if(launch_open or nf.launch_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 620, nf.launch_p), max(0.3, nf.search_h * nf.launch_p); corner: mix(20, 24, nf.launch_p); blend: mix(34, 36, nf.launch_p) * nf.launch_p }
+            box { from: nf.cx - mix(nf.clock_w, 480, nf.ntc_p) / 2 + if(nt_center or nf.ntc_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 480, nf.ntc_p), max(0.3, nf.notify_h * nf.ntc_p); corner: mix(20, 26, nf.ntc_p); blend: mix(34, 36, nf.ntc_p) * nf.ntc_p }
 
-            //  Each drawer silhouette grows from the clock inside this body,
-            //  so its neck, card and the frame share one liquid glass edge.
-            box { from: nf.cx - nf.cp_neck / 2 + if(panel_open or nf.cp_p > 0.01, 0, 30000), 0; size: nf.cp_neck, 24; corner: 12; blend: 22 * nf.cp_p }
-            box { from: nf.cx - max(18, nf.cp_neck * 0.52) / 2 + if(panel_open or nf.cp_p > 0.01, 0, 30000), 18; size: max(18, nf.cp_neck * 0.52), 56; corner: 12; blend: 22 * nf.cp_p }
-            box { from: nf.cx - 430 + if(panel_open or nf.cp_p > 0.01, 0, 30000), 68; size: 860, max(0.3, 820 * nf.cp_p); corner: min(26, nf.cp_p * 410); blend: 36 * nf.cp_p }
-            box { from: nf.cx - nf.ct_neck / 2 + if(center_open or nf.ct_p > 0.01, 0, 30000), 0; size: nf.ct_neck, 24; corner: 12; blend: 22 * nf.ct_p }
-            box { from: nf.cx - max(18, nf.ct_neck * 0.52) / 2 + if(center_open or nf.ct_p > 0.01, 0, 30000), 18; size: max(18, nf.ct_neck * 0.52), 56; corner: 12; blend: 22 * nf.ct_p }
-            box { from: nf.cx - 560 + if(center_open or nf.ct_p > 0.01, 0, 30000), 68; size: 1120, max(0.3, 720 * nf.ct_p); corner: min(30, nf.ct_p * 360); blend: 36 * nf.ct_p }
-
-            //  Music bars: ALL in the same body, like Vitreus bar_waves.plm
-            //  Manually expanded (no repeat in body) - Top edge - 12 columns
-            box { at: nf.w * 0.5 / 12 + if(nf.music and nf.level0 > 1.2 and abs(nf.w * 0.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail - 2 + nf.level0 / 2; size: nf.bw, nf.level0; corner: 6.5; blend: 14 }
-            box { at: nf.w * 1.5 / 12 + if(nf.music and nf.level0 > 1.2 and abs(nf.w * 1.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail - 2 + nf.level0 / 2; size: nf.bw, nf.level0; corner: 6.5; blend: 14 }
-            box { at: nf.w * 2.5 / 12 + if(nf.music and nf.level1 > 1.2 and abs(nf.w * 2.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail - 2 + nf.level1 / 2; size: nf.bw, nf.level1; corner: 6.5; blend: 14 }
-            box { at: nf.w * 3.5 / 12 + if(nf.music and nf.level1 > 1.2 and abs(nf.w * 3.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail - 2 + nf.level1 / 2; size: nf.bw, nf.level1; corner: 6.5; blend: 14 }
-            box { at: nf.w * 4.5 / 12 + if(nf.music and nf.level2 > 1.2 and abs(nf.w * 4.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail - 2 + nf.level2 / 2; size: nf.bw, nf.level2; corner: 6.5; blend: 14 }
-            box { at: nf.w * 5.5 / 12 + if(nf.music and nf.level2 > 1.2 and abs(nf.w * 5.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail - 2 + nf.level2 / 2; size: nf.bw, nf.level2; corner: 6.5; blend: 14 }
-            box { at: nf.w * 6.5 / 12 + if(nf.music and nf.level3 > 1.2 and abs(nf.w * 6.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail - 2 + nf.level3 / 2; size: nf.bw, nf.level3; corner: 6.5; blend: 14 }
-            box { at: nf.w * 7.5 / 12 + if(nf.music and nf.level3 > 1.2 and abs(nf.w * 7.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail - 2 + nf.level3 / 2; size: nf.bw, nf.level3; corner: 6.5; blend: 14 }
-            box { at: nf.w * 8.5 / 12 + if(nf.music and nf.level4 > 1.2 and abs(nf.w * 8.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail - 2 + nf.level4 / 2; size: nf.bw, nf.level4; corner: 6.5; blend: 14 }
-            box { at: nf.w * 9.5 / 12 + if(nf.music and nf.level4 > 1.2 and abs(nf.w * 9.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail - 2 + nf.level4 / 2; size: nf.bw, nf.level4; corner: 6.5; blend: 14 }
-            box { at: nf.w * 10.5 / 12 + if(nf.music and nf.level5 > 1.2 and abs(nf.w * 10.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail - 2 + nf.level5 / 2; size: nf.bw, nf.level5; corner: 6.5; blend: 14 }
-            box { at: nf.w * 11.5 / 12 + if(nf.music and nf.level5 > 1.2 and abs(nf.w * 11.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail - 2 + nf.level5 / 2; size: nf.bw, nf.level5; corner: 6.5; blend: 14 }
-
-            //  Bottom edge - only when all_sides mode
-            box { at: nf.w * 0.5 / 12 + if(nf.all_sides and nf.level0 > 1.2, 0, 30000), nf.h - nf.rail + 2 - nf.level0 / 2; size: nf.bw, nf.level0; corner: 6.5; blend: 14 }
-            box { at: nf.w * 1.5 / 12 + if(nf.all_sides and nf.level0 > 1.2, 0, 30000), nf.h - nf.rail + 2 - nf.level0 / 2; size: nf.bw, nf.level0; corner: 6.5; blend: 14 }
-            box { at: nf.w * 2.5 / 12 + if(nf.all_sides and nf.level1 > 1.2, 0, 30000), nf.h - nf.rail + 2 - nf.level1 / 2; size: nf.bw, nf.level1; corner: 6.5; blend: 14 }
-            box { at: nf.w * 3.5 / 12 + if(nf.all_sides and nf.level1 > 1.2, 0, 30000), nf.h - nf.rail + 2 - nf.level1 / 2; size: nf.bw, nf.level1; corner: 6.5; blend: 14 }
-            box { at: nf.w * 4.5 / 12 + if(nf.all_sides and nf.level2 > 1.2, 0, 30000), nf.h - nf.rail + 2 - nf.level2 / 2; size: nf.bw, nf.level2; corner: 6.5; blend: 14 }
-            box { at: nf.w * 5.5 / 12 + if(nf.all_sides and nf.level2 > 1.2, 0, 30000), nf.h - nf.rail + 2 - nf.level2 / 2; size: nf.bw, nf.level2; corner: 6.5; blend: 14 }
-            box { at: nf.w * 6.5 / 12 + if(nf.all_sides and nf.level3 > 1.2, 0, 30000), nf.h - nf.rail + 2 - nf.level3 / 2; size: nf.bw, nf.level3; corner: 6.5; blend: 14 }
-            box { at: nf.w * 7.5 / 12 + if(nf.all_sides and nf.level3 > 1.2, 0, 30000), nf.h - nf.rail + 2 - nf.level3 / 2; size: nf.bw, nf.level3; corner: 6.5; blend: 14 }
-            box { at: nf.w * 8.5 / 12 + if(nf.all_sides and nf.level4 > 1.2, 0, 30000), nf.h - nf.rail + 2 - nf.level4 / 2; size: nf.bw, nf.level4; corner: 6.5; blend: 14 }
-            box { at: nf.w * 9.5 / 12 + if(nf.all_sides and nf.level4 > 1.2, 0, 30000), nf.h - nf.rail + 2 - nf.level4 / 2; size: nf.bw, nf.level4; corner: 6.5; blend: 14 }
-            box { at: nf.w * 10.5 / 12 + if(nf.all_sides and nf.level5 > 1.2, 0, 30000), nf.h - nf.rail + 2 - nf.level5 / 2; size: nf.bw, nf.level5; corner: 6.5; blend: 14 }
-            box { at: nf.w * 11.5 / 12 + if(nf.all_sides and nf.level5 > 1.2, 0, 30000), nf.h - nf.rail + 2 - nf.level5 / 2; size: nf.bw, nf.level5; corner: 6.5; blend: 14 }
-
-            //  Left edge - only when all_sides mode
-            box { at: nf.rail - 2 + nf.level0 / 2 + if(nf.all_sides and nf.level0 > 1.2, 0, 30000), nf.h * 0.5 / 12; size: nf.level0, nf.bw; corner: 6.5; blend: 14 }
-            box { at: nf.rail - 2 + nf.level0 / 2 + if(nf.all_sides and nf.level0 > 1.2, 0, 30000), nf.h * 1.5 / 12; size: nf.level0, nf.bw; corner: 6.5; blend: 14 }
-            box { at: nf.rail - 2 + nf.level1 / 2 + if(nf.all_sides and nf.level1 > 1.2, 0, 30000), nf.h * 2.5 / 12; size: nf.level1, nf.bw; corner: 6.5; blend: 14 }
-            box { at: nf.rail - 2 + nf.level1 / 2 + if(nf.all_sides and nf.level1 > 1.2, 0, 30000), nf.h * 3.5 / 12; size: nf.level1, nf.bw; corner: 6.5; blend: 14 }
-            box { at: nf.rail - 2 + nf.level2 / 2 + if(nf.all_sides and nf.level2 > 1.2, 0, 30000), nf.h * 4.5 / 12; size: nf.level2, nf.bw; corner: 6.5; blend: 14 }
-            box { at: nf.rail - 2 + nf.level2 / 2 + if(nf.all_sides and nf.level2 > 1.2, 0, 30000), nf.h * 5.5 / 12; size: nf.level2, nf.bw; corner: 6.5; blend: 14 }
-            box { at: nf.rail - 2 + nf.level3 / 2 + if(nf.all_sides and nf.level3 > 1.2, 0, 30000), nf.h * 6.5 / 12; size: nf.level3, nf.bw; corner: 6.5; blend: 14 }
-            box { at: nf.rail - 2 + nf.level3 / 2 + if(nf.all_sides and nf.level3 > 1.2, 0, 30000), nf.h * 7.5 / 12; size: nf.level3, nf.bw; corner: 6.5; blend: 14 }
-            box { at: nf.rail - 2 + nf.level4 / 2 + if(nf.all_sides and nf.level4 > 1.2, 0, 30000), nf.h * 8.5 / 12; size: nf.level4, nf.bw; corner: 6.5; blend: 14 }
-            box { at: nf.rail - 2 + nf.level4 / 2 + if(nf.all_sides and nf.level4 > 1.2, 0, 30000), nf.h * 9.5 / 12; size: nf.level4, nf.bw; corner: 6.5; blend: 14 }
-            box { at: nf.rail - 2 + nf.level5 / 2 + if(nf.all_sides and nf.level5 > 1.2, 0, 30000), nf.h * 10.5 / 12; size: nf.level5, nf.bw; corner: 6.5; blend: 14 }
-            box { at: nf.rail - 2 + nf.level5 / 2 + if(nf.all_sides and nf.level5 > 1.2, 0, 30000), nf.h * 11.5 / 12; size: nf.level5, nf.bw; corner: 6.5; blend: 14 }
-
-            //  Right edge - only when all_sides mode
-            box { at: nf.w - nf.rail + 2 - nf.level0 / 2 + if(nf.all_sides and nf.level0 > 1.2, 0, 30000), nf.h * 0.5 / 12; size: nf.level0, nf.bw; corner: 6.5; blend: 14 }
-            box { at: nf.w - nf.rail + 2 - nf.level0 / 2 + if(nf.all_sides and nf.level0 > 1.2, 0, 30000), nf.h * 1.5 / 12; size: nf.level0, nf.bw; corner: 6.5; blend: 14 }
-            box { at: nf.w - nf.rail + 2 - nf.level1 / 2 + if(nf.all_sides and nf.level1 > 1.2, 0, 30000), nf.h * 2.5 / 12; size: nf.level1, nf.bw; corner: 6.5; blend: 14 }
-            box { at: nf.w - nf.rail + 2 - nf.level1 / 2 + if(nf.all_sides and nf.level1 > 1.2, 0, 30000), nf.h * 3.5 / 12; size: nf.level1, nf.bw; corner: 6.5; blend: 14 }
-            box { at: nf.w - nf.rail + 2 - nf.level2 / 2 + if(nf.all_sides and nf.level2 > 1.2, 0, 30000), nf.h * 4.5 / 12; size: nf.level2, nf.bw; corner: 6.5; blend: 14 }
-            box { at: nf.w - nf.rail + 2 - nf.level2 / 2 + if(nf.all_sides and nf.level2 > 1.2, 0, 30000), nf.h * 5.5 / 12; size: nf.level2, nf.bw; corner: 6.5; blend: 14 }
-            box { at: nf.w - nf.rail + 2 - nf.level3 / 2 + if(nf.all_sides and nf.level3 > 1.2, 0, 30000), nf.h * 6.5 / 12; size: nf.level3, nf.bw; corner: 6.5; blend: 14 }
-            box { at: nf.w - nf.rail + 2 - nf.level3 / 2 + if(nf.all_sides and nf.level3 > 1.2, 0, 30000), nf.h * 7.5 / 12; size: nf.level3, nf.bw; corner: 6.5; blend: 14 }
-            box { at: nf.w - nf.rail + 2 - nf.level4 / 2 + if(nf.all_sides and nf.level4 > 1.2, 0, 30000), nf.h * 8.5 / 12; size: nf.level4, nf.bw; corner: 6.5; blend: 14 }
-            box { at: nf.w - nf.rail + 2 - nf.level4 / 2 + if(nf.all_sides and nf.level4 > 1.2, 0, 30000), nf.h * 9.5 / 12; size: nf.level4, nf.bw; corner: 6.5; blend: 14 }
-            box { at: nf.w - nf.rail + 2 - nf.level5 / 2 + if(nf.all_sides and nf.level5 > 1.2, 0, 30000), nf.h * 10.5 / 12; size: nf.level5, nf.bw; corner: 6.5; blend: 14 }
-            box { at: nf.w - nf.rail + 2 - nf.level5 / 2 + if(nf.all_sides and nf.level5 > 1.2, 0, 30000), nf.h * 11.5 / 12; size: nf.level5, nf.bw; corner: 6.5; blend: 14 }
+            box { at: nf.w * 0.5 / 6 + if(nf6.h.0 > 1 and abs(nf.w * 0.5 / 6 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf6.h.0 / 2; size: nf.bw, nf6.h.0; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 1.5 / 6 + if(nf6.h.1 > 1 and abs(nf.w * 1.5 / 6 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf6.h.1 / 2; size: nf.bw, nf6.h.1; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 2.5 / 6 + if(nf6.h.2 > 1 and abs(nf.w * 2.5 / 6 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf6.h.2 / 2; size: nf.bw, nf6.h.2; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 3.5 / 6 + if(nf6.h.3 > 1 and abs(nf.w * 3.5 / 6 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf6.h.3 / 2; size: nf.bw, nf6.h.3; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 4.5 / 6 + if(nf6.h.4 > 1 and abs(nf.w * 4.5 / 6 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf6.h.4 / 2; size: nf.bw, nf6.h.4; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 5.5 / 6 + if(nf6.h.5 > 1 and abs(nf.w * 5.5 / 6 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf6.h.5 / 2; size: nf.bw, nf6.h.5; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 0.5 / 6 + if(nf.all_sides and nf6.h.0 > 1, 0, 30000), nf.h - nf.rail - nf6.h.0 / 2; size: nf.bw, nf6.h.0; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 1.5 / 6 + if(nf.all_sides and nf6.h.1 > 1, 0, 30000), nf.h - nf.rail - nf6.h.1 / 2; size: nf.bw, nf6.h.1; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 2.5 / 6 + if(nf.all_sides and nf6.h.2 > 1, 0, 30000), nf.h - nf.rail - nf6.h.2 / 2; size: nf.bw, nf6.h.2; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 3.5 / 6 + if(nf.all_sides and nf6.h.3 > 1, 0, 30000), nf.h - nf.rail - nf6.h.3 / 2; size: nf.bw, nf6.h.3; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 4.5 / 6 + if(nf.all_sides and nf6.h.4 > 1, 0, 30000), nf.h - nf.rail - nf6.h.4 / 2; size: nf.bw, nf6.h.4; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 5.5 / 6 + if(nf.all_sides and nf6.h.5 > 1, 0, 30000), nf.h - nf.rail - nf6.h.5 / 2; size: nf.bw, nf6.h.5; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf6.h.0 / 2 + if(nf.all_sides and nf6.h.0 > 1, 0, 30000), nf.h * 0.5 / 6; size: nf6.h.0, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf6.h.1 / 2 + if(nf.all_sides and nf6.h.1 > 1, 0, 30000), nf.h * 1.5 / 6; size: nf6.h.1, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf6.h.2 / 2 + if(nf.all_sides and nf6.h.2 > 1, 0, 30000), nf.h * 2.5 / 6; size: nf6.h.2, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf6.h.3 / 2 + if(nf.all_sides and nf6.h.3 > 1, 0, 30000), nf.h * 3.5 / 6; size: nf6.h.3, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf6.h.4 / 2 + if(nf.all_sides and nf6.h.4 > 1, 0, 30000), nf.h * 4.5 / 6; size: nf6.h.4, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf6.h.5 / 2 + if(nf.all_sides and nf6.h.5 > 1, 0, 30000), nf.h * 5.5 / 6; size: nf6.h.5, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf6.h.0 / 2 + if(nf.all_sides and nf6.h.0 > 1, 0, 30000), nf.h * 0.5 / 6; size: nf6.h.0, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf6.h.1 / 2 + if(nf.all_sides and nf6.h.1 > 1, 0, 30000), nf.h * 1.5 / 6; size: nf6.h.1, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf6.h.2 / 2 + if(nf.all_sides and nf6.h.2 > 1, 0, 30000), nf.h * 2.5 / 6; size: nf6.h.2, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf6.h.3 / 2 + if(nf.all_sides and nf6.h.3 > 1, 0, 30000), nf.h * 3.5 / 6; size: nf6.h.3, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf6.h.4 / 2 + if(nf.all_sides and nf6.h.4 > 1, 0, 30000), nf.h * 4.5 / 6; size: nf6.h.4, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf6.h.5 / 2 + if(nf.all_sides and nf6.h.5 > 1, 0, 30000), nf.h * 5.5 / 6; size: nf6.h.5, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
         }
 
-        //  The clock text sits in the frame's notch; its body is the ring above.
+        body {
+            color: nf.smoke_bg
+            glass: if(glass_on, 100%, 0%)
+            opacity: 1% * glass_tint
+            lens: glass_on and glass_bend
+            frost: glass_frost / 100
+            refraction: glass_refr
+            dispersion: glass_disp
+            dome: glass_dome
+            milk: glass_milk
+            smoke: glass_smoke
+            vivid: glass_vivid
+            mirror: glass_mirror
+            highlight: glass_highlight
+            ripple: glass_ripple
+            border: 1.5 * glass_border / 100, ink
+            rim: 1% * glass_edge
+            shadow: 0, 2, 12, 24%, glass_shadow
+            show: music_frame_cols == 12
+
+            //  Ring
+            box { from: 0 - nf.over / 2, 0 - nf.over / 2; size: nf.w + nf.over, nf.h + nf.over; corner: nf.inner_r + (nf.rail + nf.over) / 2; stroke: nf.rail + nf.over }
+            //  Clock notch
+            box { from: nf.cx - nf.clock_w / 2, 0; size: nf.clock_w, nf.clock_h; corner: 20; blend: 34 }
+            box { from: nf.cx - nf.clock_w / 2 + 14, nf.clock_h - 2; size: nf.clock_w - 28, 1; corner: 0.5 }
+            //  Settings drawer — single box growing from clock-width to full 860px,
+            //  starting at y=0 so the entire top edge connects to the frame.
+            box { from: nf.cx - nf.cp_w / 2 + if(panel_open or nf.cp_p > 0.01, 0, 30000), 0; size: nf.cp_w, max(0.3, nf.cp_h); corner: mix(20, 26, nf.cp_p); blend: mix(34, 36, nf.cp_p) * nf.cp_p }
+            //  Centre drawer — same pattern, full width 1120px.
+            box { from: nf.cx - nf.ct_w / 2 + if(center_open or nf.ct_p > 0.01, 0, 30000), 0; size: nf.ct_w, max(0.3, nf.ct_h); corner: mix(20, 30, nf.ct_p); blend: mix(34, 36, nf.ct_p) * nf.ct_p }
+            box { from: nf.cx - mix(nf.clock_w, 620, nf.launch_p) / 2 + if(launch_open or nf.launch_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 620, nf.launch_p), max(0.3, nf.search_h * nf.launch_p); corner: mix(20, 24, nf.launch_p); blend: mix(34, 36, nf.launch_p) * nf.launch_p }
+            box { from: nf.cx - mix(nf.clock_w, 480, nf.ntc_p) / 2 + if(nt_center or nf.ntc_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 480, nf.ntc_p), max(0.3, nf.notify_h * nf.ntc_p); corner: mix(20, 26, nf.ntc_p); blend: mix(34, 36, nf.ntc_p) * nf.ntc_p }
+
+            box { at: nf.w * 0.5 / 12 + if(nf12.h.0 > 1 and abs(nf.w * 0.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf12.h.0 / 2; size: nf.bw, nf12.h.0; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 1.5 / 12 + if(nf12.h.1 > 1 and abs(nf.w * 1.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf12.h.1 / 2; size: nf.bw, nf12.h.1; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 2.5 / 12 + if(nf12.h.2 > 1 and abs(nf.w * 2.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf12.h.2 / 2; size: nf.bw, nf12.h.2; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 3.5 / 12 + if(nf12.h.3 > 1 and abs(nf.w * 3.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf12.h.3 / 2; size: nf.bw, nf12.h.3; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 4.5 / 12 + if(nf12.h.4 > 1 and abs(nf.w * 4.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf12.h.4 / 2; size: nf.bw, nf12.h.4; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 5.5 / 12 + if(nf12.h.5 > 1 and abs(nf.w * 5.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf12.h.5 / 2; size: nf.bw, nf12.h.5; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 6.5 / 12 + if(nf12.h.6 > 1 and abs(nf.w * 6.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf12.h.6 / 2; size: nf.bw, nf12.h.6; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 7.5 / 12 + if(nf12.h.7 > 1 and abs(nf.w * 7.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf12.h.7 / 2; size: nf.bw, nf12.h.7; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 8.5 / 12 + if(nf12.h.8 > 1 and abs(nf.w * 8.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf12.h.8 / 2; size: nf.bw, nf12.h.8; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 9.5 / 12 + if(nf12.h.9 > 1 and abs(nf.w * 9.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf12.h.9 / 2; size: nf.bw, nf12.h.9; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 10.5 / 12 + if(nf12.h.10 > 1 and abs(nf.w * 10.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf12.h.10 / 2; size: nf.bw, nf12.h.10; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 11.5 / 12 + if(nf12.h.11 > 1 and abs(nf.w * 11.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf12.h.11 / 2; size: nf.bw, nf12.h.11; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 0.5 / 12 + if(nf.all_sides and nf12.h.0 > 1, 0, 30000), nf.h - nf.rail - nf12.h.0 / 2; size: nf.bw, nf12.h.0; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 1.5 / 12 + if(nf.all_sides and nf12.h.1 > 1, 0, 30000), nf.h - nf.rail - nf12.h.1 / 2; size: nf.bw, nf12.h.1; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 2.5 / 12 + if(nf.all_sides and nf12.h.2 > 1, 0, 30000), nf.h - nf.rail - nf12.h.2 / 2; size: nf.bw, nf12.h.2; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 3.5 / 12 + if(nf.all_sides and nf12.h.3 > 1, 0, 30000), nf.h - nf.rail - nf12.h.3 / 2; size: nf.bw, nf12.h.3; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 4.5 / 12 + if(nf.all_sides and nf12.h.4 > 1, 0, 30000), nf.h - nf.rail - nf12.h.4 / 2; size: nf.bw, nf12.h.4; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 5.5 / 12 + if(nf.all_sides and nf12.h.5 > 1, 0, 30000), nf.h - nf.rail - nf12.h.5 / 2; size: nf.bw, nf12.h.5; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 6.5 / 12 + if(nf.all_sides and nf12.h.6 > 1, 0, 30000), nf.h - nf.rail - nf12.h.6 / 2; size: nf.bw, nf12.h.6; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 7.5 / 12 + if(nf.all_sides and nf12.h.7 > 1, 0, 30000), nf.h - nf.rail - nf12.h.7 / 2; size: nf.bw, nf12.h.7; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 8.5 / 12 + if(nf.all_sides and nf12.h.8 > 1, 0, 30000), nf.h - nf.rail - nf12.h.8 / 2; size: nf.bw, nf12.h.8; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 9.5 / 12 + if(nf.all_sides and nf12.h.9 > 1, 0, 30000), nf.h - nf.rail - nf12.h.9 / 2; size: nf.bw, nf12.h.9; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 10.5 / 12 + if(nf.all_sides and nf12.h.10 > 1, 0, 30000), nf.h - nf.rail - nf12.h.10 / 2; size: nf.bw, nf12.h.10; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 11.5 / 12 + if(nf.all_sides and nf12.h.11 > 1, 0, 30000), nf.h - nf.rail - nf12.h.11 / 2; size: nf.bw, nf12.h.11; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf12.h.0 / 2 + if(nf.all_sides and nf12.h.0 > 1, 0, 30000), nf.h * 0.5 / 12; size: nf12.h.0, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf12.h.1 / 2 + if(nf.all_sides and nf12.h.1 > 1, 0, 30000), nf.h * 1.5 / 12; size: nf12.h.1, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf12.h.2 / 2 + if(nf.all_sides and nf12.h.2 > 1, 0, 30000), nf.h * 2.5 / 12; size: nf12.h.2, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf12.h.3 / 2 + if(nf.all_sides and nf12.h.3 > 1, 0, 30000), nf.h * 3.5 / 12; size: nf12.h.3, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf12.h.4 / 2 + if(nf.all_sides and nf12.h.4 > 1, 0, 30000), nf.h * 4.5 / 12; size: nf12.h.4, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf12.h.5 / 2 + if(nf.all_sides and nf12.h.5 > 1, 0, 30000), nf.h * 5.5 / 12; size: nf12.h.5, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf12.h.6 / 2 + if(nf.all_sides and nf12.h.6 > 1, 0, 30000), nf.h * 6.5 / 12; size: nf12.h.6, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf12.h.7 / 2 + if(nf.all_sides and nf12.h.7 > 1, 0, 30000), nf.h * 7.5 / 12; size: nf12.h.7, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf12.h.8 / 2 + if(nf.all_sides and nf12.h.8 > 1, 0, 30000), nf.h * 8.5 / 12; size: nf12.h.8, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf12.h.9 / 2 + if(nf.all_sides and nf12.h.9 > 1, 0, 30000), nf.h * 9.5 / 12; size: nf12.h.9, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf12.h.10 / 2 + if(nf.all_sides and nf12.h.10 > 1, 0, 30000), nf.h * 10.5 / 12; size: nf12.h.10, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf12.h.11 / 2 + if(nf.all_sides and nf12.h.11 > 1, 0, 30000), nf.h * 11.5 / 12; size: nf12.h.11, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf12.h.0 / 2 + if(nf.all_sides and nf12.h.0 > 1, 0, 30000), nf.h * 0.5 / 12; size: nf12.h.0, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf12.h.1 / 2 + if(nf.all_sides and nf12.h.1 > 1, 0, 30000), nf.h * 1.5 / 12; size: nf12.h.1, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf12.h.2 / 2 + if(nf.all_sides and nf12.h.2 > 1, 0, 30000), nf.h * 2.5 / 12; size: nf12.h.2, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf12.h.3 / 2 + if(nf.all_sides and nf12.h.3 > 1, 0, 30000), nf.h * 3.5 / 12; size: nf12.h.3, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf12.h.4 / 2 + if(nf.all_sides and nf12.h.4 > 1, 0, 30000), nf.h * 4.5 / 12; size: nf12.h.4, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf12.h.5 / 2 + if(nf.all_sides and nf12.h.5 > 1, 0, 30000), nf.h * 5.5 / 12; size: nf12.h.5, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf12.h.6 / 2 + if(nf.all_sides and nf12.h.6 > 1, 0, 30000), nf.h * 6.5 / 12; size: nf12.h.6, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf12.h.7 / 2 + if(nf.all_sides and nf12.h.7 > 1, 0, 30000), nf.h * 7.5 / 12; size: nf12.h.7, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf12.h.8 / 2 + if(nf.all_sides and nf12.h.8 > 1, 0, 30000), nf.h * 8.5 / 12; size: nf12.h.8, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf12.h.9 / 2 + if(nf.all_sides and nf12.h.9 > 1, 0, 30000), nf.h * 9.5 / 12; size: nf12.h.9, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf12.h.10 / 2 + if(nf.all_sides and nf12.h.10 > 1, 0, 30000), nf.h * 10.5 / 12; size: nf12.h.10, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf12.h.11 / 2 + if(nf.all_sides and nf12.h.11 > 1, 0, 30000), nf.h * 11.5 / 12; size: nf12.h.11, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+        }
+
+        body {
+            color: nf.smoke_bg
+            glass: if(glass_on, 100%, 0%)
+            opacity: 1% * glass_tint
+            lens: glass_on and glass_bend
+            frost: glass_frost / 100
+            refraction: glass_refr
+            dispersion: glass_disp
+            dome: glass_dome
+            milk: glass_milk
+            smoke: glass_smoke
+            vivid: glass_vivid
+            mirror: glass_mirror
+            highlight: glass_highlight
+            ripple: glass_ripple
+            border: 1.5 * glass_border / 100, ink
+            rim: 1% * glass_edge
+            shadow: 0, 2, 12, 24%, glass_shadow
+            show: music_frame_cols == 24
+
+            //  Ring
+            box { from: 0 - nf.over / 2, 0 - nf.over / 2; size: nf.w + nf.over, nf.h + nf.over; corner: nf.inner_r + (nf.rail + nf.over) / 2; stroke: nf.rail + nf.over }
+            //  Clock notch
+            box { from: nf.cx - nf.clock_w / 2, 0; size: nf.clock_w, nf.clock_h; corner: 20; blend: 34 }
+            box { from: nf.cx - nf.clock_w / 2 + 14, nf.clock_h - 2; size: nf.clock_w - 28, 1; corner: 0.5 }
+            //  Settings drawer — single box growing from clock-width to full 860px,
+            //  starting at y=0 so the entire top edge connects to the frame.
+            box { from: nf.cx - nf.cp_w / 2 + if(panel_open or nf.cp_p > 0.01, 0, 30000), 0; size: nf.cp_w, max(0.3, nf.cp_h); corner: mix(20, 26, nf.cp_p); blend: mix(34, 36, nf.cp_p) * nf.cp_p }
+            //  Centre drawer — same pattern, full width 1120px.
+            box { from: nf.cx - nf.ct_w / 2 + if(center_open or nf.ct_p > 0.01, 0, 30000), 0; size: nf.ct_w, max(0.3, nf.ct_h); corner: mix(20, 30, nf.ct_p); blend: mix(34, 36, nf.ct_p) * nf.ct_p }
+            box { from: nf.cx - mix(nf.clock_w, 620, nf.launch_p) / 2 + if(launch_open or nf.launch_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 620, nf.launch_p), max(0.3, nf.search_h * nf.launch_p); corner: mix(20, 24, nf.launch_p); blend: mix(34, 36, nf.launch_p) * nf.launch_p }
+            box { from: nf.cx - mix(nf.clock_w, 480, nf.ntc_p) / 2 + if(nt_center or nf.ntc_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 480, nf.ntc_p), max(0.3, nf.notify_h * nf.ntc_p); corner: mix(20, 26, nf.ntc_p); blend: mix(34, 36, nf.ntc_p) * nf.ntc_p }
+
+            box { at: nf.w * 0.5 / 24 + if(nf24.h.0 > 1 and abs(nf.w * 0.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.0 / 2; size: nf.bw, nf24.h.0; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 1.5 / 24 + if(nf24.h.1 > 1 and abs(nf.w * 1.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.1 / 2; size: nf.bw, nf24.h.1; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 2.5 / 24 + if(nf24.h.2 > 1 and abs(nf.w * 2.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.2 / 2; size: nf.bw, nf24.h.2; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 3.5 / 24 + if(nf24.h.3 > 1 and abs(nf.w * 3.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.3 / 2; size: nf.bw, nf24.h.3; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 4.5 / 24 + if(nf24.h.4 > 1 and abs(nf.w * 4.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.4 / 2; size: nf.bw, nf24.h.4; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 5.5 / 24 + if(nf24.h.5 > 1 and abs(nf.w * 5.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.5 / 2; size: nf.bw, nf24.h.5; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 6.5 / 24 + if(nf24.h.6 > 1 and abs(nf.w * 6.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.6 / 2; size: nf.bw, nf24.h.6; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 7.5 / 24 + if(nf24.h.7 > 1 and abs(nf.w * 7.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.7 / 2; size: nf.bw, nf24.h.7; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 8.5 / 24 + if(nf24.h.8 > 1 and abs(nf.w * 8.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.8 / 2; size: nf.bw, nf24.h.8; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 9.5 / 24 + if(nf24.h.9 > 1 and abs(nf.w * 9.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.9 / 2; size: nf.bw, nf24.h.9; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 10.5 / 24 + if(nf24.h.10 > 1 and abs(nf.w * 10.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.10 / 2; size: nf.bw, nf24.h.10; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 11.5 / 24 + if(nf24.h.11 > 1 and abs(nf.w * 11.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.11 / 2; size: nf.bw, nf24.h.11; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 12.5 / 24 + if(nf24.h.12 > 1 and abs(nf.w * 12.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.12 / 2; size: nf.bw, nf24.h.12; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 13.5 / 24 + if(nf24.h.13 > 1 and abs(nf.w * 13.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.13 / 2; size: nf.bw, nf24.h.13; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 14.5 / 24 + if(nf24.h.14 > 1 and abs(nf.w * 14.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.14 / 2; size: nf.bw, nf24.h.14; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 15.5 / 24 + if(nf24.h.15 > 1 and abs(nf.w * 15.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.15 / 2; size: nf.bw, nf24.h.15; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 16.5 / 24 + if(nf24.h.16 > 1 and abs(nf.w * 16.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.16 / 2; size: nf.bw, nf24.h.16; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 17.5 / 24 + if(nf24.h.17 > 1 and abs(nf.w * 17.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.17 / 2; size: nf.bw, nf24.h.17; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 18.5 / 24 + if(nf24.h.18 > 1 and abs(nf.w * 18.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.18 / 2; size: nf.bw, nf24.h.18; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 19.5 / 24 + if(nf24.h.19 > 1 and abs(nf.w * 19.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.19 / 2; size: nf.bw, nf24.h.19; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 20.5 / 24 + if(nf24.h.20 > 1 and abs(nf.w * 20.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.20 / 2; size: nf.bw, nf24.h.20; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 21.5 / 24 + if(nf24.h.21 > 1 and abs(nf.w * 21.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.21 / 2; size: nf.bw, nf24.h.21; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 22.5 / 24 + if(nf24.h.22 > 1 and abs(nf.w * 22.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.22 / 2; size: nf.bw, nf24.h.22; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 23.5 / 24 + if(nf24.h.23 > 1 and abs(nf.w * 23.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.23 / 2; size: nf.bw, nf24.h.23; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 0.5 / 24 + if(nf.all_sides and nf24.h.0 > 1, 0, 30000), nf.h - nf.rail - nf24.h.0 / 2; size: nf.bw, nf24.h.0; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 1.5 / 24 + if(nf.all_sides and nf24.h.1 > 1, 0, 30000), nf.h - nf.rail - nf24.h.1 / 2; size: nf.bw, nf24.h.1; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 2.5 / 24 + if(nf.all_sides and nf24.h.2 > 1, 0, 30000), nf.h - nf.rail - nf24.h.2 / 2; size: nf.bw, nf24.h.2; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 3.5 / 24 + if(nf.all_sides and nf24.h.3 > 1, 0, 30000), nf.h - nf.rail - nf24.h.3 / 2; size: nf.bw, nf24.h.3; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 4.5 / 24 + if(nf.all_sides and nf24.h.4 > 1, 0, 30000), nf.h - nf.rail - nf24.h.4 / 2; size: nf.bw, nf24.h.4; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 5.5 / 24 + if(nf.all_sides and nf24.h.5 > 1, 0, 30000), nf.h - nf.rail - nf24.h.5 / 2; size: nf.bw, nf24.h.5; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 6.5 / 24 + if(nf.all_sides and nf24.h.6 > 1, 0, 30000), nf.h - nf.rail - nf24.h.6 / 2; size: nf.bw, nf24.h.6; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 7.5 / 24 + if(nf.all_sides and nf24.h.7 > 1, 0, 30000), nf.h - nf.rail - nf24.h.7 / 2; size: nf.bw, nf24.h.7; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 8.5 / 24 + if(nf.all_sides and nf24.h.8 > 1, 0, 30000), nf.h - nf.rail - nf24.h.8 / 2; size: nf.bw, nf24.h.8; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 9.5 / 24 + if(nf.all_sides and nf24.h.9 > 1, 0, 30000), nf.h - nf.rail - nf24.h.9 / 2; size: nf.bw, nf24.h.9; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 10.5 / 24 + if(nf.all_sides and nf24.h.10 > 1, 0, 30000), nf.h - nf.rail - nf24.h.10 / 2; size: nf.bw, nf24.h.10; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 11.5 / 24 + if(nf.all_sides and nf24.h.11 > 1, 0, 30000), nf.h - nf.rail - nf24.h.11 / 2; size: nf.bw, nf24.h.11; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 12.5 / 24 + if(nf.all_sides and nf24.h.12 > 1, 0, 30000), nf.h - nf.rail - nf24.h.12 / 2; size: nf.bw, nf24.h.12; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 13.5 / 24 + if(nf.all_sides and nf24.h.13 > 1, 0, 30000), nf.h - nf.rail - nf24.h.13 / 2; size: nf.bw, nf24.h.13; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 14.5 / 24 + if(nf.all_sides and nf24.h.14 > 1, 0, 30000), nf.h - nf.rail - nf24.h.14 / 2; size: nf.bw, nf24.h.14; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 15.5 / 24 + if(nf.all_sides and nf24.h.15 > 1, 0, 30000), nf.h - nf.rail - nf24.h.15 / 2; size: nf.bw, nf24.h.15; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 16.5 / 24 + if(nf.all_sides and nf24.h.16 > 1, 0, 30000), nf.h - nf.rail - nf24.h.16 / 2; size: nf.bw, nf24.h.16; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 17.5 / 24 + if(nf.all_sides and nf24.h.17 > 1, 0, 30000), nf.h - nf.rail - nf24.h.17 / 2; size: nf.bw, nf24.h.17; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 18.5 / 24 + if(nf.all_sides and nf24.h.18 > 1, 0, 30000), nf.h - nf.rail - nf24.h.18 / 2; size: nf.bw, nf24.h.18; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 19.5 / 24 + if(nf.all_sides and nf24.h.19 > 1, 0, 30000), nf.h - nf.rail - nf24.h.19 / 2; size: nf.bw, nf24.h.19; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 20.5 / 24 + if(nf.all_sides and nf24.h.20 > 1, 0, 30000), nf.h - nf.rail - nf24.h.20 / 2; size: nf.bw, nf24.h.20; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 21.5 / 24 + if(nf.all_sides and nf24.h.21 > 1, 0, 30000), nf.h - nf.rail - nf24.h.21 / 2; size: nf.bw, nf24.h.21; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 22.5 / 24 + if(nf.all_sides and nf24.h.22 > 1, 0, 30000), nf.h - nf.rail - nf24.h.22 / 2; size: nf.bw, nf24.h.22; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 23.5 / 24 + if(nf.all_sides and nf24.h.23 > 1, 0, 30000), nf.h - nf.rail - nf24.h.23 / 2; size: nf.bw, nf24.h.23; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.0 / 2 + if(nf.all_sides and nf24.h.0 > 1, 0, 30000), nf.h * 0.5 / 24; size: nf24.h.0, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.1 / 2 + if(nf.all_sides and nf24.h.1 > 1, 0, 30000), nf.h * 1.5 / 24; size: nf24.h.1, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.2 / 2 + if(nf.all_sides and nf24.h.2 > 1, 0, 30000), nf.h * 2.5 / 24; size: nf24.h.2, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.3 / 2 + if(nf.all_sides and nf24.h.3 > 1, 0, 30000), nf.h * 3.5 / 24; size: nf24.h.3, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.4 / 2 + if(nf.all_sides and nf24.h.4 > 1, 0, 30000), nf.h * 4.5 / 24; size: nf24.h.4, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.5 / 2 + if(nf.all_sides and nf24.h.5 > 1, 0, 30000), nf.h * 5.5 / 24; size: nf24.h.5, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.6 / 2 + if(nf.all_sides and nf24.h.6 > 1, 0, 30000), nf.h * 6.5 / 24; size: nf24.h.6, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.7 / 2 + if(nf.all_sides and nf24.h.7 > 1, 0, 30000), nf.h * 7.5 / 24; size: nf24.h.7, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.8 / 2 + if(nf.all_sides and nf24.h.8 > 1, 0, 30000), nf.h * 8.5 / 24; size: nf24.h.8, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.9 / 2 + if(nf.all_sides and nf24.h.9 > 1, 0, 30000), nf.h * 9.5 / 24; size: nf24.h.9, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.10 / 2 + if(nf.all_sides and nf24.h.10 > 1, 0, 30000), nf.h * 10.5 / 24; size: nf24.h.10, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.11 / 2 + if(nf.all_sides and nf24.h.11 > 1, 0, 30000), nf.h * 11.5 / 24; size: nf24.h.11, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.12 / 2 + if(nf.all_sides and nf24.h.12 > 1, 0, 30000), nf.h * 12.5 / 24; size: nf24.h.12, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.13 / 2 + if(nf.all_sides and nf24.h.13 > 1, 0, 30000), nf.h * 13.5 / 24; size: nf24.h.13, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.14 / 2 + if(nf.all_sides and nf24.h.14 > 1, 0, 30000), nf.h * 14.5 / 24; size: nf24.h.14, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.15 / 2 + if(nf.all_sides and nf24.h.15 > 1, 0, 30000), nf.h * 15.5 / 24; size: nf24.h.15, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.16 / 2 + if(nf.all_sides and nf24.h.16 > 1, 0, 30000), nf.h * 16.5 / 24; size: nf24.h.16, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.17 / 2 + if(nf.all_sides and nf24.h.17 > 1, 0, 30000), nf.h * 17.5 / 24; size: nf24.h.17, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.18 / 2 + if(nf.all_sides and nf24.h.18 > 1, 0, 30000), nf.h * 18.5 / 24; size: nf24.h.18, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.19 / 2 + if(nf.all_sides and nf24.h.19 > 1, 0, 30000), nf.h * 19.5 / 24; size: nf24.h.19, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.20 / 2 + if(nf.all_sides and nf24.h.20 > 1, 0, 30000), nf.h * 20.5 / 24; size: nf24.h.20, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.21 / 2 + if(nf.all_sides and nf24.h.21 > 1, 0, 30000), nf.h * 21.5 / 24; size: nf24.h.21, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.22 / 2 + if(nf.all_sides and nf24.h.22 > 1, 0, 30000), nf.h * 22.5 / 24; size: nf24.h.22, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf24.h.23 / 2 + if(nf.all_sides and nf24.h.23 > 1, 0, 30000), nf.h * 23.5 / 24; size: nf24.h.23, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.0 / 2 + if(nf.all_sides and nf24.h.0 > 1, 0, 30000), nf.h * 0.5 / 24; size: nf24.h.0, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.1 / 2 + if(nf.all_sides and nf24.h.1 > 1, 0, 30000), nf.h * 1.5 / 24; size: nf24.h.1, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.2 / 2 + if(nf.all_sides and nf24.h.2 > 1, 0, 30000), nf.h * 2.5 / 24; size: nf24.h.2, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.3 / 2 + if(nf.all_sides and nf24.h.3 > 1, 0, 30000), nf.h * 3.5 / 24; size: nf24.h.3, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.4 / 2 + if(nf.all_sides and nf24.h.4 > 1, 0, 30000), nf.h * 4.5 / 24; size: nf24.h.4, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.5 / 2 + if(nf.all_sides and nf24.h.5 > 1, 0, 30000), nf.h * 5.5 / 24; size: nf24.h.5, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.6 / 2 + if(nf.all_sides and nf24.h.6 > 1, 0, 30000), nf.h * 6.5 / 24; size: nf24.h.6, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.7 / 2 + if(nf.all_sides and nf24.h.7 > 1, 0, 30000), nf.h * 7.5 / 24; size: nf24.h.7, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.8 / 2 + if(nf.all_sides and nf24.h.8 > 1, 0, 30000), nf.h * 8.5 / 24; size: nf24.h.8, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.9 / 2 + if(nf.all_sides and nf24.h.9 > 1, 0, 30000), nf.h * 9.5 / 24; size: nf24.h.9, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.10 / 2 + if(nf.all_sides and nf24.h.10 > 1, 0, 30000), nf.h * 10.5 / 24; size: nf24.h.10, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.11 / 2 + if(nf.all_sides and nf24.h.11 > 1, 0, 30000), nf.h * 11.5 / 24; size: nf24.h.11, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.12 / 2 + if(nf.all_sides and nf24.h.12 > 1, 0, 30000), nf.h * 12.5 / 24; size: nf24.h.12, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.13 / 2 + if(nf.all_sides and nf24.h.13 > 1, 0, 30000), nf.h * 13.5 / 24; size: nf24.h.13, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.14 / 2 + if(nf.all_sides and nf24.h.14 > 1, 0, 30000), nf.h * 14.5 / 24; size: nf24.h.14, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.15 / 2 + if(nf.all_sides and nf24.h.15 > 1, 0, 30000), nf.h * 15.5 / 24; size: nf24.h.15, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.16 / 2 + if(nf.all_sides and nf24.h.16 > 1, 0, 30000), nf.h * 16.5 / 24; size: nf24.h.16, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.17 / 2 + if(nf.all_sides and nf24.h.17 > 1, 0, 30000), nf.h * 17.5 / 24; size: nf24.h.17, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.18 / 2 + if(nf.all_sides and nf24.h.18 > 1, 0, 30000), nf.h * 18.5 / 24; size: nf24.h.18, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.19 / 2 + if(nf.all_sides and nf24.h.19 > 1, 0, 30000), nf.h * 19.5 / 24; size: nf24.h.19, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.20 / 2 + if(nf.all_sides and nf24.h.20 > 1, 0, 30000), nf.h * 20.5 / 24; size: nf24.h.20, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.21 / 2 + if(nf.all_sides and nf24.h.21 > 1, 0, 30000), nf.h * 21.5 / 24; size: nf24.h.21, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.22 / 2 + if(nf.all_sides and nf24.h.22 > 1, 0, 30000), nf.h * 22.5 / 24; size: nf24.h.22, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf24.h.23 / 2 + if(nf.all_sides and nf24.h.23 > 1, 0, 30000), nf.h * 23.5 / 24; size: nf24.h.23, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+        }
+
+        body {
+            color: nf.smoke_bg
+            glass: if(glass_on, 100%, 0%)
+            opacity: 1% * glass_tint
+            lens: glass_on and glass_bend
+            frost: glass_frost / 100
+            refraction: glass_refr
+            dispersion: glass_disp
+            dome: glass_dome
+            milk: glass_milk
+            smoke: glass_smoke
+            vivid: glass_vivid
+            mirror: glass_mirror
+            highlight: glass_highlight
+            ripple: glass_ripple
+            border: 1.5 * glass_border / 100, ink
+            rim: 1% * glass_edge
+            shadow: 0, 2, 12, 24%, glass_shadow
+            show: music_frame_cols == 48
+
+            //  Ring
+            box { from: 0 - nf.over / 2, 0 - nf.over / 2; size: nf.w + nf.over, nf.h + nf.over; corner: nf.inner_r + (nf.rail + nf.over) / 2; stroke: nf.rail + nf.over }
+            //  Clock notch
+            box { from: nf.cx - nf.clock_w / 2, 0; size: nf.clock_w, nf.clock_h; corner: 20; blend: 34 }
+            box { from: nf.cx - nf.clock_w / 2 + 14, nf.clock_h - 2; size: nf.clock_w - 28, 1; corner: 0.5 }
+            //  Settings drawer — single box growing from clock-width to full 860px,
+            //  starting at y=0 so the entire top edge connects to the frame.
+            box { from: nf.cx - nf.cp_w / 2 + if(panel_open or nf.cp_p > 0.01, 0, 30000), 0; size: nf.cp_w, max(0.3, nf.cp_h); corner: mix(20, 26, nf.cp_p); blend: mix(34, 36, nf.cp_p) * nf.cp_p }
+            //  Centre drawer — same pattern, full width 1120px.
+            box { from: nf.cx - nf.ct_w / 2 + if(center_open or nf.ct_p > 0.01, 0, 30000), 0; size: nf.ct_w, max(0.3, nf.ct_h); corner: mix(20, 30, nf.ct_p); blend: mix(34, 36, nf.ct_p) * nf.ct_p }
+            box { from: nf.cx - mix(nf.clock_w, 620, nf.launch_p) / 2 + if(launch_open or nf.launch_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 620, nf.launch_p), max(0.3, nf.search_h * nf.launch_p); corner: mix(20, 24, nf.launch_p); blend: mix(34, 36, nf.launch_p) * nf.launch_p }
+            box { from: nf.cx - mix(nf.clock_w, 480, nf.ntc_p) / 2 + if(nt_center or nf.ntc_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 480, nf.ntc_p), max(0.3, nf.notify_h * nf.ntc_p); corner: mix(20, 26, nf.ntc_p); blend: mix(34, 36, nf.ntc_p) * nf.ntc_p }
+
+            box { at: nf.w * 0.5 / 48 + if(nf48.h.0 > 1 and abs(nf.w * 0.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.0 / 2; size: nf.bw, nf48.h.0; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 1.5 / 48 + if(nf48.h.1 > 1 and abs(nf.w * 1.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.1 / 2; size: nf.bw, nf48.h.1; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 2.5 / 48 + if(nf48.h.2 > 1 and abs(nf.w * 2.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.2 / 2; size: nf.bw, nf48.h.2; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 3.5 / 48 + if(nf48.h.3 > 1 and abs(nf.w * 3.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.3 / 2; size: nf.bw, nf48.h.3; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 4.5 / 48 + if(nf48.h.4 > 1 and abs(nf.w * 4.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.4 / 2; size: nf.bw, nf48.h.4; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 5.5 / 48 + if(nf48.h.5 > 1 and abs(nf.w * 5.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.5 / 2; size: nf.bw, nf48.h.5; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 6.5 / 48 + if(nf48.h.6 > 1 and abs(nf.w * 6.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.6 / 2; size: nf.bw, nf48.h.6; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 7.5 / 48 + if(nf48.h.7 > 1 and abs(nf.w * 7.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.7 / 2; size: nf.bw, nf48.h.7; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 8.5 / 48 + if(nf48.h.8 > 1 and abs(nf.w * 8.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.8 / 2; size: nf.bw, nf48.h.8; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 9.5 / 48 + if(nf48.h.9 > 1 and abs(nf.w * 9.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.9 / 2; size: nf.bw, nf48.h.9; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 10.5 / 48 + if(nf48.h.10 > 1 and abs(nf.w * 10.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.10 / 2; size: nf.bw, nf48.h.10; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 11.5 / 48 + if(nf48.h.11 > 1 and abs(nf.w * 11.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.11 / 2; size: nf.bw, nf48.h.11; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 12.5 / 48 + if(nf48.h.12 > 1 and abs(nf.w * 12.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.12 / 2; size: nf.bw, nf48.h.12; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 13.5 / 48 + if(nf48.h.13 > 1 and abs(nf.w * 13.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.13 / 2; size: nf.bw, nf48.h.13; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 14.5 / 48 + if(nf48.h.14 > 1 and abs(nf.w * 14.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.14 / 2; size: nf.bw, nf48.h.14; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 15.5 / 48 + if(nf48.h.15 > 1 and abs(nf.w * 15.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.15 / 2; size: nf.bw, nf48.h.15; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 16.5 / 48 + if(nf48.h.16 > 1 and abs(nf.w * 16.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.16 / 2; size: nf.bw, nf48.h.16; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 17.5 / 48 + if(nf48.h.17 > 1 and abs(nf.w * 17.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.17 / 2; size: nf.bw, nf48.h.17; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 18.5 / 48 + if(nf48.h.18 > 1 and abs(nf.w * 18.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.18 / 2; size: nf.bw, nf48.h.18; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 19.5 / 48 + if(nf48.h.19 > 1 and abs(nf.w * 19.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.19 / 2; size: nf.bw, nf48.h.19; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 20.5 / 48 + if(nf48.h.20 > 1 and abs(nf.w * 20.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.20 / 2; size: nf.bw, nf48.h.20; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 21.5 / 48 + if(nf48.h.21 > 1 and abs(nf.w * 21.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.21 / 2; size: nf.bw, nf48.h.21; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 22.5 / 48 + if(nf48.h.22 > 1 and abs(nf.w * 22.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.22 / 2; size: nf.bw, nf48.h.22; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 23.5 / 48 + if(nf48.h.23 > 1 and abs(nf.w * 23.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.23 / 2; size: nf.bw, nf48.h.23; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 24.5 / 48 + if(nf48.h.24 > 1 and abs(nf.w * 24.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.24 / 2; size: nf.bw, nf48.h.24; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 25.5 / 48 + if(nf48.h.25 > 1 and abs(nf.w * 25.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.25 / 2; size: nf.bw, nf48.h.25; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 26.5 / 48 + if(nf48.h.26 > 1 and abs(nf.w * 26.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.26 / 2; size: nf.bw, nf48.h.26; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 27.5 / 48 + if(nf48.h.27 > 1 and abs(nf.w * 27.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.27 / 2; size: nf.bw, nf48.h.27; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 28.5 / 48 + if(nf48.h.28 > 1 and abs(nf.w * 28.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.28 / 2; size: nf.bw, nf48.h.28; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 29.5 / 48 + if(nf48.h.29 > 1 and abs(nf.w * 29.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.29 / 2; size: nf.bw, nf48.h.29; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 30.5 / 48 + if(nf48.h.30 > 1 and abs(nf.w * 30.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.30 / 2; size: nf.bw, nf48.h.30; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 31.5 / 48 + if(nf48.h.31 > 1 and abs(nf.w * 31.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.31 / 2; size: nf.bw, nf48.h.31; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 32.5 / 48 + if(nf48.h.32 > 1 and abs(nf.w * 32.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.32 / 2; size: nf.bw, nf48.h.32; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 33.5 / 48 + if(nf48.h.33 > 1 and abs(nf.w * 33.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.33 / 2; size: nf.bw, nf48.h.33; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 34.5 / 48 + if(nf48.h.34 > 1 and abs(nf.w * 34.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.34 / 2; size: nf.bw, nf48.h.34; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 35.5 / 48 + if(nf48.h.35 > 1 and abs(nf.w * 35.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.35 / 2; size: nf.bw, nf48.h.35; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 36.5 / 48 + if(nf48.h.36 > 1 and abs(nf.w * 36.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.36 / 2; size: nf.bw, nf48.h.36; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 37.5 / 48 + if(nf48.h.37 > 1 and abs(nf.w * 37.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.37 / 2; size: nf.bw, nf48.h.37; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 38.5 / 48 + if(nf48.h.38 > 1 and abs(nf.w * 38.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.38 / 2; size: nf.bw, nf48.h.38; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 39.5 / 48 + if(nf48.h.39 > 1 and abs(nf.w * 39.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.39 / 2; size: nf.bw, nf48.h.39; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 40.5 / 48 + if(nf48.h.40 > 1 and abs(nf.w * 40.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.40 / 2; size: nf.bw, nf48.h.40; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 41.5 / 48 + if(nf48.h.41 > 1 and abs(nf.w * 41.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.41 / 2; size: nf.bw, nf48.h.41; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 42.5 / 48 + if(nf48.h.42 > 1 and abs(nf.w * 42.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.42 / 2; size: nf.bw, nf48.h.42; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 43.5 / 48 + if(nf48.h.43 > 1 and abs(nf.w * 43.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.43 / 2; size: nf.bw, nf48.h.43; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 44.5 / 48 + if(nf48.h.44 > 1 and abs(nf.w * 44.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.44 / 2; size: nf.bw, nf48.h.44; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 45.5 / 48 + if(nf48.h.45 > 1 and abs(nf.w * 45.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.45 / 2; size: nf.bw, nf48.h.45; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 46.5 / 48 + if(nf48.h.46 > 1 and abs(nf.w * 46.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.46 / 2; size: nf.bw, nf48.h.46; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 47.5 / 48 + if(nf48.h.47 > 1 and abs(nf.w * 47.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.47 / 2; size: nf.bw, nf48.h.47; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 0.5 / 48 + if(nf.all_sides and nf48.h.0 > 1, 0, 30000), nf.h - nf.rail - nf48.h.0 / 2; size: nf.bw, nf48.h.0; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 1.5 / 48 + if(nf.all_sides and nf48.h.1 > 1, 0, 30000), nf.h - nf.rail - nf48.h.1 / 2; size: nf.bw, nf48.h.1; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 2.5 / 48 + if(nf.all_sides and nf48.h.2 > 1, 0, 30000), nf.h - nf.rail - nf48.h.2 / 2; size: nf.bw, nf48.h.2; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 3.5 / 48 + if(nf.all_sides and nf48.h.3 > 1, 0, 30000), nf.h - nf.rail - nf48.h.3 / 2; size: nf.bw, nf48.h.3; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 4.5 / 48 + if(nf.all_sides and nf48.h.4 > 1, 0, 30000), nf.h - nf.rail - nf48.h.4 / 2; size: nf.bw, nf48.h.4; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 5.5 / 48 + if(nf.all_sides and nf48.h.5 > 1, 0, 30000), nf.h - nf.rail - nf48.h.5 / 2; size: nf.bw, nf48.h.5; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 6.5 / 48 + if(nf.all_sides and nf48.h.6 > 1, 0, 30000), nf.h - nf.rail - nf48.h.6 / 2; size: nf.bw, nf48.h.6; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 7.5 / 48 + if(nf.all_sides and nf48.h.7 > 1, 0, 30000), nf.h - nf.rail - nf48.h.7 / 2; size: nf.bw, nf48.h.7; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 8.5 / 48 + if(nf.all_sides and nf48.h.8 > 1, 0, 30000), nf.h - nf.rail - nf48.h.8 / 2; size: nf.bw, nf48.h.8; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 9.5 / 48 + if(nf.all_sides and nf48.h.9 > 1, 0, 30000), nf.h - nf.rail - nf48.h.9 / 2; size: nf.bw, nf48.h.9; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 10.5 / 48 + if(nf.all_sides and nf48.h.10 > 1, 0, 30000), nf.h - nf.rail - nf48.h.10 / 2; size: nf.bw, nf48.h.10; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 11.5 / 48 + if(nf.all_sides and nf48.h.11 > 1, 0, 30000), nf.h - nf.rail - nf48.h.11 / 2; size: nf.bw, nf48.h.11; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 12.5 / 48 + if(nf.all_sides and nf48.h.12 > 1, 0, 30000), nf.h - nf.rail - nf48.h.12 / 2; size: nf.bw, nf48.h.12; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 13.5 / 48 + if(nf.all_sides and nf48.h.13 > 1, 0, 30000), nf.h - nf.rail - nf48.h.13 / 2; size: nf.bw, nf48.h.13; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 14.5 / 48 + if(nf.all_sides and nf48.h.14 > 1, 0, 30000), nf.h - nf.rail - nf48.h.14 / 2; size: nf.bw, nf48.h.14; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 15.5 / 48 + if(nf.all_sides and nf48.h.15 > 1, 0, 30000), nf.h - nf.rail - nf48.h.15 / 2; size: nf.bw, nf48.h.15; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 16.5 / 48 + if(nf.all_sides and nf48.h.16 > 1, 0, 30000), nf.h - nf.rail - nf48.h.16 / 2; size: nf.bw, nf48.h.16; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 17.5 / 48 + if(nf.all_sides and nf48.h.17 > 1, 0, 30000), nf.h - nf.rail - nf48.h.17 / 2; size: nf.bw, nf48.h.17; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 18.5 / 48 + if(nf.all_sides and nf48.h.18 > 1, 0, 30000), nf.h - nf.rail - nf48.h.18 / 2; size: nf.bw, nf48.h.18; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 19.5 / 48 + if(nf.all_sides and nf48.h.19 > 1, 0, 30000), nf.h - nf.rail - nf48.h.19 / 2; size: nf.bw, nf48.h.19; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 20.5 / 48 + if(nf.all_sides and nf48.h.20 > 1, 0, 30000), nf.h - nf.rail - nf48.h.20 / 2; size: nf.bw, nf48.h.20; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 21.5 / 48 + if(nf.all_sides and nf48.h.21 > 1, 0, 30000), nf.h - nf.rail - nf48.h.21 / 2; size: nf.bw, nf48.h.21; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 22.5 / 48 + if(nf.all_sides and nf48.h.22 > 1, 0, 30000), nf.h - nf.rail - nf48.h.22 / 2; size: nf.bw, nf48.h.22; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 23.5 / 48 + if(nf.all_sides and nf48.h.23 > 1, 0, 30000), nf.h - nf.rail - nf48.h.23 / 2; size: nf.bw, nf48.h.23; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 24.5 / 48 + if(nf.all_sides and nf48.h.24 > 1, 0, 30000), nf.h - nf.rail - nf48.h.24 / 2; size: nf.bw, nf48.h.24; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 25.5 / 48 + if(nf.all_sides and nf48.h.25 > 1, 0, 30000), nf.h - nf.rail - nf48.h.25 / 2; size: nf.bw, nf48.h.25; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 26.5 / 48 + if(nf.all_sides and nf48.h.26 > 1, 0, 30000), nf.h - nf.rail - nf48.h.26 / 2; size: nf.bw, nf48.h.26; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 27.5 / 48 + if(nf.all_sides and nf48.h.27 > 1, 0, 30000), nf.h - nf.rail - nf48.h.27 / 2; size: nf.bw, nf48.h.27; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 28.5 / 48 + if(nf.all_sides and nf48.h.28 > 1, 0, 30000), nf.h - nf.rail - nf48.h.28 / 2; size: nf.bw, nf48.h.28; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 29.5 / 48 + if(nf.all_sides and nf48.h.29 > 1, 0, 30000), nf.h - nf.rail - nf48.h.29 / 2; size: nf.bw, nf48.h.29; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 30.5 / 48 + if(nf.all_sides and nf48.h.30 > 1, 0, 30000), nf.h - nf.rail - nf48.h.30 / 2; size: nf.bw, nf48.h.30; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 31.5 / 48 + if(nf.all_sides and nf48.h.31 > 1, 0, 30000), nf.h - nf.rail - nf48.h.31 / 2; size: nf.bw, nf48.h.31; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 32.5 / 48 + if(nf.all_sides and nf48.h.32 > 1, 0, 30000), nf.h - nf.rail - nf48.h.32 / 2; size: nf.bw, nf48.h.32; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 33.5 / 48 + if(nf.all_sides and nf48.h.33 > 1, 0, 30000), nf.h - nf.rail - nf48.h.33 / 2; size: nf.bw, nf48.h.33; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 34.5 / 48 + if(nf.all_sides and nf48.h.34 > 1, 0, 30000), nf.h - nf.rail - nf48.h.34 / 2; size: nf.bw, nf48.h.34; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 35.5 / 48 + if(nf.all_sides and nf48.h.35 > 1, 0, 30000), nf.h - nf.rail - nf48.h.35 / 2; size: nf.bw, nf48.h.35; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 36.5 / 48 + if(nf.all_sides and nf48.h.36 > 1, 0, 30000), nf.h - nf.rail - nf48.h.36 / 2; size: nf.bw, nf48.h.36; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 37.5 / 48 + if(nf.all_sides and nf48.h.37 > 1, 0, 30000), nf.h - nf.rail - nf48.h.37 / 2; size: nf.bw, nf48.h.37; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 38.5 / 48 + if(nf.all_sides and nf48.h.38 > 1, 0, 30000), nf.h - nf.rail - nf48.h.38 / 2; size: nf.bw, nf48.h.38; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 39.5 / 48 + if(nf.all_sides and nf48.h.39 > 1, 0, 30000), nf.h - nf.rail - nf48.h.39 / 2; size: nf.bw, nf48.h.39; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 40.5 / 48 + if(nf.all_sides and nf48.h.40 > 1, 0, 30000), nf.h - nf.rail - nf48.h.40 / 2; size: nf.bw, nf48.h.40; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 41.5 / 48 + if(nf.all_sides and nf48.h.41 > 1, 0, 30000), nf.h - nf.rail - nf48.h.41 / 2; size: nf.bw, nf48.h.41; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 42.5 / 48 + if(nf.all_sides and nf48.h.42 > 1, 0, 30000), nf.h - nf.rail - nf48.h.42 / 2; size: nf.bw, nf48.h.42; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 43.5 / 48 + if(nf.all_sides and nf48.h.43 > 1, 0, 30000), nf.h - nf.rail - nf48.h.43 / 2; size: nf.bw, nf48.h.43; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 44.5 / 48 + if(nf.all_sides and nf48.h.44 > 1, 0, 30000), nf.h - nf.rail - nf48.h.44 / 2; size: nf.bw, nf48.h.44; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 45.5 / 48 + if(nf.all_sides and nf48.h.45 > 1, 0, 30000), nf.h - nf.rail - nf48.h.45 / 2; size: nf.bw, nf48.h.45; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 46.5 / 48 + if(nf.all_sides and nf48.h.46 > 1, 0, 30000), nf.h - nf.rail - nf48.h.46 / 2; size: nf.bw, nf48.h.46; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w * 47.5 / 48 + if(nf.all_sides and nf48.h.47 > 1, 0, 30000), nf.h - nf.rail - nf48.h.47 / 2; size: nf.bw, nf48.h.47; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.0 / 2 + if(nf.all_sides and nf48.h.0 > 1, 0, 30000), nf.h * 0.5 / 48; size: nf48.h.0, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.1 / 2 + if(nf.all_sides and nf48.h.1 > 1, 0, 30000), nf.h * 1.5 / 48; size: nf48.h.1, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.2 / 2 + if(nf.all_sides and nf48.h.2 > 1, 0, 30000), nf.h * 2.5 / 48; size: nf48.h.2, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.3 / 2 + if(nf.all_sides and nf48.h.3 > 1, 0, 30000), nf.h * 3.5 / 48; size: nf48.h.3, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.4 / 2 + if(nf.all_sides and nf48.h.4 > 1, 0, 30000), nf.h * 4.5 / 48; size: nf48.h.4, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.5 / 2 + if(nf.all_sides and nf48.h.5 > 1, 0, 30000), nf.h * 5.5 / 48; size: nf48.h.5, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.6 / 2 + if(nf.all_sides and nf48.h.6 > 1, 0, 30000), nf.h * 6.5 / 48; size: nf48.h.6, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.7 / 2 + if(nf.all_sides and nf48.h.7 > 1, 0, 30000), nf.h * 7.5 / 48; size: nf48.h.7, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.8 / 2 + if(nf.all_sides and nf48.h.8 > 1, 0, 30000), nf.h * 8.5 / 48; size: nf48.h.8, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.9 / 2 + if(nf.all_sides and nf48.h.9 > 1, 0, 30000), nf.h * 9.5 / 48; size: nf48.h.9, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.10 / 2 + if(nf.all_sides and nf48.h.10 > 1, 0, 30000), nf.h * 10.5 / 48; size: nf48.h.10, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.11 / 2 + if(nf.all_sides and nf48.h.11 > 1, 0, 30000), nf.h * 11.5 / 48; size: nf48.h.11, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.12 / 2 + if(nf.all_sides and nf48.h.12 > 1, 0, 30000), nf.h * 12.5 / 48; size: nf48.h.12, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.13 / 2 + if(nf.all_sides and nf48.h.13 > 1, 0, 30000), nf.h * 13.5 / 48; size: nf48.h.13, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.14 / 2 + if(nf.all_sides and nf48.h.14 > 1, 0, 30000), nf.h * 14.5 / 48; size: nf48.h.14, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.15 / 2 + if(nf.all_sides and nf48.h.15 > 1, 0, 30000), nf.h * 15.5 / 48; size: nf48.h.15, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.16 / 2 + if(nf.all_sides and nf48.h.16 > 1, 0, 30000), nf.h * 16.5 / 48; size: nf48.h.16, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.17 / 2 + if(nf.all_sides and nf48.h.17 > 1, 0, 30000), nf.h * 17.5 / 48; size: nf48.h.17, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.18 / 2 + if(nf.all_sides and nf48.h.18 > 1, 0, 30000), nf.h * 18.5 / 48; size: nf48.h.18, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.19 / 2 + if(nf.all_sides and nf48.h.19 > 1, 0, 30000), nf.h * 19.5 / 48; size: nf48.h.19, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.20 / 2 + if(nf.all_sides and nf48.h.20 > 1, 0, 30000), nf.h * 20.5 / 48; size: nf48.h.20, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.21 / 2 + if(nf.all_sides and nf48.h.21 > 1, 0, 30000), nf.h * 21.5 / 48; size: nf48.h.21, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.22 / 2 + if(nf.all_sides and nf48.h.22 > 1, 0, 30000), nf.h * 22.5 / 48; size: nf48.h.22, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.23 / 2 + if(nf.all_sides and nf48.h.23 > 1, 0, 30000), nf.h * 23.5 / 48; size: nf48.h.23, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.24 / 2 + if(nf.all_sides and nf48.h.24 > 1, 0, 30000), nf.h * 24.5 / 48; size: nf48.h.24, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.25 / 2 + if(nf.all_sides and nf48.h.25 > 1, 0, 30000), nf.h * 25.5 / 48; size: nf48.h.25, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.26 / 2 + if(nf.all_sides and nf48.h.26 > 1, 0, 30000), nf.h * 26.5 / 48; size: nf48.h.26, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.27 / 2 + if(nf.all_sides and nf48.h.27 > 1, 0, 30000), nf.h * 27.5 / 48; size: nf48.h.27, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.28 / 2 + if(nf.all_sides and nf48.h.28 > 1, 0, 30000), nf.h * 28.5 / 48; size: nf48.h.28, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.29 / 2 + if(nf.all_sides and nf48.h.29 > 1, 0, 30000), nf.h * 29.5 / 48; size: nf48.h.29, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.30 / 2 + if(nf.all_sides and nf48.h.30 > 1, 0, 30000), nf.h * 30.5 / 48; size: nf48.h.30, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.31 / 2 + if(nf.all_sides and nf48.h.31 > 1, 0, 30000), nf.h * 31.5 / 48; size: nf48.h.31, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.32 / 2 + if(nf.all_sides and nf48.h.32 > 1, 0, 30000), nf.h * 32.5 / 48; size: nf48.h.32, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.33 / 2 + if(nf.all_sides and nf48.h.33 > 1, 0, 30000), nf.h * 33.5 / 48; size: nf48.h.33, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.34 / 2 + if(nf.all_sides and nf48.h.34 > 1, 0, 30000), nf.h * 34.5 / 48; size: nf48.h.34, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.35 / 2 + if(nf.all_sides and nf48.h.35 > 1, 0, 30000), nf.h * 35.5 / 48; size: nf48.h.35, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.36 / 2 + if(nf.all_sides and nf48.h.36 > 1, 0, 30000), nf.h * 36.5 / 48; size: nf48.h.36, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.37 / 2 + if(nf.all_sides and nf48.h.37 > 1, 0, 30000), nf.h * 37.5 / 48; size: nf48.h.37, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.38 / 2 + if(nf.all_sides and nf48.h.38 > 1, 0, 30000), nf.h * 38.5 / 48; size: nf48.h.38, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.39 / 2 + if(nf.all_sides and nf48.h.39 > 1, 0, 30000), nf.h * 39.5 / 48; size: nf48.h.39, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.40 / 2 + if(nf.all_sides and nf48.h.40 > 1, 0, 30000), nf.h * 40.5 / 48; size: nf48.h.40, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.41 / 2 + if(nf.all_sides and nf48.h.41 > 1, 0, 30000), nf.h * 41.5 / 48; size: nf48.h.41, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.42 / 2 + if(nf.all_sides and nf48.h.42 > 1, 0, 30000), nf.h * 42.5 / 48; size: nf48.h.42, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.43 / 2 + if(nf.all_sides and nf48.h.43 > 1, 0, 30000), nf.h * 43.5 / 48; size: nf48.h.43, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.44 / 2 + if(nf.all_sides and nf48.h.44 > 1, 0, 30000), nf.h * 44.5 / 48; size: nf48.h.44, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.45 / 2 + if(nf.all_sides and nf48.h.45 > 1, 0, 30000), nf.h * 45.5 / 48; size: nf48.h.45, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.46 / 2 + if(nf.all_sides and nf48.h.46 > 1, 0, 30000), nf.h * 46.5 / 48; size: nf48.h.46, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.rail + nf48.h.47 / 2 + if(nf.all_sides and nf48.h.47 > 1, 0, 30000), nf.h * 47.5 / 48; size: nf48.h.47, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.0 / 2 + if(nf.all_sides and nf48.h.0 > 1, 0, 30000), nf.h * 0.5 / 48; size: nf48.h.0, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.1 / 2 + if(nf.all_sides and nf48.h.1 > 1, 0, 30000), nf.h * 1.5 / 48; size: nf48.h.1, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.2 / 2 + if(nf.all_sides and nf48.h.2 > 1, 0, 30000), nf.h * 2.5 / 48; size: nf48.h.2, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.3 / 2 + if(nf.all_sides and nf48.h.3 > 1, 0, 30000), nf.h * 3.5 / 48; size: nf48.h.3, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.4 / 2 + if(nf.all_sides and nf48.h.4 > 1, 0, 30000), nf.h * 4.5 / 48; size: nf48.h.4, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.5 / 2 + if(nf.all_sides and nf48.h.5 > 1, 0, 30000), nf.h * 5.5 / 48; size: nf48.h.5, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.6 / 2 + if(nf.all_sides and nf48.h.6 > 1, 0, 30000), nf.h * 6.5 / 48; size: nf48.h.6, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.7 / 2 + if(nf.all_sides and nf48.h.7 > 1, 0, 30000), nf.h * 7.5 / 48; size: nf48.h.7, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.8 / 2 + if(nf.all_sides and nf48.h.8 > 1, 0, 30000), nf.h * 8.5 / 48; size: nf48.h.8, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.9 / 2 + if(nf.all_sides and nf48.h.9 > 1, 0, 30000), nf.h * 9.5 / 48; size: nf48.h.9, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.10 / 2 + if(nf.all_sides and nf48.h.10 > 1, 0, 30000), nf.h * 10.5 / 48; size: nf48.h.10, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.11 / 2 + if(nf.all_sides and nf48.h.11 > 1, 0, 30000), nf.h * 11.5 / 48; size: nf48.h.11, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.12 / 2 + if(nf.all_sides and nf48.h.12 > 1, 0, 30000), nf.h * 12.5 / 48; size: nf48.h.12, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.13 / 2 + if(nf.all_sides and nf48.h.13 > 1, 0, 30000), nf.h * 13.5 / 48; size: nf48.h.13, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.14 / 2 + if(nf.all_sides and nf48.h.14 > 1, 0, 30000), nf.h * 14.5 / 48; size: nf48.h.14, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.15 / 2 + if(nf.all_sides and nf48.h.15 > 1, 0, 30000), nf.h * 15.5 / 48; size: nf48.h.15, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.16 / 2 + if(nf.all_sides and nf48.h.16 > 1, 0, 30000), nf.h * 16.5 / 48; size: nf48.h.16, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.17 / 2 + if(nf.all_sides and nf48.h.17 > 1, 0, 30000), nf.h * 17.5 / 48; size: nf48.h.17, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.18 / 2 + if(nf.all_sides and nf48.h.18 > 1, 0, 30000), nf.h * 18.5 / 48; size: nf48.h.18, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.19 / 2 + if(nf.all_sides and nf48.h.19 > 1, 0, 30000), nf.h * 19.5 / 48; size: nf48.h.19, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.20 / 2 + if(nf.all_sides and nf48.h.20 > 1, 0, 30000), nf.h * 20.5 / 48; size: nf48.h.20, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.21 / 2 + if(nf.all_sides and nf48.h.21 > 1, 0, 30000), nf.h * 21.5 / 48; size: nf48.h.21, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.22 / 2 + if(nf.all_sides and nf48.h.22 > 1, 0, 30000), nf.h * 22.5 / 48; size: nf48.h.22, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.23 / 2 + if(nf.all_sides and nf48.h.23 > 1, 0, 30000), nf.h * 23.5 / 48; size: nf48.h.23, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.24 / 2 + if(nf.all_sides and nf48.h.24 > 1, 0, 30000), nf.h * 24.5 / 48; size: nf48.h.24, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.25 / 2 + if(nf.all_sides and nf48.h.25 > 1, 0, 30000), nf.h * 25.5 / 48; size: nf48.h.25, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.26 / 2 + if(nf.all_sides and nf48.h.26 > 1, 0, 30000), nf.h * 26.5 / 48; size: nf48.h.26, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.27 / 2 + if(nf.all_sides and nf48.h.27 > 1, 0, 30000), nf.h * 27.5 / 48; size: nf48.h.27, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.28 / 2 + if(nf.all_sides and nf48.h.28 > 1, 0, 30000), nf.h * 28.5 / 48; size: nf48.h.28, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.29 / 2 + if(nf.all_sides and nf48.h.29 > 1, 0, 30000), nf.h * 29.5 / 48; size: nf48.h.29, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.30 / 2 + if(nf.all_sides and nf48.h.30 > 1, 0, 30000), nf.h * 30.5 / 48; size: nf48.h.30, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.31 / 2 + if(nf.all_sides and nf48.h.31 > 1, 0, 30000), nf.h * 31.5 / 48; size: nf48.h.31, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.32 / 2 + if(nf.all_sides and nf48.h.32 > 1, 0, 30000), nf.h * 32.5 / 48; size: nf48.h.32, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.33 / 2 + if(nf.all_sides and nf48.h.33 > 1, 0, 30000), nf.h * 33.5 / 48; size: nf48.h.33, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.34 / 2 + if(nf.all_sides and nf48.h.34 > 1, 0, 30000), nf.h * 34.5 / 48; size: nf48.h.34, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.35 / 2 + if(nf.all_sides and nf48.h.35 > 1, 0, 30000), nf.h * 35.5 / 48; size: nf48.h.35, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.36 / 2 + if(nf.all_sides and nf48.h.36 > 1, 0, 30000), nf.h * 36.5 / 48; size: nf48.h.36, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.37 / 2 + if(nf.all_sides and nf48.h.37 > 1, 0, 30000), nf.h * 37.5 / 48; size: nf48.h.37, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.38 / 2 + if(nf.all_sides and nf48.h.38 > 1, 0, 30000), nf.h * 38.5 / 48; size: nf48.h.38, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.39 / 2 + if(nf.all_sides and nf48.h.39 > 1, 0, 30000), nf.h * 39.5 / 48; size: nf48.h.39, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.40 / 2 + if(nf.all_sides and nf48.h.40 > 1, 0, 30000), nf.h * 40.5 / 48; size: nf48.h.40, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.41 / 2 + if(nf.all_sides and nf48.h.41 > 1, 0, 30000), nf.h * 41.5 / 48; size: nf48.h.41, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.42 / 2 + if(nf.all_sides and nf48.h.42 > 1, 0, 30000), nf.h * 42.5 / 48; size: nf48.h.42, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.43 / 2 + if(nf.all_sides and nf48.h.43 > 1, 0, 30000), nf.h * 43.5 / 48; size: nf48.h.43, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.44 / 2 + if(nf.all_sides and nf48.h.44 > 1, 0, 30000), nf.h * 44.5 / 48; size: nf48.h.44, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.45 / 2 + if(nf.all_sides and nf48.h.45 > 1, 0, 30000), nf.h * 45.5 / 48; size: nf48.h.45, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.46 / 2 + if(nf.all_sides and nf48.h.46 > 1, 0, 30000), nf.h * 46.5 / 48; size: nf48.h.46, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+            box { at: nf.w - nf.rail - nf48.h.47 / 2 + if(nf.all_sides and nf48.h.47 > 1, 0, 30000), nf.h * 47.5 / 48; size: nf48.h.47, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl }
+        }
+        //  The fill overlays the lens so both Gradient and Inner light remain
+        //  visible whether Bend is enabled or disabled. These are simple fills,
+        //  not glass bodies: they add no backdrop read or capture.
+        body {
+            show: panel_gradient == 1 and panel_gradient_strength > 0
+            gradient: 0, 0 to nf.w, nf.h, nf.pb.a, nf.pb.b 55%, nf.pb.c
+            opacity: panel_gradient_strength / 100 * 0.78
+            box { from: 0 - nf.over / 2, 0 - nf.over / 2; size: nf.w + nf.over, nf.h + nf.over; corner: nf.inner_r + (nf.rail + nf.over) / 2; stroke: nf.rail + nf.over }
+            box { from: nf.cx - nf.clock_w / 2, 0; size: nf.clock_w, nf.clock_h; corner: 20; blend: 34 }
+            box { from: nf.cx - nf.clock_w / 2 + 14, nf.clock_h - 2; size: nf.clock_w - 28, 1; corner: 0.5 }
+            box { from: nf.cx - nf.cp_w / 2 + if(panel_open or nf.cp_p > 0.01, 0, 30000), 0; size: nf.cp_w, max(0.3, nf.cp_h); corner: mix(20, 26, nf.cp_p); blend: mix(34, 36, nf.cp_p) * nf.cp_p }
+            box { from: nf.cx - nf.ct_w / 2 + if(center_open or nf.ct_p > 0.01, 0, 30000), 0; size: nf.ct_w, max(0.3, nf.ct_h); corner: mix(20, 30, nf.ct_p); blend: mix(34, 36, nf.ct_p) * nf.ct_p }
+            box { from: nf.cx - mix(nf.clock_w, 620, nf.launch_p) / 2 + if(launch_open or nf.launch_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 620, nf.launch_p), max(0.3, nf.search_h * nf.launch_p); corner: mix(20, 24, nf.launch_p); blend: mix(34, 36, nf.launch_p) * nf.launch_p }
+            box { from: nf.cx - mix(nf.clock_w, 480, nf.ntc_p) / 2 + if(nt_center or nf.ntc_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 480, nf.ntc_p), max(0.3, nf.notify_h * nf.ntc_p); corner: mix(20, 26, nf.ntc_p); blend: mix(34, 36, nf.ntc_p) * nf.ntc_p }
+        }
+        body {
+            show: panel_gradient == 2 and panel_gradient_strength > 0
+            gradient: radial nf.cx, nf.h / 2 radius max(nf.w, nf.h) / 2, nf.pb.a, nf.pb.b 55%, nf.pb.c
+            opacity: panel_gradient_strength / 100 * 0.78
+            box { from: 0 - nf.over / 2, 0 - nf.over / 2; size: nf.w + nf.over, nf.h + nf.over; corner: nf.inner_r + (nf.rail + nf.over) / 2; stroke: nf.rail + nf.over }
+            box { from: nf.cx - nf.clock_w / 2, 0; size: nf.clock_w, nf.clock_h; corner: 20; blend: 34 }
+            box { from: nf.cx - nf.clock_w / 2 + 14, nf.clock_h - 2; size: nf.clock_w - 28, 1; corner: 0.5 }
+            box { from: nf.cx - nf.cp_w / 2 + if(panel_open or nf.cp_p > 0.01, 0, 30000), 0; size: nf.cp_w, max(0.3, nf.cp_h); corner: mix(20, 26, nf.cp_p); blend: mix(34, 36, nf.cp_p) * nf.cp_p }
+            box { from: nf.cx - nf.ct_w / 2 + if(center_open or nf.ct_p > 0.01, 0, 30000), 0; size: nf.ct_w, max(0.3, nf.ct_h); corner: mix(20, 30, nf.ct_p); blend: mix(34, 36, nf.ct_p) * nf.ct_p }
+            box { from: nf.cx - mix(nf.clock_w, 620, nf.launch_p) / 2 + if(launch_open or nf.launch_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 620, nf.launch_p), max(0.3, nf.search_h * nf.launch_p); corner: mix(20, 24, nf.launch_p); blend: mix(34, 36, nf.launch_p) * nf.launch_p }
+            box { from: nf.cx - mix(nf.clock_w, 480, nf.ntc_p) / 2 + if(nt_center or nf.ntc_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 480, nf.ntc_p), max(0.3, nf.notify_h * nf.ntc_p); corner: mix(20, 26, nf.ntc_p); blend: mix(34, 36, nf.ntc_p) * nf.ntc_p }
+        }
+        body {
+            show: glass_on and glass_light > 0
+            gradient: 0, 0 to 0, nf.h, mix(bar_bg, ink, 0.20), mix(bar_bg, ink, 0.04) 38%, bar_bg
+            light: 45%, 0, 140
+            opacity: glass_light * 0.30
+            box { from: 0 - nf.over / 2, 0 - nf.over / 2; size: nf.w + nf.over, nf.h + nf.over; corner: nf.inner_r + (nf.rail + nf.over) / 2; stroke: nf.rail + nf.over }
+            box { from: nf.cx - nf.clock_w / 2, 0; size: nf.clock_w, nf.clock_h; corner: 20; blend: 34 }
+            box { from: nf.cx - nf.clock_w / 2 + 14, nf.clock_h - 2; size: nf.clock_w - 28, 1; corner: 0.5 }
+            box { from: nf.cx - nf.cp_w / 2 + if(panel_open or nf.cp_p > 0.01, 0, 30000), 0; size: nf.cp_w, max(0.3, nf.cp_h); corner: mix(20, 26, nf.cp_p); blend: mix(34, 36, nf.cp_p) * nf.cp_p }
+            box { from: nf.cx - nf.ct_w / 2 + if(center_open or nf.ct_p > 0.01, 0, 30000), 0; size: nf.ct_w, max(0.3, nf.ct_h); corner: mix(20, 30, nf.ct_p); blend: mix(34, 36, nf.ct_p) * nf.ct_p }
+            box { from: nf.cx - mix(nf.clock_w, 620, nf.launch_p) / 2 + if(launch_open or nf.launch_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 620, nf.launch_p), max(0.3, nf.search_h * nf.launch_p); corner: mix(20, 24, nf.launch_p); blend: mix(34, 36, nf.launch_p) * nf.launch_p }
+            box { from: nf.cx - mix(nf.clock_w, 480, nf.ntc_p) / 2 + if(nt_center or nf.ntc_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 480, nf.ntc_p), max(0.3, nf.notify_h * nf.ntc_p); corner: mix(20, 26, nf.ntc_p); blend: mix(34, 36, nf.ntc_p) * nf.ntc_p }
+        }
+
+        //  Clock text vertically centred in the notch.
         row {
             at: nf.cx, nf.clock_y
             anchor: center
@@ -169,17 +908,25 @@ part NotchFrame {
 
         zone box nf_clock { from: nf.cx - nf.clock_w / 2, 0; size: nf.clock_w, nf.clock_h; corner: 20; cursor: pointer; label: "Open centre panel" }
         on press nf_clock { emit ui_sound; emit center_toggle }
+        on key Escape while nt_center { nt_center = false }
 
         group {
             show: panel_open or cp_np > 0.01
             NotchDrawerRipples(cp_np)
-            NotchDrawerContent(cp_np, 860) { ConfigPanelContent() }
+            NotchDrawerContent(cp_np, 860, panel_fx) { ConfigPanelContent() }
         }
         group {
             show: center_open or ct_np > 0.01
             NotchDrawerRipples(ct_np)
-            NotchDrawerContent(ct_np, 1120) { CenterPanelContent() }
+            NotchDrawerContent(ct_np, 1120, center_panel_fx) { CenterPanelContent() }
         }
-
+        group {
+            show: launch_open or la_p > 0.01
+            NotchDrawerContent(la_p, 620, search_fx) { LauncherContent() }
+        }
+        group {
+            show: nt_center or ntc_p > 0.01
+            NotchDrawerContent(ntc_p, 480, center_fx) { NotificationCenterContent() }
+        }
     }
 }

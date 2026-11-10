@@ -127,12 +127,6 @@ part ConfigPanel {
     let cp.light_pct = clamp(glass_light, 0, 1)
     let cp.border_pct = clamp(glass_border / 100, 0, 1)
     let cp.grad_pct = clamp(panel_gradient_strength / 100, 0, 1)
-    let cp.amp_pct = clamp((wave_amp - 0.2) / 2.0, 0, 1)
-    let cp.height_pct = clamp(wave_height / 3, 0, 1)
-    let cp.bar_pct = clamp((bar_height - 32) / 48, 0, 1)
-    let cp.gain_pct = clamp((wave_gain - 0.8) / 1.6, 0, 1)
-    let cp.rip_pct = clamp((wave_ripples - 1) / 9, 0, 1)
-    let cp.blend_pct = clamp(wave_blend, 0, 1)
     //  IDLE_STEPS in scenes/lib/shell.luau has 17 entries (0, 5 s, 10 s, 30 s,
     //  then minutes to 2 h); the slider addresses its last index, 16.
     let cp.idle_lock_pct = clamp(idle_lock_i / 16, 0, 1)
@@ -151,10 +145,14 @@ part ConfigPanel {
     follow cp_grp = pick(settings_page, 1, 0, 1, 1, 0, 1, 1, 2, 2, 3, 0)
 
     component ConfigPanelContent() {
+        //  Pointer positions are surface coordinates; translate the moved
+        //  Notches drawer back to its 860px local coordinate space.
+        let cp.sx = if(notch_mode, screen.width / 2 - 430, 0)
         zone box cp_shield { from: 0, 0; size: 860, 820; active: panel_open; label: "Settings" }
         on press cp_shield { panel_open = panel_open }
         PanelBackdrop(0, 0, 860, 820, 26)
         body {
+            show: not notch_mode
             color: panel_bg
             glass: if(glass_on, 100%, 0%)
             opacity: 1% * max(glass_tint, 82)
@@ -175,7 +173,10 @@ part ConfigPanel {
             shadow: 0, 4, 12, 20%, glass_shadow
             box { from: 0, 0; size: 860, 820; corner: 26 }
         }
-        box { from: 0, 0; size: 860, 820; corner: 26; stroke: 1; color: ink; opacity: 8% }
+        //  Side and bottom edge lines only — no top line (top merges with the frame).
+        line { from: 28, 820; to: 832, 820; width: 1; color: ink; opacity: 8%; show: not notch_mode }
+        line { from: 0, 26; to: 0, 820; width: 1; color: ink; opacity: 8%; show: not notch_mode }
+        line { from: 860, 26; to: 860, 820; width: 1; color: ink; opacity: 8%; show: not notch_mode }
 
         //  ── header ───────────────────────────────────────────────────────
         box { from: 28, 28; size: 34, 34; corner: 9; color: cp.mint; opacity: 18% }
@@ -405,9 +406,8 @@ part ConfigPanel {
         group {
             show: settings_page == 0
 
-            //  The Notches mode uses the same six bands for its frame bars.
-            //  The old shader water is kept in the tree but is not included in
-            //  the Notches scene; these two choices are the new surface.
+            //  Notches uses the same six bands for its frame bars.  The old
+            //  shader controls are unreachable now; this is the only surface.
             group {
                 show: notch_mode
 
@@ -418,77 +418,67 @@ part ConfigPanel {
                 zone box cp_notch_switch { from: 760, 186; size: 64, 38; corner: 19; cursor: pointer; label: "Notch frame music" }
                 on press cp_notch_switch { emit ui_sound; toggle music_frame_on }
 
-                CpCard(250, 242, 570, 94)
+                CpCard(250, 242, 570, 62)
                 text "Coverage" { at: 266, 252; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
                 text "Top edge only, or all four sides of the frame." { at: 266, 270; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
                 CpPill(520, 286, 100, 30, if(music_frame_sides == 0, 1, 0), cp_notch_top.hover, cp.mint, ink)
                 text "Top edge" { at: 570, 301; anchor: center; size: 12; weight: 700; color: if(music_frame_sides == 0, cp.mint, ink); family: "Space Grotesk" }
                 zone box cp_notch_top { from: 510, 280; size: 120, 38; corner: 19; cursor: pointer; label: "Music on the top edge only" }
                 on press cp_notch_top { emit ui_sound; music_frame_sides = 0 }
-
                 CpPill(640, 286, 112, 30, if(music_frame_sides == 1, 1, 0), cp_notch_four.hover, cp.mint, ink)
                 text "Four sides" { at: 696, 301; anchor: center; size: 12; weight: 700; color: if(music_frame_sides == 1, cp.mint, ink); family: "Space Grotesk" }
                 zone box cp_notch_four { from: 630, 280; size: 132, 38; corner: 19; cursor: pointer; label: "Music on all four frame sides" }
                 on press cp_notch_four { emit ui_sound; music_frame_sides = 1 }
 
-                text "The bars stop when the sink is silent; the frame itself stays still." { at: 266, 336; anchor: left center; size: 13; color: faint; family: "Space Grotesk" }
+                CpCard(250, 308, 570, 62)
+                text "Sensitivity" { at: 266, 318; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+                text "How strongly the music pushes the bars outward." { at: 266, 336; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+                CpSlider(520, 355, 200, clamp((music_frame_sens - 0.3) / 2.7, 0, 1), cp_nf_sens_track.hover, cp.mint, ink, cp.track)
+                text number(music_frame_sens, 1, "×") { at: 736, 355; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
+                zone box cp_nf_sens_track { from: 510, 340; size: 240, 30; cursor: pointer; label: "Music sensitivity" }
+                on press cp_nf_sens_track { music_frame_sens = clamp(0.3 + (pointer.x - cp.sx - 520) / 200 * 2.7, 0.3, 3.0) }
+                on drag  cp_nf_sens_track { music_frame_sens = clamp(0.3 + (pointer.x - cp.sx - 520) / 200 * 2.7, 0.3, 3.0) }
+
+                CpCard(250, 374, 570, 62)
+                text "Height" { at: 266, 384; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+                text "Maximum bar height in pixels." { at: 266, 402; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+                CpSlider(520, 421, 200, clamp((music_frame_hgt - 10) / 110, 0, 1), cp_nf_hgt_track.hover, cp.mint, ink, cp.track)
+                text number(music_frame_hgt, 0, " px") { at: 736, 421; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
+                zone box cp_nf_hgt_track { from: 510, 406; size: 240, 30; cursor: pointer; label: "Bar height" }
+                on press cp_nf_hgt_track { music_frame_hgt = clamp(round(10 + (pointer.x - cp.sx - 520) / 200 * 110), 10, 120) }
+                on drag  cp_nf_hgt_track { music_frame_hgt = clamp(round(10 + (pointer.x - cp.sx - 520) / 200 * 110), 10, 120) }
+
+                CpCard(250, 440, 570, 62)
+                text "Liquid blend" { at: 266, 450; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+                text "How much each bar melts into its neighbours." { at: 266, 468; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+                CpSlider(520, 487, 200, clamp(music_frame_blend / 100, 0, 1), cp_nf_bl_track.hover, cp.mint, ink, cp.track)
+                text number(music_frame_blend, 0, "%") { at: 736, 487; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
+                zone box cp_nf_bl_track { from: 510, 472; size: 240, 30; cursor: pointer; label: "Liquid blend" }
+                on press cp_nf_bl_track { music_frame_blend = clamp(round((pointer.x - cp.sx - 520) / 200 * 100), 0, 100) }
+                on drag  cp_nf_bl_track { music_frame_blend = clamp(round((pointer.x - cp.sx - 520) / 200 * 100), 0, 100) }
+
+                //  Columns — four fixed options as pills (like Vitreus fw_cols).
+                CpCard(250, 506, 570, 62)
+                text "Columns" { at: 266, 516; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+                text "Number of bars per edge." { at: 266, 534; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+                CpPill(490, 520, 56, 26, if(music_frame_cols ==  6, 1, 0), cp_nf_c6.hover,  cp.mint, ink)
+                text  "6" { at: 518, 533; anchor: center; size: 13; weight: 700; color: if(music_frame_cols ==  6, cp.mint, ink); family: "Space Grotesk" }
+                zone box cp_nf_c6  { from: 490, 520; size: 56, 26; corner: 13; cursor: pointer; label: "6 columns" }
+                on press cp_nf_c6  { emit ui_sound; music_frame_cols =  6 }
+                CpPill(552, 520, 56, 26, if(music_frame_cols == 12, 1, 0), cp_nf_c12.hover, cp.mint, ink)
+                text "12" { at: 580, 533; anchor: center; size: 13; weight: 700; color: if(music_frame_cols == 12, cp.mint, ink); family: "Space Grotesk" }
+                zone box cp_nf_c12 { from: 552, 520; size: 56, 26; corner: 13; cursor: pointer; label: "12 columns" }
+                on press cp_nf_c12 { emit ui_sound; music_frame_cols = 12 }
+                CpPill(614, 520, 56, 26, if(music_frame_cols == 24, 1, 0), cp_nf_c24.hover, cp.mint, ink)
+                text "24" { at: 642, 533; anchor: center; size: 13; weight: 700; color: if(music_frame_cols == 24, cp.mint, ink); family: "Space Grotesk" }
+                zone box cp_nf_c24 { from: 614, 520; size: 56, 26; corner: 13; cursor: pointer; label: "24 columns" }
+                on press cp_nf_c24 { emit ui_sound; music_frame_cols = 24 }
+                CpPill(676, 520, 56, 26, if(music_frame_cols == 48, 1, 0), cp_nf_c48.hover, cp.mint, ink)
+                text "48" { at: 704, 533; anchor: center; size: 13; weight: 700; color: if(music_frame_cols == 48, cp.mint, ink); family: "Space Grotesk" }
+                zone box cp_nf_c48 { from: 676, 520; size: 56, 26; corner: 13; cursor: pointer; label: "48 columns" }
+                on press cp_nf_c48 { emit ui_sound; music_frame_cols = 48 }
             }
 
-            group {
-                show: not notch_mode
-
-                CpCard(250, 176, 570, 62)
-                text "Frame music" { at: 266, 186; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-                text "Let the four-edge wave follow the system sink." { at: 266, 204; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-                CpSwitch(770, 195, 44, 24, if(wave_on, 1, 0), cfg_knob, cp_music_switch.hover, cp.mint, ink, cp.track)
-                zone box cp_music_switch { from: 760, 186; size: 64, 38; corner: 19; cursor: pointer; label: "Frame music" }
-                on press cp_music_switch { emit ui_sound; toggle wave_on }
-
-            CpCard(250, 242, 570, 62)
-            text "Amplitude" { at: 266, 252; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "How far the wave reaches into the screen." { at: 266, 270; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            CpSlider(520, 289, 200, cp.amp_pct, cp_amp_track.hover, cp.mint, ink, cp.track)
-            text number(wave_amp * 100, 0, "%") { at: 736, 289; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
-            zone box cp_amp_track { from: 510, 274; size: 240, 30; cursor: pointer; label: "Amplitude" }
-            on press cp_amp_track { wave_amp = clamp(0.2 + (pointer.x - 520) / 200 * 2.0, 0.2, 2.2) }
-            on drag cp_amp_track { wave_amp = clamp(0.2 + (pointer.x - 520) / 200 * 2.0, 0.2, 2.2) }
-
-            CpCard(250, 308, 570, 62)
-            text "Sensitivity" { at: 266, 318; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "How strongly quiet passages move the wave." { at: 266, 336; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            CpSlider(520, 355, 200, cp.gain_pct, cp_gain_track.hover, cp.mint, ink, cp.track)
-            text number(wave_gain * 100, 0, "%") { at: 736, 355; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
-            zone box cp_gain_track { from: 510, 340; size: 240, 30; cursor: pointer; label: "Sensitivity" }
-            on press cp_gain_track { wave_gain = clamp(0.8 + (pointer.x - 520) / 200 * 1.6, 0.8, 2.4) }
-            on drag cp_gain_track { wave_gain = clamp(0.8 + (pointer.x - 520) / 200 * 1.6, 0.8, 2.4) }
-
-            CpCard(250, 374, 570, 62)
-            text "Ripples" { at: 266, 384; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "One long wave, or up to ten finer trains." { at: 266, 402; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            CpSlider(520, 421, 200, cp.rip_pct, cp_rip_track.hover, cp.mint, ink, cp.track)
-            text number(wave_ripples, 0, "") { at: 736, 421; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
-            zone box cp_rip_track { from: 510, 406; size: 240, 30; cursor: pointer; label: "Ripples" }
-            on press cp_rip_track { wave_ripples = clamp(round(1 + (pointer.x - 520) / 200 * 9), 1, 10) }
-            on drag cp_rip_track { wave_ripples = clamp(round(1 + (pointer.x - 520) / 200 * 9), 1, 10) }
-
-            CpCard(250, 440, 570, 62)
-            text "Wave height" { at: 266, 450; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "How tall each ripple rises; higher is less smooth." { at: 266, 468; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            CpSlider(520, 487, 200, cp.height_pct, cp_height_track.hover, cp.mint, ink, cp.track)
-            text number(wave_height * 100, 0, "%") { at: 736, 487; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
-            zone box cp_height_track { from: 510, 472; size: 240, 30; cursor: pointer; label: "Wave height" }
-            on press cp_height_track { wave_height = clamp((pointer.x - 520) / 200 * 3, 0, 3) }
-            on drag cp_height_track { wave_height = clamp((pointer.x - 520) / 200 * 3, 0, 3) }
-
-            CpCard(250, 506, 570, 62)
-            text "Blend" { at: 266, 516; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "How much the bands melt into each other." { at: 266, 534; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            CpSlider(520, 553, 200, cp.blend_pct, cp_blend_track.hover, cp.mint, ink, cp.track)
-            text number(wave_blend * 100, 0, "%") { at: 736, 553; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
-            zone box cp_blend_track { from: 510, 538; size: 240, 30; cursor: pointer; label: "Blend" }
-            on press cp_blend_track { wave_blend = clamp((pointer.x - 520) / 200, 0, 1) }
-            on drag cp_blend_track { wave_blend = clamp((pointer.x - 520) / 200, 0, 1) }
-            }
         }
 
         //  ── GLASS ────────────────────────────────────────────────────────
@@ -510,14 +500,14 @@ part ConfigPanel {
             on press cp_bend_switch { toggle glass_bend }
 
             CpCard(250, 308, 570, 62)
-            text "Blur" { at: 266, 318; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "Lens blur inside the glass; needs Bend on. 0% is clear." { at: 266, 336; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            text "Frost" { at: 266, 318; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "Frosting inside the glass bevel; needs Bend on. 0% is clear." { at: 266, 336; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
             CpSlider(520, 355, 200, cp.frost_pct, cp_frost_track.hover, cp.mint, ink, cp.track)
             text number(glass_frost, 0, "%") { at: 736, 355; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
             text "Bend off" { at: 820, 336; anchor: right center; size: 11; weight: 600; color: faint; show: not glass_bend; family: "Space Grotesk" }
-            zone box cp_frost_track { from: 510, 340; size: 240, 30; cursor: pointer; label: "Blur" }
-            on press cp_frost_track { glass_frost = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
-            on drag cp_frost_track { glass_frost = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
+            zone box cp_frost_track { from: 510, 340; size: 240, 30; cursor: pointer; label: "Frost" }
+            on press cp_frost_track { glass_frost = clamp((pointer.x - cp.sx - 520) / 200 * 100, 0, 100) }
+            on drag cp_frost_track { glass_frost = clamp((pointer.x - cp.sx - 520) / 200 * 100, 0, 100) }
 
             CpCard(250, 374, 570, 62)
             text "Opacity" { at: 266, 384; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
@@ -525,8 +515,8 @@ part ConfigPanel {
             CpSlider(520, 421, 200, cp.tint_pct, cp_tint_track.hover, cp.mint, ink, cp.track)
             text number(glass_tint, 0, "%") { at: 736, 421; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_tint_track { from: 510, 406; size: 240, 30; cursor: pointer; label: "Opacity" }
-            on press cp_tint_track { glass_tint = clamp(20 + (pointer.x - 520) / 200 * 80, 20, 100) }
-            on drag cp_tint_track { glass_tint = clamp(20 + (pointer.x - 520) / 200 * 80, 20, 100) }
+            on press cp_tint_track { glass_tint = clamp(20 + (pointer.x - cp.sx - 520) / 200 * 80, 20, 100) }
+            on drag cp_tint_track { glass_tint = clamp(20 + (pointer.x - cp.sx - 520) / 200 * 80, 20, 100) }
 
             CpCard(250, 440, 570, 62)
             text "Edge light" { at: 266, 450; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
@@ -534,8 +524,8 @@ part ConfigPanel {
             CpSlider(520, 487, 200, cp.edge_pct, cp_edge_track.hover, cp.mint, ink, cp.track)
             text number(glass_edge, 0, "%") { at: 736, 487; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_edge_track { from: 510, 472; size: 240, 30; cursor: pointer; label: "Edge light" }
-            on press cp_edge_track { glass_edge = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
-            on drag cp_edge_track { glass_edge = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
+            on press cp_edge_track { glass_edge = clamp((pointer.x - cp.sx - 520) / 200 * 100, 0, 100) }
+            on drag cp_edge_track { glass_edge = clamp((pointer.x - cp.sx - 520) / 200 * 100, 0, 100) }
 
             CpCard(250, 506, 570, 62)
             text "Edge thickness" { at: 266, 516; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
@@ -543,8 +533,8 @@ part ConfigPanel {
             CpSlider(520, 553, 200, cp.refr_pct, cp_refr_track.hover, cp.mint, ink, cp.track)
             text number(glass_refr, 1, "") { at: 736, 553; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_refr_track { from: 510, 538; size: 240, 30; cursor: pointer; label: "Edge thickness" }
-            on press cp_refr_track { glass_refr = clamp((pointer.x - 520) / 200 * 2, 0, 2) }
-            on drag cp_refr_track { glass_refr = clamp((pointer.x - 520) / 200 * 2, 0, 2) }
+            on press cp_refr_track { glass_refr = clamp((pointer.x - cp.sx - 520) / 200 * 2, 0, 2) }
+            on drag cp_refr_track { glass_refr = clamp((pointer.x - cp.sx - 520) / 200 * 2, 0, 2) }
 
             CpCard(250, 572, 570, 62)
             text "Rainbow fringe" { at: 266, 582; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
@@ -552,8 +542,8 @@ part ConfigPanel {
             CpSlider(520, 619, 200, cp.disp_pct, cp_disp_track.hover, cp.mint, ink, cp.track)
             text number(glass_disp, 1, "") { at: 736, 619; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_disp_track { from: 510, 604; size: 240, 30; cursor: pointer; label: "Rainbow fringe" }
-            on press cp_disp_track { glass_disp = clamp((pointer.x - 520) / 200 * 2, 0, 2) }
-            on drag cp_disp_track { glass_disp = clamp((pointer.x - 520) / 200 * 2, 0, 2) }
+            on press cp_disp_track { glass_disp = clamp((pointer.x - cp.sx - 520) / 200 * 2, 0, 2) }
+            on drag cp_disp_track { glass_disp = clamp((pointer.x - cp.sx - 520) / 200 * 2, 0, 2) }
 
             CpCard(250, 638, 570, 62)
             text "Dome" { at: 266, 648; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
@@ -561,8 +551,8 @@ part ConfigPanel {
             CpSlider(520, 685, 200, cp.dome_pct, cp_dome_track.hover, cp.mint, ink, cp.track)
             text number(glass_dome, 1, "") { at: 736, 685; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_dome_track { from: 510, 670; size: 240, 30; cursor: pointer; label: "Dome" }
-            on press cp_dome_track { glass_dome = clamp((pointer.x - 520) / 200 * 1.5, 0, 1.5) }
-            on drag cp_dome_track { glass_dome = clamp((pointer.x - 520) / 200 * 1.5, 0, 1.5) }
+            on press cp_dome_track { glass_dome = clamp((pointer.x - cp.sx - 520) / 200 * 1.5, 0, 1.5) }
+            on drag cp_dome_track { glass_dome = clamp((pointer.x - cp.sx - 520) / 200 * 1.5, 0, 1.5) }
 
             CpCard(250, 704, 570, 62)
             text "Milk" { at: 266, 714; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
@@ -570,8 +560,8 @@ part ConfigPanel {
             CpSlider(520, 751, 200, cp.milk_pct, cp_milk_track.hover, cp.mint, ink, cp.track)
             text number(glass_milk, 1, "") { at: 736, 751; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_milk_track { from: 510, 736; size: 240, 30; cursor: pointer; label: "Milk" }
-            on press cp_milk_track { glass_milk = clamp((pointer.x - 520) / 200, 0, 1) }
-            on drag cp_milk_track { glass_milk = clamp((pointer.x - 520) / 200, 0, 1) }
+            on press cp_milk_track { glass_milk = clamp((pointer.x - cp.sx - 520) / 200, 0, 1) }
+            on drag cp_milk_track { glass_milk = clamp((pointer.x - cp.sx - 520) / 200, 0, 1) }
         }
 
         //  ── BAR ──────────────────────────────────────────────────────────
@@ -579,42 +569,53 @@ part ConfigPanel {
             show: settings_page == 2
 
             CpCard(250, 176, 570, 94)
-            text "Height" { at: 266, 186; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "Height of the floating island bar." { at: 266, 204; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            CpSlider(520, 243, 200, cp.bar_pct, cp_bar_track.hover, cp.mint, ink, cp.track)
-            text number(bar_height, 0, "px") { at: 736, 243; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
-            zone box cp_bar_track { from: 510, 228; size: 240, 30; cursor: pointer; label: "Bar height" }
-            on press cp_bar_track { bar_height = clamp(32 + (pointer.x - 520) / 200 * 48, 32, 80) }
-            on drag cp_bar_track { bar_height = clamp(32 + (pointer.x - 520) / 200 * 48, 32, 80) }
+            text "Clock notch height" { at: 266, 186; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "Height of the time notch in the frame." { at: 266, 204; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(520, 243, 200, clamp((notch_clock_h - 10) / 86, 0, 1), cp_nf_clkh_track.hover, cp.mint, ink, cp.track)
+            text number(notch_clock_h, 0, " px") { at: 736, 243; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_nf_clkh_track { from: 510, 228; size: 240, 30; cursor: pointer; label: "Clock notch height" }
+            on press cp_nf_clkh_track { notch_clock_h = clamp(round(10 + (pointer.x - cp.sx - 520) / 200 * 86), 10, 96) }
+            on drag  cp_nf_clkh_track { notch_clock_h = clamp(round(10 + (pointer.x - cp.sx - 520) / 200 * 86), 10, 96) }
 
-            CpCard(250, 286, 570, 62)
-            text "Panel sound" { at: 266, 296; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "A small click when the bar or a panel is pressed." { at: 266, 314; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            CpSwitch(770, 305, 44, 24, if(snd_on, 1, 0), snd_knob, cp_snd_switch.hover, cp.mint, ink, cp.track)
-            zone box cp_snd_switch { from: 760, 296; size: 64, 38; corner: 19; cursor: pointer; label: "Panel sound" }
+            CpCard(250, 286, 570, 94)
+            text "Clock notch width" { at: 266, 296; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "Width of the time notch in the frame." { at: 266, 314; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(520, 353, 200, clamp((notch_clock_w - 120) / 140, 0, 1), cp_nf_clkw_track.hover, cp.mint, ink, cp.track)
+            text number(notch_clock_w, 0, " px") { at: 736, 353; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_nf_clkw_track { from: 510, 338; size: 240, 30; cursor: pointer; label: "Clock notch width" }
+            on press cp_nf_clkw_track { notch_clock_w = clamp(round(120 + (pointer.x - cp.sx - 520) / 200 * 140), 120, 260) }
+            on drag  cp_nf_clkw_track { notch_clock_w = clamp(round(120 + (pointer.x - cp.sx - 520) / 200 * 140), 120, 260) }
+
+            let cp.bar_snd_y = 380
+            CpCard(250, cp.bar_snd_y, 570, 62)
+            text "Panel sound" { at: 266, cp.bar_snd_y + 10; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "A small click when the bar or a panel is pressed." { at: 266, cp.bar_snd_y + 28; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSwitch(770, cp.bar_snd_y + 19, 44, 24, if(snd_on, 1, 0), snd_knob, cp_snd_switch.hover, cp.mint, ink, cp.track)
+            zone box cp_snd_switch { from: 760, cp.bar_snd_y + 10; size: 64, 38; corner: 19; cursor: pointer; label: "Panel sound" }
             on press cp_snd_switch { emit ui_sound; toggle snd_on }
 
-            text "PANEL TINT" { at: 250, 362; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
-            CpCard(250, 376, 570, 62)
-            text "Panel colour" { at: 266, 386; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "Wallpaper role behind every panel." { at: 266, 404; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            CpPill(610, 392, 100, 30, if(panel_bg_role == 0, 1, 0), 0, cp.mint, ink)
-            text "Primary" { at: 660, 407; anchor: center; size: 11; weight: 700; color: if(panel_bg_role == 0, cp.mint, faint); family: "Space Grotesk" }
-            zone box cp_panel_role_primary { from: 610, 392; size: 100, 30; corner: 15; cursor: pointer; label: "Primary panel colour" }
+            let cp.tint_y0 = cp.bar_snd_y + 76
+            text "PANEL TINT" { at: 250, cp.tint_y0; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
+            CpCard(250, cp.tint_y0 + 14, 570, 62)
+            text "Panel colour" { at: 266, cp.tint_y0 + 24; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "Wallpaper role behind every panel." { at: 266, cp.tint_y0 + 42; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpPill(610, cp.tint_y0 + 30, 100, 30, if(panel_bg_role == 0, 1, 0), 0, cp.mint, ink)
+            text "Primary" { at: 660, cp.tint_y0 + 45; anchor: center; size: 11; weight: 700; color: if(panel_bg_role == 0, cp.mint, faint); family: "Space Grotesk" }
+            zone box cp_panel_role_primary { from: 610, cp.tint_y0 + 30; size: 100, 30; corner: 15; cursor: pointer; label: "Primary panel colour" }
             on press cp_panel_role_primary { panel_bg_role = 0 }
-            CpPill(714, 392, 100, 30, if(panel_bg_role == 1, 1, 0), 0, cp.mint, ink)
-            text "Secondary" { at: 764, 407; anchor: center; size: 11; weight: 700; color: if(panel_bg_role == 1, cp.mint, faint); family: "Space Grotesk" }
-            zone box cp_panel_role_secondary { from: 714, 392; size: 100, 30; corner: 15; cursor: pointer; label: "Secondary panel colour" }
+            CpPill(714, cp.tint_y0 + 30, 100, 30, if(panel_bg_role == 1, 1, 0), 0, cp.mint, ink)
+            text "Secondary" { at: 764, cp.tint_y0 + 45; anchor: center; size: 11; weight: 700; color: if(panel_bg_role == 1, cp.mint, faint); family: "Space Grotesk" }
+            zone box cp_panel_role_secondary { from: 714, cp.tint_y0 + 30; size: 100, 30; corner: 15; cursor: pointer; label: "Secondary panel colour" }
             on press cp_panel_role_secondary { panel_bg_role = 1 }
 
-            CpCard(250, 442, 570, 62)
-            text "Tint depth" { at: 266, 452; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "How much of that colour to mix in." { at: 266, 470; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            CpSlider(520, 489, 200, cp.panel_pct, cp_panel_tint_track.hover, cp.mint, ink, cp.track)
-            text number(panel_bg_tint, 0, "%") { at: 736, 489; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
-            zone box cp_panel_tint_track { from: 510, 474; size: 240, 30; cursor: pointer; label: "Panel tint depth" }
-            on press cp_panel_tint_track { panel_bg_tint = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
-            on drag cp_panel_tint_track { panel_bg_tint = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
+            CpCard(250, cp.tint_y0 + 80, 570, 62)
+            text "Tint depth" { at: 266, cp.tint_y0 + 90; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "How much of that colour to mix in." { at: 266, cp.tint_y0 + 108; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(520, cp.tint_y0 + 127, 200, cp.panel_pct, cp_panel_tint_track.hover, cp.mint, ink, cp.track)
+            text number(panel_bg_tint, 0, "%") { at: 736, cp.tint_y0 + 127; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_panel_tint_track { from: 510, cp.tint_y0 + 112; size: 240, 30; cursor: pointer; label: "Panel tint depth" }
+            on press cp_panel_tint_track { panel_bg_tint = clamp((pointer.x - cp.sx - 520) / 200 * 100, 0, 100) }
+            on drag cp_panel_tint_track { panel_bg_tint = clamp((pointer.x - cp.sx - 520) / 200 * 100, 0, 100) }
         }
 
         //  ── FONT ─────────────────────────────────────────────────────────
@@ -727,8 +728,8 @@ part ConfigPanel {
             CpSlider(520, 673, 200, wp.min_pct, wp_min_track.hover, cp.mint, ink, cp.track)
             text number(wall_minutes, 0, " min") { at: 736, 673; anchor: left center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
             zone box wp_min_track { from: 500, 658; size: 240, 30; cursor: pointer; label: "Minutes between wallpapers" }
-            on press wp_min_track { wall_minutes = round(clamp(1 + (pointer.x - 520) / 200 * 59, 1, 60)) }
-            on drag wp_min_track { wall_minutes = round(clamp(1 + (pointer.x - 520) / 200 * 59, 1, 60)) }
+            on press wp_min_track { wall_minutes = round(clamp(1 + (pointer.x - cp.sx - 520) / 200 * 59, 1, 60)) }
+            on drag wp_min_track { wall_minutes = round(clamp(1 + (pointer.x - cp.sx - 520) / 200 * 59, 1, 60)) }
 
             text wall_next { at: 266, 704; anchor: left center; size: 13; color: faint; opacity: 78%; family: "Space Grotesk" }
         }
@@ -816,7 +817,7 @@ part ConfigPanel {
                 let ry = 176 + r * 84
                 CpCard(250, ry, 570, 74)
                 text pick(r, "Search panel", "Settings panel", "Notification toast", "Notification centre", "Centre panel") { at: 266, ry + 18; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-                text pick(r, "Launcher card", "This settings card", "The toast under the bar", "The recent list", "The nine-tab glass panel") { at: 266, ry + 38; anchor: left center; size: 13; color: faint; family: "Space Grotesk" }
+                text pick(r, "Search drawer", "This settings drawer", "The toast under the bar", "Notification drawer", "The control drawer") { at: 266, ry + 38; anchor: left center; size: 13; color: faint; family: "Space Grotesk" }
                 repeat k in 0..6 {
                     let col = k - if(k < 3, 0, 3)
                     let row = if(k < 3, 0, 1)
@@ -824,32 +825,33 @@ part ConfigPanel {
                     let by = ry + 8 + row * 30
                     let chosen = pick(r, anim_search, anim_panel, anim_toast, anim_center, anim_center_panel)
                     CpPill(bx, by, 88, 24, if(chosen == k, 1, 0), 0, cp.mint, ink)
-                    text pick(k, "Fade", "Spin", "Unfold", "Drop", "Aperture", "Random") { at: bx + 44, by + 12; anchor: center; size: 9.5; weight: 600; color: if(chosen == k, cp.mint, faint); width: 84; lines: 1; align: center; family: "Space Grotesk" }
+                    text pick(k, "Flow", "Bloom", "Unfold", "Cascade", "Iris", "Random") { at: bx + 44, by + 12; anchor: center; size: 9.5; weight: 600; color: if(chosen == k, cp.mint, faint); width: 84; lines: 1; align: center; family: "Space Grotesk"; show: notch_mode and r != 2 }
+                    text pick(k, "Fade", "Spin", "Unfold", "Drop", "Aperture", "Random") { at: bx + 44, by + 12; anchor: center; size: 9.5; weight: 600; color: if(chosen == k, cp.mint, faint); width: 84; lines: 1; align: center; family: "Space Grotesk"; show: not notch_mode or r == 2 }
                 }
             }
             //  Static hit areas keep every chip addressable by name; the
             //  visual chips above are drawn by the repeat.
-            zone box cp_motion_0_0 { from: 540, 184; size: 88, 24; corner: 12; cursor: pointer; label: "Search Fade" }
+            zone box cp_motion_0_0 { from: 540, 184; size: 88, 24; corner: 12; cursor: pointer; label: "Search Flow" }
             on press cp_motion_0_0 { emit ui_sound; emit anim_set(0) }
-            zone box cp_motion_0_1 { from: 634, 184; size: 88, 24; corner: 12; cursor: pointer; label: "Search Spin" }
+            zone box cp_motion_0_1 { from: 634, 184; size: 88, 24; corner: 12; cursor: pointer; label: "Search Bloom" }
             on press cp_motion_0_1 { emit ui_sound; emit anim_set(1) }
             zone box cp_motion_0_2 { from: 728, 184; size: 88, 24; corner: 12; cursor: pointer; label: "Search Unfold" }
             on press cp_motion_0_2 { emit ui_sound; emit anim_set(2) }
-            zone box cp_motion_0_3 { from: 540, 214; size: 88, 24; corner: 12; cursor: pointer; label: "Search Drop" }
+            zone box cp_motion_0_3 { from: 540, 214; size: 88, 24; corner: 12; cursor: pointer; label: "Search Cascade" }
             on press cp_motion_0_3 { emit ui_sound; emit anim_set(3) }
-            zone box cp_motion_0_4 { from: 634, 214; size: 88, 24; corner: 12; cursor: pointer; label: "Search Aperture" }
+            zone box cp_motion_0_4 { from: 634, 214; size: 88, 24; corner: 12; cursor: pointer; label: "Search Iris" }
             on press cp_motion_0_4 { emit ui_sound; emit anim_set(4) }
             zone box cp_motion_0_5 { from: 728, 214; size: 88, 24; corner: 12; cursor: pointer; label: "Search Random" }
             on press cp_motion_0_5 { emit ui_sound; emit anim_set(5) }
-            zone box cp_motion_1_0 { from: 540, 268; size: 88, 24; corner: 12; cursor: pointer; label: "Settings Fade" }
+            zone box cp_motion_1_0 { from: 540, 268; size: 88, 24; corner: 12; cursor: pointer; label: "Settings Flow" }
             on press cp_motion_1_0 { emit ui_sound; emit anim_set(6) }
-            zone box cp_motion_1_1 { from: 634, 268; size: 88, 24; corner: 12; cursor: pointer; label: "Settings Spin" }
+            zone box cp_motion_1_1 { from: 634, 268; size: 88, 24; corner: 12; cursor: pointer; label: "Settings Bloom" }
             on press cp_motion_1_1 { emit ui_sound; emit anim_set(7) }
             zone box cp_motion_1_2 { from: 728, 268; size: 88, 24; corner: 12; cursor: pointer; label: "Settings Unfold" }
             on press cp_motion_1_2 { emit ui_sound; emit anim_set(8) }
-            zone box cp_motion_1_3 { from: 540, 298; size: 88, 24; corner: 12; cursor: pointer; label: "Settings Drop" }
+            zone box cp_motion_1_3 { from: 540, 298; size: 88, 24; corner: 12; cursor: pointer; label: "Settings Cascade" }
             on press cp_motion_1_3 { emit ui_sound; emit anim_set(9) }
-            zone box cp_motion_1_4 { from: 634, 298; size: 88, 24; corner: 12; cursor: pointer; label: "Settings Aperture" }
+            zone box cp_motion_1_4 { from: 634, 298; size: 88, 24; corner: 12; cursor: pointer; label: "Settings Iris" }
             on press cp_motion_1_4 { emit ui_sound; emit anim_set(10) }
             zone box cp_motion_1_5 { from: 728, 298; size: 88, 24; corner: 12; cursor: pointer; label: "Settings Random" }
             on press cp_motion_1_5 { emit ui_sound; emit anim_set(11) }
@@ -865,31 +867,31 @@ part ConfigPanel {
             on press cp_motion_2_4 { emit ui_sound; emit anim_set(16) }
             zone box cp_motion_2_5 { from: 728, 382; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Random" }
             on press cp_motion_2_5 { emit ui_sound; emit anim_set(17) }
-            zone box cp_motion_3_0 { from: 540, 436; size: 88, 24; corner: 12; cursor: pointer; label: "Centre Fade" }
+            zone box cp_motion_3_0 { from: 540, 436; size: 88, 24; corner: 12; cursor: pointer; label: "Centre Flow" }
             on press cp_motion_3_0 { emit ui_sound; emit anim_set(18) }
-            zone box cp_motion_3_1 { from: 634, 436; size: 88, 24; corner: 12; cursor: pointer; label: "Centre Spin" }
+            zone box cp_motion_3_1 { from: 634, 436; size: 88, 24; corner: 12; cursor: pointer; label: "Centre Bloom" }
             on press cp_motion_3_1 { emit ui_sound; emit anim_set(19) }
             zone box cp_motion_3_2 { from: 728, 436; size: 88, 24; corner: 12; cursor: pointer; label: "Centre Unfold" }
             on press cp_motion_3_2 { emit ui_sound; emit anim_set(20) }
-            zone box cp_motion_3_3 { from: 540, 466; size: 88, 24; corner: 12; cursor: pointer; label: "Centre Drop" }
+            zone box cp_motion_3_3 { from: 540, 466; size: 88, 24; corner: 12; cursor: pointer; label: "Centre Cascade" }
             on press cp_motion_3_3 { emit ui_sound; emit anim_set(21) }
-            zone box cp_motion_3_4 { from: 634, 466; size: 88, 24; corner: 12; cursor: pointer; label: "Centre Aperture" }
+            zone box cp_motion_3_4 { from: 634, 466; size: 88, 24; corner: 12; cursor: pointer; label: "Centre Iris" }
             on press cp_motion_3_4 { emit ui_sound; emit anim_set(22) }
             zone box cp_motion_3_5 { from: 728, 466; size: 88, 24; corner: 12; cursor: pointer; label: "Centre Random" }
             on press cp_motion_3_5 { emit ui_sound; emit anim_set(23) }
-            zone box cp_motion_4_0 { from: 540, 520; size: 88, 24; corner: 12; cursor: pointer; label: "Centre panel Fade" }
+            zone box cp_motion_4_0 { from: 540, 520; size: 88, 24; corner: 12; cursor: pointer; label: "Centre panel Flow" }
             on press cp_motion_4_0 { emit ui_sound; emit anim_set(24) }
-            zone box cp_motion_4_1 { from: 634, 520; size: 88, 24; corner: 12; cursor: pointer; label: "Centre panel Spin" }
+            zone box cp_motion_4_1 { from: 634, 520; size: 88, 24; corner: 12; cursor: pointer; label: "Centre panel Bloom" }
             on press cp_motion_4_1 { emit ui_sound; emit anim_set(25) }
             zone box cp_motion_4_2 { from: 728, 520; size: 88, 24; corner: 12; cursor: pointer; label: "Centre panel Unfold" }
             on press cp_motion_4_2 { emit ui_sound; emit anim_set(26) }
-            zone box cp_motion_4_3 { from: 540, 550; size: 88, 24; corner: 12; cursor: pointer; label: "Centre panel Drop" }
+            zone box cp_motion_4_3 { from: 540, 550; size: 88, 24; corner: 12; cursor: pointer; label: "Centre panel Cascade" }
             on press cp_motion_4_3 { emit ui_sound; emit anim_set(27) }
-            zone box cp_motion_4_4 { from: 634, 550; size: 88, 24; corner: 12; cursor: pointer; label: "Centre panel Aperture" }
+            zone box cp_motion_4_4 { from: 634, 550; size: 88, 24; corner: 12; cursor: pointer; label: "Centre panel Iris" }
             on press cp_motion_4_4 { emit ui_sound; emit anim_set(28) }
             zone box cp_motion_4_5 { from: 728, 550; size: 88, 24; corner: 12; cursor: pointer; label: "Centre panel Random" }
             on press cp_motion_4_5 { emit ui_sound; emit anim_set(29) }
-            text "Random picks a different pose after each close." { at: 266, 612; anchor: left center; size: 13; color: faint; opacity: 78%; family: "Space Grotesk" }
+            text "Random changes the next opening. Drawers stay joined to the frame." { at: 266, 612; anchor: left center; size: 13; color: faint; opacity: 78%; family: "Space Grotesk" }
         }
 
         //  ── LOCK SCREEN ──────────────────────────────────────────────────
@@ -898,19 +900,20 @@ part ConfigPanel {
 
             CpCard(250, 176, 570, 62)
             text "Blur" { at: 266, 186; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "How much the wallpaper blurs." { at: 266, 204; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            CpPill(560, 190, 76, 28, if(lock_blur == 18, 1, 0), cp_lk_blur18.hover, cp.mint, ink)
-            text "Light" { at: 598, 204; anchor: center; size: 13; weight: 600; color: if(lock_blur == 18, cp.mint, ink); family: "Space Grotesk" }
-            zone box cp_lk_blur18 { from: 560, 190; size: 76, 28; corner: 14; cursor: pointer; label: "Light blur" }
-            on press cp_lk_blur18 { emit ui_sound; lock_blur = 18 }
-            CpPill(644, 190, 76, 28, if(lock_blur == 36, 1, 0), cp_lk_blur36.hover, cp.mint, ink)
-            text "Medium" { at: 682, 204; anchor: center; size: 13; weight: 600; color: if(lock_blur == 36, cp.mint, ink); family: "Space Grotesk" }
-            zone box cp_lk_blur36 { from: 644, 190; size: 76, 28; corner: 14; cursor: pointer; label: "Medium blur" }
-            on press cp_lk_blur36 { emit ui_sound; lock_blur = 36 }
-            CpPill(728, 190, 76, 28, if(lock_blur == 60, 1, 0), cp_lk_blur60.hover, cp.mint, ink)
-            text "Heavy" { at: 766, 204; anchor: center; size: 13; weight: 600; color: if(lock_blur == 60, cp.mint, ink); family: "Space Grotesk" }
-            zone box cp_lk_blur60 { from: 728, 190; size: 76, 28; corner: 14; cursor: pointer; label: "Heavy blur" }
-            on press cp_lk_blur60 { emit ui_sound; lock_blur = 60 }
+            text "Wallpaper blur in pixels, from 0 to 120." { at: 266, 204; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(520, 223, 200, lock_blur / 120, cp_lk_blur.hover, cp.mint, ink, cp.track)
+            zone box cp_lk_blur { from: 510, 208; size: 210, 30; cursor: pointer; label: "Wallpaper blur, 0 to 120 pixels" }
+            on press cp_lk_blur { lock_blur = clamp(round((pointer.x - cp.sx - 520) / 200 * 120), 0, 120) }
+            on drag cp_lk_blur { lock_blur = clamp(round((pointer.x - cp.sx - 520) / 200 * 120), 0, 120) }
+            CpPill(728, 209, 24, 28, 0, cp_lk_blur_minus.hover, cp.mint, ink)
+            text "−" { at: 740, 223; anchor: center; size: 16; color: ink; family: "Space Grotesk" }
+            zone box cp_lk_blur_minus { from: 728, 209; size: 24, 28; cursor: pointer; label: "Decrease blur by one pixel" }
+            on press cp_lk_blur_minus { lock_blur = clamp(round(lock_blur) - 1, 0, 120) }
+            text number(lock_blur, 0) { at: 772, 223; anchor: center; size: 14; weight: 600; color: cp.mint; family: "Space Grotesk" }
+            CpPill(792, 209, 24, 28, 0, cp_lk_blur_plus.hover, cp.mint, ink)
+            text "+" { at: 804, 223; anchor: center; size: 16; color: ink; family: "Space Grotesk" }
+            zone box cp_lk_blur_plus { from: 792, 209; size: 24, 28; cursor: pointer; label: "Increase blur by one pixel" }
+            on press cp_lk_blur_plus { lock_blur = clamp(round(lock_blur) + 1, 0, 120) }
 
             CpCard(250, 242, 570, 62)
             text "Clock" { at: 266, 252; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
@@ -1042,8 +1045,8 @@ part ConfigPanel {
             CpSlider(520, 223, 200, cp.idle_lock_pct, cp_idle_lock.hover, cp.mint, ink, cp.track)
             text idle_lock_t { at: 736, 223; anchor: left center; size: 13; weight: 600; color: ink; width: 84; lines: 1; family: "Space Grotesk" }
             zone box cp_idle_lock { from: 510, 208; size: 240, 30; cursor: pointer; label: "Lock after" }
-            on press cp_idle_lock { idle_lock_i = clamp(round((pointer.x - 520) / 200 * 16), 0, 16) }
-            on drag cp_idle_lock { idle_lock_i = clamp(round((pointer.x - 520) / 200 * 16), 0, 16) }
+            on press cp_idle_lock { idle_lock_i = clamp(round((pointer.x - cp.sx - 520) / 200 * 16), 0, 16) }
+            on drag cp_idle_lock { idle_lock_i = clamp(round((pointer.x - cp.sx - 520) / 200 * 16), 0, 16) }
 
             CpCard(250, 242, 570, 62)
             text "Screen off after" { at: 266, 252; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
@@ -1051,8 +1054,8 @@ part ConfigPanel {
             CpSlider(520, 289, 200, cp.idle_off_pct, cp_idle_off.hover, cp.mint, ink, cp.track)
             text idle_off_t { at: 736, 289; anchor: left center; size: 13; weight: 600; color: ink; width: 84; lines: 1; family: "Space Grotesk" }
             zone box cp_idle_off { from: 510, 274; size: 240, 30; cursor: pointer; label: "Screen off after" }
-            on press cp_idle_off { idle_off_i = clamp(round((pointer.x - 520) / 200 * 16), 0, 16) }
-            on drag cp_idle_off { idle_off_i = clamp(round((pointer.x - 520) / 200 * 16), 0, 16) }
+            on press cp_idle_off { idle_off_i = clamp(round((pointer.x - cp.sx - 520) / 200 * 16), 0, 16) }
+            on drag cp_idle_off { idle_off_i = clamp(round((pointer.x - cp.sx - 520) / 200 * 16), 0, 16) }
 
             text "Never first. 5 seconds is the shortest. No suspend." { at: 266, 344; anchor: left center; size: 13; color: faint; opacity: 78%; width: 540; lines: 1; family: "Space Grotesk" }
         }
@@ -1109,8 +1112,8 @@ part ConfigPanel {
             CpSlider(520, 366, 200, cp.grad_pct, cp_grad_track.hover, cp.mint, ink, cp.track)
             text number(panel_gradient_strength, 0, "%") { at: 736, 366; anchor: left center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_grad_track { from: 510, 351; size: 240, 30; cursor: pointer; label: "Gradient strength" }
-            on press cp_grad_track { panel_gradient_strength = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
-            on drag cp_grad_track { panel_gradient_strength = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
+            on press cp_grad_track { panel_gradient_strength = clamp((pointer.x - cp.sx - 520) / 200 * 100, 0, 100) }
+            on drag cp_grad_track { panel_gradient_strength = clamp((pointer.x - cp.sx - 520) / 200 * 100, 0, 100) }
 
             CpCard(250, 396, 570, 70)
             text "Inner light" { at: 266, 406; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
@@ -1118,8 +1121,8 @@ part ConfigPanel {
             CpSlider(520, 455, 200, cp.light_pct, cp_light_track.hover, cp.mint, ink, cp.track)
             text number(glass_light * 100, 0, "%") { at: 736, 455; anchor: left center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_light_track { from: 510, 440; size: 240, 30; cursor: pointer; label: "Inner light" }
-            on press cp_light_track { glass_light = clamp((pointer.x - 520) / 200, 0, 1) }
-            on drag cp_light_track { glass_light = clamp((pointer.x - 520) / 200, 0, 1) }
+            on press cp_light_track { glass_light = clamp((pointer.x - cp.sx - 520) / 200, 0, 1) }
+            on drag cp_light_track { glass_light = clamp((pointer.x - cp.sx - 520) / 200, 0, 1) }
 
             CpCard(250, 472, 570, 70)
             text "Inner border" { at: 266, 482; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
@@ -1127,36 +1130,36 @@ part ConfigPanel {
             CpSlider(520, 531, 200, cp.border_pct, cp_border_track.hover, cp.mint, ink, cp.track)
             text number(glass_border, 0, "%") { at: 736, 531; anchor: left center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_border_track { from: 510, 516; size: 240, 30; cursor: pointer; label: "Inner border" }
-            on press cp_border_track { glass_border = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
-            on drag cp_border_track { glass_border = clamp((pointer.x - 520) / 200 * 100, 0, 100) }
+            on press cp_border_track { glass_border = clamp((pointer.x - cp.sx - 520) / 200 * 100, 0, 100) }
+            on drag cp_border_track { glass_border = clamp((pointer.x - cp.sx - 520) / 200 * 100, 0, 100) }
 
             CpCard(250, 548, 570, 70)
             text "Smoke" { at: 266, 582; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
             CpSlider(340, 582, 120, cp.smoke_pct, cp_smoke_track.hover, cp.mint, ink, cp.track)
             text number(glass_smoke * 100, 0, "%") { at: 472, 582; anchor: left center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_smoke_track { from: 330, 567; size: 140, 30; cursor: pointer; label: "Smoked glass" }
-            on press cp_smoke_track { glass_smoke = clamp((pointer.x - 340) / 120, 0, 1) }
-            on drag cp_smoke_track { glass_smoke = clamp((pointer.x - 340) / 120, 0, 1) }
+            on press cp_smoke_track { glass_smoke = clamp((pointer.x - cp.sx - 340) / 120, 0, 1) }
+            on drag cp_smoke_track { glass_smoke = clamp((pointer.x - cp.sx - 340) / 120, 0, 1) }
             text "Vivid" { at: 530, 582; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
             CpSlider(604, 582, 120, cp.vivid_pct, cp_vivid_track.hover, cp.mint, ink, cp.track)
             text number(glass_vivid * 100, 0, "%") { at: 736, 582; anchor: left center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_vivid_track { from: 594, 567; size: 140, 30; cursor: pointer; label: "Glass vividness" }
-            on press cp_vivid_track { glass_vivid = clamp((pointer.x - 604) / 120 * 2, 0, 2) }
-            on drag cp_vivid_track { glass_vivid = clamp((pointer.x - 604) / 120 * 2, 0, 2) }
+            on press cp_vivid_track { glass_vivid = clamp((pointer.x - cp.sx - 604) / 120 * 2, 0, 2) }
+            on drag cp_vivid_track { glass_vivid = clamp((pointer.x - cp.sx - 604) / 120 * 2, 0, 2) }
 
             CpCard(250, 624, 570, 70)
             text "Mirror" { at: 266, 658; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
             CpSlider(340, 658, 120, cp.mirror_pct, cp_mirror_track.hover, cp.mint, ink, cp.track)
             text number(glass_mirror * 100, 0, "%") { at: 472, 658; anchor: left center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_mirror_track { from: 330, 643; size: 140, 30; cursor: pointer; label: "Mirror rim" }
-            on press cp_mirror_track { glass_mirror = clamp((pointer.x - 340) / 120 * 2, 0, 2) }
-            on drag cp_mirror_track { glass_mirror = clamp((pointer.x - 340) / 120 * 2, 0, 2) }
+            on press cp_mirror_track { glass_mirror = clamp((pointer.x - cp.sx - 340) / 120 * 2, 0, 2) }
+            on drag cp_mirror_track { glass_mirror = clamp((pointer.x - cp.sx - 340) / 120 * 2, 0, 2) }
             text "Highlight" { at: 530, 658; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
             CpSlider(604, 658, 120, cp.highlight_pct, cp_highlight_track.hover, cp.mint, ink, cp.track)
             text number(glass_highlight * 100, 0, "%") { at: 736, 658; anchor: left center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_highlight_track { from: 594, 643; size: 140, 30; cursor: pointer; label: "Rim highlight" }
-            on press cp_highlight_track { glass_highlight = clamp((pointer.x - 604) / 120 * 2, 0, 2) }
-            on drag cp_highlight_track { glass_highlight = clamp((pointer.x - 604) / 120 * 2, 0, 2) }
+            on press cp_highlight_track { glass_highlight = clamp((pointer.x - cp.sx - 604) / 120 * 2, 0, 2) }
+            on drag cp_highlight_track { glass_highlight = clamp((pointer.x - cp.sx - 604) / 120 * 2, 0, 2) }
 
             CpCard(250, 700, 570, 70)
             text "Press ripple" { at: 266, 710; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
@@ -1164,8 +1167,8 @@ part ConfigPanel {
             CpSlider(520, 752, 200, cp.ripple_pct, cp_ripple_track.hover, cp.mint, ink, cp.track)
             text number(glass_ripple * 100, 0, "%") { at: 736, 752; anchor: left center; size: 15; weight: 600; color: ink; family: "Space Grotesk" }
             zone box cp_ripple_track { from: 510, 737; size: 240, 30; cursor: pointer; label: "Press ripple" }
-            on press cp_ripple_track { glass_ripple = clamp((pointer.x - 520) / 200, 0, 1) }
-            on drag cp_ripple_track { glass_ripple = clamp((pointer.x - 520) / 200, 0, 1) }
+            on press cp_ripple_track { glass_ripple = clamp((pointer.x - cp.sx - 520) / 200, 0, 1) }
+            on drag cp_ripple_track { glass_ripple = clamp((pointer.x - cp.sx - 520) / 200, 0, 1) }
 
             text "Presets are a starting point; every slider below stays live." { at: 266, 796; anchor: left center; size: 12; color: faint; opacity: 78%; family: "Space Grotesk" }
         }
@@ -1181,7 +1184,7 @@ part ConfigPanel {
         keyboard: none
         group {
             NotchDrawerRipples(cp_np)
-            NotchDrawerContent(cp_np, 860) { ConfigPanelContent() }
+            NotchDrawerContent(cp_np, 860, panel_fx) { ConfigPanelContent() }
         }
     }
 }

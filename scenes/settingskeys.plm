@@ -1,8 +1,6 @@
 language 0.4
-//  A one-surface keyboard helper for the settings panel.  The main scene has
-//  several layer surfaces and does not receive layer keyboard focus; this
-//  helper is a separate single-surface process with an invisible input field,
-//  so the city and font fields can be typed through it.
+//  A one-surface keyboard helper for settings and search text fields. The main
+//  scene uses a separate surface to own keyboard focus and relay typed text.
 scene SettingsKeys {
     permissions {
         run: "sh"

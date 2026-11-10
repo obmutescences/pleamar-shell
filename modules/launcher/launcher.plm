@@ -1,14 +1,12 @@
 part Launcher {
-    //  Search: one glass panel in the middle of the screen.  The first try
-    //  attached it to the Island bar, but two layer surfaces cannot merge
-    //  without a seam; the fallback is the clean centred panel, with the same
-    //  field, prefix hints and rows as Vitreus's launcher.
+    //  Shared search content: Notches draws it inside the frame's continuous
+    //  glass body.
     let la.card = rgb(pal_panel_r, pal_panel_g, pal_panel_b)
     let la.row = mix(tint, ink, 0.04)
     let la.search = mix(tint, ink, 0.08)
-    let la.x = 20
+    let la.x = 0
     let la.w = 620
-    let la.top = 20
+    let la.top = 0
     let la.h = 600
     prop la_p = 0 ~gentle
     follow la_p = launch_open
@@ -16,22 +14,13 @@ part Launcher {
     //  can take the keyboard, exactly as Vitreus does for its launcher.
     prop la_focus = 0 ~quick
 
-    surface launcher {
-        size: 660, 640
-        anchor: center
-        level: overlay
-        open: launch_open or la_p > 0.01
-        rate: 120, 30 while quiet
-        //  Set unconditionally: the layer surface only exists while open, and
-        //  Pleamar applies a keyboard change when the surface is created.
-        keyboard: exclusive
-
+    component LauncherContent() {
         zone box la_shield { from: la.x, la.top; size: la.w, la.h; active: launch_open; label: "Search" }
         on press la_shield { launch_open = launch_open }
 
-        PanelPop(search_fx, la_p, 660, 640) {
             PanelBackdrop(la.x, la.top, la.w, la.h, 24)
             body {
+                show: not notch_mode
                 color: panel_bg
                 glass: if(glass_on, 100%, 0%)
                 opacity: 1% * max(glass_tint, 82)
@@ -51,7 +40,7 @@ part Launcher {
                 shine: pointer
                 box { from: la.x, la.top; size: la.w, la.h; corner: 24 }
             }
-            box { from: la.x, la.top; size: la.w, la.h; corner: 24; stroke: 1; color: ink; opacity: 8% }
+            box { from: la.x, la.top; size: la.w, la.h; corner: 24; stroke: 1; color: ink; opacity: 8%; show: not notch_mode }
 
             text "SEARCH" { at: la.x + 20, la.top + 24; anchor: left center; size: 10; weight: 700; color: faint; opacity: 70%; family: "Space Grotesk" }
             text la_mode { at: la.x + la.w - 20, la.top + 24; anchor: right center; size: 11; weight: 700; color: aqua; family: "Space Grotesk" }
@@ -72,7 +61,7 @@ part Launcher {
             line { from: la.x + la.w - 46, la.top + 50; to: la.x + la.w - 36, la.top + 60; width: 1.5; color: ink; opacity: 55% + 45% * la_close.hover }
             line { from: la.x + la.w - 36, la.top + 50; to: la.x + la.w - 46, la.top + 60; width: 1.5; color: ink; opacity: 55% + 45% * la_close.hover }
             zone box la_close { from: la.x + la.w - 54, la.top + 42; size: 28, 28; corner: 14; cursor: pointer; label: "Close search" }
-            on press la_close { emit ui_sound; launch_open = false }
+            on press la_close { emit ui_sound; emit launch_close }
 
             repeat i in 0..4 {
                 let hx = la.x + 16 + i * 118
@@ -109,7 +98,18 @@ part Launcher {
             }
             text "Nothing matches." { at: la.x + la.w / 2, la.top + 280; anchor: center; size: 14; color: faint; show: la_apps.count < 1 }
             text la_hint { at: la.x + 14, la.top + la.h - 18; anchor: left center; size: 11; color: faint; opacity: 75%; width: la.w - 28; lines: 1; family: "Space Grotesk" }
-        }
+    }
+
+    surface launcher {
+        size: 620, 600
+        anchor: center
+        level: overlay
+        open: not notch_mode and (launch_open or la_p > 0.01)
+        rate: 120, 30 while quiet
+        //  Notches uses the main frame for drawing and a one-pixel helper for
+        //  text input.
+        keyboard: exclusive
+        PanelPop(search_fx, la_p, 620, 600) { LauncherContent() }
 
         on change launch_open while launch_open { la_focus: 1 after 220ms }
         on change launch_open while not launch_open { la_focus: 0 }

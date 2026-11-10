@@ -515,7 +515,7 @@ local function start_keys()
     if key_helper or not truthy(fact.center_open) then return end
     local root = root_of and root_of() or ""
     if root == "" then return end
-    local parent = string.lower(tostring(text.layout or "island"))
+    local parent = string.lower(tostring(text.layout or "notches"))
     local cmd = "PLEAMAR_CENTER_PARENT=" .. shq(parent) .. " exec " .. shq(root .. "/bin/pleamar-centerkeys")
     local mine
     local ok, id = pcall(spawn, "sh", { "-c", cmd }, function() end, function()
@@ -532,10 +532,25 @@ end
 local function close()
     fact.center_open = false
     fact.center_power_confirm = -1
+    fact.audio_pick_open = false
     stop_keys()
     fact.tray_menu_open = false
     fact.tray_submenu_open = false
     stop_sys()
+end
+
+local function dismiss_top()
+    if number(fact.center_power_confirm, -1) >= 0 then
+        fact.center_power_confirm = -1
+    elseif truthy(fact.audio_pick_open) then
+        fact.audio_pick_open = false
+    else
+        close()
+    end
+end
+
+local function modal_open()
+    return number(fact.center_power_confirm, -1) >= 0 or truthy(fact.audio_pick_open)
 end
 
 local function open(tab)
@@ -569,6 +584,8 @@ function M.start(root_getter, fx)
             --  The cross and Escape used to clear the fact directly.  Releasing
             --  the exclusive keyboard here avoids waiting for the helper's
             --  watchdog (about two seconds) before the focused window gets keys.
+            fact.center_power_confirm = -1
+            fact.audio_pick_open = false
             stop_keys()
             fact.tray_menu_open = false
             stop_sys()
@@ -603,7 +620,7 @@ function M.start(root_getter, fx)
     end)
 
     on("center_key_digit", function(n)
-        if not truthy(fact.center_open) then return end
+        if not truthy(fact.center_open) or modal_open() then return end
         local v = math.floor(number(n, 0))
         if v >= 1 and v <= 7 then
             fact.center_tab = v - 1
@@ -613,7 +630,7 @@ function M.start(root_getter, fx)
         end
     end)
     on("center_key_tab", function(d)
-        if not truthy(fact.center_open) then return end
+        if not truthy(fact.center_open) or modal_open() then return end
         local dir = number(d, 1) < 0 and -1 or 1
         fact.center_tab = (math.floor(number(fact.center_tab, 0)) + dir + 7) % 7
         fact.center_sys_scroll = 0
@@ -621,7 +638,7 @@ function M.start(root_getter, fx)
         fact.audio_pick_open = false
     end)
     on("center_key_escape", function()
-        if truthy(fact.center_open) then close() end
+        if truthy(fact.center_open) then dismiss_top() end
     end)
     on("center_key_blur", function()
         if truthy(fact.center_open) then close() end
@@ -631,9 +648,10 @@ function M.start(root_getter, fx)
         if not truthy(fact.center_open) then return end
         name = tostring(name or "")
         if name == "Escape" then
-            close()
+            dismiss_top()
             return
         end
+        if modal_open() then return end
         if name == "Tab" or name == "ISO_Left_Tab" or name == "Backtab" then
             local d = (held("Shift") or held("ISO_Left_Tab")) and -1 or 1
             fact.center_tab = (math.floor(number(fact.center_tab, 0)) + d + 7) % 7
@@ -684,7 +702,7 @@ function M.start(root_getter, fx)
     end)
     on("center_quick", function(k)
         local i = math.floor(number(k, -1))
-        if i == 0 then fact.wave_on = not truthy(fact.wave_on)
+        if i == 0 then fact.music_frame_on = not truthy(fact.music_frame_on)
         elseif i == 1 then fact.glass_on = not truthy(fact.glass_on)
         elseif i == 2 then
             if truthy(fact.bt_present) then

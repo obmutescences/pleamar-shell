@@ -62,11 +62,7 @@ if [[ "$action" == "picker" ]]; then
 fi
 
 if [[ -z "$scene" ]]; then
-    if pgrep -f -- "pleamar --scene .*/scenes/island.plm" >/dev/null; then
-        scene=island
-    elif pgrep -f -- "pleamar --scene .*/scenes/frame.plm" >/dev/null; then
-        scene=frame
-    elif pgrep -f -- "pleamar --scene .*/scenes/notches.plm" >/dev/null; then
+    if pgrep -f -- "pleamar --scene .*/scenes/notches.plm" >/dev/null; then
         scene=notches
     else
         echo "no pleamar-shell scene is running" >&2

@@ -1,8 +1,8 @@
 --  Forward the centre panel's keys to the shell scene.  The helper owns the
 --  keyboard while the panel is open; the panel itself asks for none.
-local parent = "island"
+local parent = "notches"
 
-run("sh", { "-c", 'printf %s "${PLEAMAR_CENTER_PARENT:-island}"' }, function(out)
+run("sh", { "-c", 'printf %s "${PLEAMAR_CENTER_PARENT:-notches}"' }, function(out)
     local p = tostring(out or ""):gsub("%s+$", "")
     if p ~= "" then parent = p end
 end)

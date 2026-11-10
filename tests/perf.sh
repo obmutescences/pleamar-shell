@@ -3,8 +3,8 @@
 # Uses whatever the system sink is playing; it does not generate audio.
 set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-mode="${1:-island}"
-case "$mode" in island|frame) ;; *) echo "usage: $0 island|frame" >&2; exit 2 ;; esac
+mode="${1:-notches}"
+case "$mode" in notches) ;; *) echo "usage: $0 notches" >&2; exit 2 ;; esac
 command -v niri >/dev/null || { echo "niri is required" >&2; exit 1; }
 
 p="$("$root/bin/pleamar-shell" --path)"

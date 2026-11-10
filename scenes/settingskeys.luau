@@ -1,8 +1,8 @@
---  Forward the settings panel's typed text to the main scene.  The helper has
---  the keyboard; the visible input in settings follows the text fact because
---  it is bound to the same name.  Escape closes the settings panel.
-local parent = "island"
+--  Forward typed text and search navigation to the owning shell. The helper
+--  owns the keyboard while the visible field follows the parent's text fact.
+local parent = "notches"
 local field = "weather_city"
+local close_event = "settings_close"
 local initial = ""
 local ready = false
 local last = ""
@@ -12,12 +12,13 @@ local function send(cmd)
     if not ok then log("settings key helper: " .. tostring(err)) end
 end
 
-run("sh", { "-c", 'printf "%s\\n%s\\n%s" "${PLEAMAR_SETTINGS_PARENT:-island}" "${PLEAMAR_SETTINGS_FIELD:-weather_city}" "${PLEAMAR_SETTINGS_TEXT:-}"' }, function(out)
+run("sh", { "-c", 'printf "%s\\n%s\\n%s\\n%s" "${PLEAMAR_SETTINGS_PARENT:-notches}" "${PLEAMAR_SETTINGS_FIELD:-weather_city}" "${PLEAMAR_SETTINGS_TEXT:-}" "${PLEAMAR_SETTINGS_CLOSE_EVENT:-settings_close}"' }, function(out)
     local lines = {}
     for line in tostring(out or ""):gmatch("([^\n]*)\n?") do lines[#lines + 1] = line end
     if lines[1] and lines[1] ~= "" then parent = lines[1] end
     if lines[2] and lines[2] ~= "" then field = lines[2] end
     initial = lines[3] or ""
+    close_event = lines[4] or "settings_close"
     text.buffer = initial
     last = initial
     after(250, function()
@@ -38,7 +39,13 @@ end)
 on("key_down", function(name)
     name = tostring(name or "")
     if name == "Escape" then
-        send("emit settings_close")
+        send("emit " .. close_event)
+    elseif field == "query" and (name == "Down" or name == "Tab" or name == "Ctrl+n") then
+        send("emit la_move 1")
+    elseif field == "query" and (name == "Up" or name == "Ctrl+p") then
+        send("emit la_move -1")
+    elseif field == "query" and (name == "Return" or name == "Enter") then
+        send("emit launch_submit")
     elseif name == "XF86AudioRaiseVolume" then
         run("sh", { "-c", "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+ 2>/dev/null || true" })
     elseif name == "XF86AudioLowerVolume" then

@@ -1,8 +1,6 @@
 part Common {
-    //  Everything both layouts share: the palette, the audio bands, the panel
-    //  state and the one shader.  Each scene adds its own surfaces; the
-    //  permissions and the clock service live in the scene, where pleamar
-    //  registers them.
+    //  Shared Notches state: the palette, audio bands, panel flags and the
+    //  clock service.  The scene owns its surfaces and permissions.
     //  The glass palette.  It follows the shape Vitreus's glass uses: a dark
     //  tint, a mint crest, and enough edge light for the rim to read without
     //  a shadow turning the strip into a dirty ring.
@@ -116,28 +114,27 @@ part Common {
         }
     }
 
-    component NotchDrawerContent(p: number, w: number) {
+    component NotchDrawerContent(p: number, w: number, effect: number) {
         let nd.p = clamp(p, 0, 1)
         let nd.cx = screen.width / 2
-        let nd.y = 68
+        //  Content starts at the bottom of the clock notch, flush with the frame.
+        let nd.y = notch_clock_h
+        let nd.sx = if(effect == 1, 0.70 + 0.30 * nd.p, if(effect == 4, 0.38 + 0.62 * nd.p, 1))
+        let nd.sy = if(effect == 1, 0.58 + 0.42 * nd.p, if(effect == 2, pow(nd.p, 1.55), if(effect == 3, 0.82 + 0.18 * nd.p, nd.p)))
+        let nd.fade = if(effect == 1, min(1, nd.p * 2), min(1, nd.p * 1.5))
+        let nd.dy = if(effect == 3, -56 * (1 - nd.p), if(effect == 4, -14 * (1 - nd.p), 0))
         group {
-            move: nd.cx - w / 2, nd.y
+            move: nd.cx - w / 2, nd.y + nd.dy
             pivot: w / 2, 0
-            scale: 1, max(nd.p, 0.015)
-            opacity: clamp(nd.p * 1.5, 0, 1)
+            scale: nd.sx, max(nd.sy, 0.015)
+            opacity: clamp(nd.fade, 0, 1)
             children
         }
     }
 
     component NotchDrawerRipples(p: number) {
-        let nd.p = clamp(p, 0, 1)
-        let nd.cx = screen.width / 2
-        let nd.y = 68
-        let nd.neck = mix(34, 104, min(1, nd.p * 1.5))
-        let nd.rip = clamp(1 - nd.p, 0, 1) + 0.16
-        ellipse { at: nd.cx - nd.neck * 0.52, nd.y; radius: 10 + 15 * nd.rip; stroke: 1.2; color: aqua; opacity: 12% + 42% * nd.rip }
-        ellipse { at: nd.cx + nd.neck * 0.52, nd.y; radius: 10 + 15 * nd.rip; stroke: 1.2; color: azure; opacity: 10% + 36% * nd.rip }
-        ellipse { at: nd.cx, nd.y + 1; radius: 18 + 26 * nd.rip; stroke: 0.9; color: aqua; opacity: 8% + 26% * nd.rip }
+        //  Ripple ellipses are no longer drawn: the frame glass silhouette
+        //  provides the visual connection.  Component kept for call-site compat.
     }
 
     //  Legacy panels draw their own neck.  Notches reuses only the content
@@ -161,27 +158,24 @@ part Common {
     event anim_set ->
     //  0 Liquid · 1 Clear · 2 Smoked · 3 Milky · 4 Mirror
     event glass_preset ->
-    //  Height of the floating island bar (the capsule reused in Frame), in px.
-    fact bar_height: number = 44
     fact glass_tint: number = 58
     fact glass_frost: number = 100
     fact glass_edge: number = 34
-    fact wave_on = true
-    fact wave_depth: number = 100
-    fact wave_blend: number = 0.55
-    //  Ripples: 1 (one long train) to 10 finer trains.  Gain is the cava
-    //  sensitivity (envelope shaping); amplitude expands the visible reach.
+    //  Cava envelope gain for the frame bands.
     fact wave_gain: number = 1.4
-    fact wave_amp: number = 1.4
-    fact wave_ripples: number = 1
-    //  Height of the ripples themselves, independent of the overall reach.
-    //  0 is a smooth meniscus; 3 is a rough, crest-heavy edge.
-    fact wave_height: number = 1.6
 
-    //  The Notches frame's music: the old shader water can stay off while
-    //  the six-band bars draw on the frame.  0 is the top edge; 1 is all four.
+    //  The Notches frame's music: the six-band bars draw on the frame.
+    //  0 is the top edge; 1 is all four sides.
     fact music_frame_on = true
     fact music_frame_sides: number = 1
+    //  Music frame visual parameters — mirrors Vitreus fw_* settings.
+    fact music_frame_sens: number = 1          // sensitivity multiplier 0.3–3.0
+    fact music_frame_hgt: number = 50          // max bar height in px, 10–120
+    fact music_frame_blend: number = 100       // liquid blend 0–100 (maps to fw.bl)
+    fact music_frame_cols: number = 12         // bars per edge: 6, 12, 24, 48
+    //  Clock notch height in the frame bar (px), configurable from settings.
+    fact notch_clock_h: number = 56
+    fact notch_clock_w: number = 168
 
     //  Lock screen settings.  The lock scene is a separate process, so these
     //  live in the shell config and are pushed to it when it opens.
@@ -231,9 +225,82 @@ part Common {
     prop band.s.5 = 0 ~wave_smooth
     follow band.s.5 = bands.5
 
-    //  The config panel's switch knob.
-    prop cfg_knob = 0 ~quick
-    follow cfg_knob = wave_on
+    //  All 24 raw cava bars for the Notches frame music visualiser,
+    //  like Vitreus spec.0..spec.23 with spike spring = 520, 26.
+    spring nf_spike = 520, 26
+    fact spec.0 = 0
+    fact spec.1 = 0
+    fact spec.2 = 0
+    fact spec.3 = 0
+    fact spec.4 = 0
+    fact spec.5 = 0
+    fact spec.6 = 0
+    fact spec.7 = 0
+    fact spec.8 = 0
+    fact spec.9 = 0
+    fact spec.10 = 0
+    fact spec.11 = 0
+    fact spec.12 = 0
+    fact spec.13 = 0
+    fact spec.14 = 0
+    fact spec.15 = 0
+    fact spec.16 = 0
+    fact spec.17 = 0
+    fact spec.18 = 0
+    fact spec.19 = 0
+    fact spec.20 = 0
+    fact spec.21 = 0
+    fact spec.22 = 0
+    fact spec.23 = 0
+    prop spec.s.0  = 0 ~nf_spike
+    follow spec.s.0  = spec.0
+    prop spec.s.1  = 0 ~nf_spike
+    follow spec.s.1  = spec.1
+    prop spec.s.2  = 0 ~nf_spike
+    follow spec.s.2  = spec.2
+    prop spec.s.3  = 0 ~nf_spike
+    follow spec.s.3  = spec.3
+    prop spec.s.4  = 0 ~nf_spike
+    follow spec.s.4  = spec.4
+    prop spec.s.5  = 0 ~nf_spike
+    follow spec.s.5  = spec.5
+    prop spec.s.6  = 0 ~nf_spike
+    follow spec.s.6  = spec.6
+    prop spec.s.7  = 0 ~nf_spike
+    follow spec.s.7  = spec.7
+    prop spec.s.8  = 0 ~nf_spike
+    follow spec.s.8  = spec.8
+    prop spec.s.9  = 0 ~nf_spike
+    follow spec.s.9  = spec.9
+    prop spec.s.10 = 0 ~nf_spike
+    follow spec.s.10 = spec.10
+    prop spec.s.11 = 0 ~nf_spike
+    follow spec.s.11 = spec.11
+    prop spec.s.12 = 0 ~nf_spike
+    follow spec.s.12 = spec.12
+    prop spec.s.13 = 0 ~nf_spike
+    follow spec.s.13 = spec.13
+    prop spec.s.14 = 0 ~nf_spike
+    follow spec.s.14 = spec.14
+    prop spec.s.15 = 0 ~nf_spike
+    follow spec.s.15 = spec.15
+    prop spec.s.16 = 0 ~nf_spike
+    follow spec.s.16 = spec.16
+    prop spec.s.17 = 0 ~nf_spike
+    follow spec.s.17 = spec.17
+    prop spec.s.18 = 0 ~nf_spike
+    follow spec.s.18 = spec.18
+    prop spec.s.19 = 0 ~nf_spike
+    follow spec.s.19 = spec.19
+    prop spec.s.20 = 0 ~nf_spike
+    follow spec.s.20 = spec.20
+    prop spec.s.21 = 0 ~nf_spike
+    follow spec.s.21 = spec.21
+    prop spec.s.22 = 0 ~nf_spike
+    follow spec.s.22 = spec.22
+    prop spec.s.23 = 0 ~nf_spike
+    follow spec.s.23 = spec.23
+
     //  A slower, underdamped spring for the Notches drawer: the neck stretches
     //  and settles like the reference's drip, instead of easing like a card.
     spring notch_drip = 170, 18
@@ -256,23 +323,10 @@ part Common {
     prop panel_grad_knob = 0 ~quick
     follow panel_grad_knob = panel_gradient != 0
 
-    //  Small, many waves: the water lives in a 72 px band, the frame rail is
-    //  46 px, and the whole edge strip is 120 px.  Depth is a relative scale,
-    //  not a pixel value: scaling the bands here keeps the shader's profile
-    //  unchanged when the panel changes it.
-    let wave.edge = 120
-    let wave.rail = 46
-    let wave.deep = 72
-    let depth_k = clamp(wave_depth / 100, 0.4, 1.2)
-    //  Packed into b.z for the shaders: height hundredths and blend
-    //  hundredths.  A straight edge adds side * 100000 on top.
-    let wave_h = round(clamp(wave_height, 0, 3) * 100) * 1000
-    let wave_b = round(clamp(wave_blend, 0, 1) * 100)
-
     //  Panels and the launcher.  They share the bar's facts and the same glass.
     fact panel_open = false
     fact launch_open = false
-    fact notch_mode = false
+    fact notch_mode = true
     text layout = ""
     text query = ""
     //  Global typeface.  Every text is drawn in "Space Grotesk"; the launch
@@ -367,20 +421,19 @@ part Common {
     text la_mode = "APPS"
     text la_hint = "Search apps…"
     event launch ->
+    event launch_close ->
+    event launch_submit ->
     event la_move ->
     event la_hint ->
     event font_apply ->
     event font_pick ->
     event weather_apply ->
     event settings_close ->
-    //  Terminal entry points.  `pleamar --say island "emit ipc_open_search"`
+    //  Terminal entry points.  `pleamar --say notches "emit ipc_open_search"`
     //  and `… "emit ipc_open_settings"` open the two panels from anywhere.
     event ipc_open_search ->
     event ipc_open_settings ->
     event ipc_open_notifications ->
-
-    shader water = file "../water/water.wgsl"
-    shader corner = file "../water/water_corner.wgsl"
 
 
 }

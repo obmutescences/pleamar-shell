@@ -22,7 +22,7 @@ end
 
 function M.start(layout)
     text.layout = layout
-    fact.notch_mode = layout == "NOTCHES"
+    fact.notch_mode = true
 
     --  skwd-wall v2's shader names, in its own catalog order.  Index 0 is
     --  "off"; the shell sends the selected name with every wallpaper apply.
@@ -99,7 +99,6 @@ function M.start(layout)
             azure = "#58c8ff", tint = "#0c1a1e", panel = "#0a171b",
             deep = "#050c0f",
         },
-        bar_height = 44,
         panel_bg_role = 0,
         panel_bg_tint = 0,
         glass_on = true,
@@ -120,15 +119,15 @@ function M.start(layout)
         glass_tint = 58,
         glass_frost = 100,
         glass_edge = 34,
-        wave_on = true,
-        wave_depth = 100,
-        wave_blend = 0.55,
         wave_gain = 1.4,
-        wave_amp = 1.4,
-        wave_ripples = 1,
-        wave_height = 1.6,
         music_frame_on = true,
         music_frame_sides = 1,
+        music_frame_sens = 1,
+        music_frame_hgt = 50,
+        music_frame_blend = 100,
+        music_frame_cols = 12,
+        notch_clock_h = 56,
+        notch_clock_w = 168,
         lock_blur = 36,
         lock_12h = true,
         lock_ampm = true,
@@ -230,7 +229,6 @@ function M.start(layout)
             set_palette(saved.palette)
             write_palette(saved.palette)
         end
-        cfg.bar_height = clamp(number(saved.bar_height, cfg.bar_height), 32, 80)
         cfg.panel_bg_role = math.floor(clamp(number(saved.panel_bg_role, cfg.panel_bg_role), 0, 1))
         cfg.panel_bg_tint = clamp(number(saved.panel_bg_tint, cfg.panel_bg_tint), 0, 100)
         if type(saved.glass_on) == "boolean" then cfg.glass_on = saved.glass_on end
@@ -251,15 +249,15 @@ function M.start(layout)
         cfg.glass_tint = clamp(number(saved.glass_tint, cfg.glass_tint), 20, 100)
         cfg.glass_frost = clamp(number(saved.glass_frost, cfg.glass_frost), 0, 100)
         cfg.glass_edge = clamp(number(saved.glass_edge, cfg.glass_edge), 0, 100)
-        if type(saved.wave_on) == "boolean" then cfg.wave_on = saved.wave_on end
-        cfg.wave_depth = clamp(number(saved.wave_depth, cfg.wave_depth), 40, 180)
-        cfg.wave_blend = clamp(number(saved.wave_blend, cfg.wave_blend), 0, 1)
         cfg.wave_gain = clamp(number(saved.wave_gain, cfg.wave_gain), 0.8, 2.4)
-        cfg.wave_amp = clamp(number(saved.wave_amp, cfg.wave_amp), 0.2, 2.2)
-        cfg.wave_ripples = math.floor(clamp(number(saved.wave_ripples, cfg.wave_ripples), 1, 10))
-        cfg.wave_height = clamp(number(saved.wave_height, cfg.wave_height), 0, 3)
         if type(saved.music_frame_on) == "boolean" then cfg.music_frame_on = saved.music_frame_on end
         cfg.music_frame_sides = math.floor(clamp(number(saved.music_frame_sides, cfg.music_frame_sides), 0, 1))
+        cfg.music_frame_sens = clamp(number(saved.music_frame_sens, cfg.music_frame_sens), 0.3, 3.0)
+        cfg.music_frame_hgt = math.floor(clamp(number(saved.music_frame_hgt, cfg.music_frame_hgt), 10, 120))
+        cfg.music_frame_blend = math.floor(clamp(number(saved.music_frame_blend, cfg.music_frame_blend), 0, 100))
+        cfg.music_frame_cols = math.floor(clamp(number(saved.music_frame_cols, cfg.music_frame_cols), 6, 48))
+        cfg.notch_clock_h = math.floor(clamp(number(saved.notch_clock_h, cfg.notch_clock_h), 10, 96))
+        cfg.notch_clock_w = math.floor(clamp(number(saved.notch_clock_w, cfg.notch_clock_w), 120, 260))
         cfg.lock_blur = clamp(number(saved.lock_blur, cfg.lock_blur), 0, 120)
         if type(saved.lock_12h) == "boolean" then cfg.lock_12h = saved.lock_12h end
         if type(saved.lock_ampm) == "boolean" then cfg.lock_ampm = saved.lock_ampm end
@@ -310,7 +308,6 @@ function M.start(layout)
         text.wall_next = cfg.wallpaper_auto
             and string.format("Next in %d min", cfg.wallpaper_minutes)
             or "Auto rotation off"
-        fact.bar_height = cfg.bar_height
         fact.panel_bg_role = cfg.panel_bg_role
         fact.panel_bg_tint = cfg.panel_bg_tint
         fact.glass_on = cfg.glass_on
@@ -331,15 +328,15 @@ function M.start(layout)
         fact.glass_tint = cfg.glass_tint
         fact.glass_frost = cfg.glass_frost
         fact.glass_edge = cfg.glass_edge
-        fact.wave_on = cfg.wave_on
-        fact.wave_depth = cfg.wave_depth
-        fact.wave_blend = cfg.wave_blend
         fact.wave_gain = cfg.wave_gain
-        fact.wave_amp = cfg.wave_amp
-        fact.wave_ripples = cfg.wave_ripples
-        fact.wave_height = cfg.wave_height
         fact.music_frame_on = cfg.music_frame_on
         fact.music_frame_sides = cfg.music_frame_sides
+        fact.music_frame_sens = cfg.music_frame_sens
+        fact.music_frame_hgt = cfg.music_frame_hgt
+        fact.music_frame_blend = cfg.music_frame_blend
+        fact.music_frame_cols = cfg.music_frame_cols
+        fact.notch_clock_h = cfg.notch_clock_h
+        fact.notch_clock_w = cfg.notch_clock_w
         fact.lock_blur = cfg.lock_blur
         fact.lock_12h = cfg.lock_12h
         fact.lock_ampm = cfg.lock_ampm
@@ -385,7 +382,6 @@ function M.start(layout)
             nt_dnd = truthy(fact.nt_dnd),
             nt_secs = number(fact.nt_secs, 6),
             palette = cfg.palette,
-            bar_height = number(fact.bar_height, 44),
             panel_bg_role = number(fact.panel_bg_role, 0),
             panel_bg_tint = number(fact.panel_bg_tint, 0),
             glass_on = truthy(fact.glass_on),
@@ -406,15 +402,15 @@ function M.start(layout)
             glass_tint = number(fact.glass_tint, 58),
             glass_frost = number(fact.glass_frost, 100),
             glass_edge = number(fact.glass_edge, 34),
-            wave_on = truthy(fact.wave_on),
-            wave_depth = number(fact.wave_depth, 100),
-            wave_blend = number(fact.wave_blend, 0.55),
             wave_gain = number(fact.wave_gain, 1.4),
-            wave_amp = number(fact.wave_amp, 1.4),
-            wave_ripples = number(fact.wave_ripples, 1),
-            wave_height = number(fact.wave_height, 1.6),
             music_frame_on = truthy(fact.music_frame_on),
             music_frame_sides = number(fact.music_frame_sides, 1),
+            music_frame_sens = number(fact.music_frame_sens, 1),
+            music_frame_hgt = number(fact.music_frame_hgt, 50),
+            music_frame_blend = number(fact.music_frame_blend, 100),
+            music_frame_cols = number(fact.music_frame_cols, 12),
+            notch_clock_h = number(fact.notch_clock_h, 56),
+            notch_clock_w = number(fact.notch_clock_w, 168),
             lock_blur = number(fact.lock_blur, 36),
             lock_12h = truthy(fact.lock_12h),
             lock_ampm = truthy(fact.lock_ampm),
@@ -523,12 +519,13 @@ function M.start(layout)
     --  Where this checkout lives, for the settings key helper and the lock
     --  scene.  The launcher exports it; a hand-started scene simply has none.
     local shell_root = ""
-    local start_settingskeys
+    local start_settingskeys, start_searchkeys
     center.start(function() return shell_root end, function() set_fx("center_panel") end)
     run("sh", { "-c", 'printf %s "${PLEAMAR_SHELL_ROOT:-}"' }, function(out)
         if out then shell_root = tostring(out):gsub("%s+$", "") end
         center.refresh_root()
         start_settingskeys()
+        start_searchkeys()
     end)
 
     --  Settings has two text fields (font search and weather city) but the
@@ -560,7 +557,7 @@ function M.start(layout)
         end
         if settings_key_helper and settings_key_field == field then return end
         stop_settingskeys()
-        local parent = string.lower(tostring(text.layout or "island"))
+        local parent = string.lower(tostring(text.layout or "notches"))
         local cmd = "PLEAMAR_SETTINGS_PARENT=" .. sq(parent)
             .. " PLEAMAR_SETTINGS_FIELD=" .. sq(field)
             .. " PLEAMAR_SETTINGS_TEXT=" .. sq(value)
@@ -578,6 +575,37 @@ function M.start(layout)
             mine = id
         else
             log("settings key helper could not start: " .. tostring(id))
+        end
+    end
+
+    local search_key_helper = nil
+    local function stop_searchkeys()
+        if search_key_helper then
+            kill(search_key_helper, "term")
+            search_key_helper = nil
+        end
+    end
+    start_searchkeys = function()
+        if not truthy(fact.launch_open) or not truthy(fact.notch_mode) or shell_root == "" then
+            stop_searchkeys()
+            return
+        end
+        if search_key_helper then return end
+        local parent = string.lower(tostring(text.layout or "notches"))
+        local cmd = "PLEAMAR_SETTINGS_PARENT=" .. sq(parent)
+            .. " PLEAMAR_SETTINGS_FIELD=query"
+            .. " PLEAMAR_SETTINGS_TEXT=" .. sq(tostring(text.query or ""))
+            .. " PLEAMAR_SETTINGS_CLOSE_EVENT=launch_close"
+            .. " exec " .. sq(shell_root .. "/bin/pleamar-settingskeys")
+        local mine
+        local ok, id = pcall(spawn, "sh", { "-c", cmd }, function() end, function()
+            if search_key_helper == mine then search_key_helper = nil end
+        end)
+        if ok then
+            search_key_helper = id
+            mine = id
+        else
+            log("search key helper could not start: " .. tostring(id))
         end
     end
 
@@ -1055,9 +1083,9 @@ function M.start(layout)
 
     --  ── quiet: the scene only runs hot while the water can move ─────────
     local function recompute_quiet()
-        local wave_wanted = if truthy(fact.notch_mode) then truthy(fact.music_frame_on) else truthy(fact.wave_on)
+        local wave_wanted = truthy(fact.music_frame_on)
         local playing = wave_wanted and truthy(fact.music_on)
-        local open = truthy(fact.panel_open) or truthy(fact.launch_open)
+        local open = truthy(fact.panel_open) or truthy(fact.launch_open) or truthy(fact.center_open)
         local q = (not playing) and (not open)
         if truthy(fact.quiet) ~= q then fact.quiet = q end
     end
@@ -1091,11 +1119,9 @@ function M.start(layout)
     local cava = nil
     local cava_conf = nil
     local last_bands = { 0, 0, 0, 0, 0, 0 }
-    --  Per-band envelope followers.  Cava's raw values are relative to the
-    --  whole recording, so loud tracks saturate 1.0 and the old gain could
-    --  not alter them.  Normalising each bar against its recent peak makes
-    --  the beats visible on quiet and loud tracks alike; wave_gain then
-    --  shapes how much of the quieter part of that envelope survives.
+    local last_spec = {}
+    for i = 0, 23 do last_spec[i] = 0 end
+    --  Per-band envelope followers for the 6 wave bands.
     local peaks = { 0, 0, 0, 0, 0, 0 }
     local silence = 0
 
@@ -1106,11 +1132,21 @@ function M.start(layout)
         end
     end
 
+    --  Also pass all 24 raw cava bars directly as spec.0..spec.23 for the
+    --  Notches frame music visualiser (mirrors Vitreus's spec.* facts).
+    local function set_spec(i, v)
+        if math.abs(v - last_spec[i]) > 0.005 then
+            last_spec[i] = v
+            fact["spec." .. i] = v
+        end
+    end
+
     local function reset_bands()
         for k = 1, 6 do
             set_band(k, 0)
             peaks[k] = 0
         end
+        for i = 0, 23 do set_spec(i, 0) end
         if truthy(fact.music_on) then fact.music_on = false end
         silence = 0
         recompute_quiet()
@@ -1138,6 +1174,12 @@ function M.start(layout)
 
             local peak = 0
             local gain = clamp(number(fact.wave_gain, 1.4), 0.8, 2.4)
+
+            --  Pass all 24 raw bars directly to spec.* (for the frame visualiser).
+            for i = 0, 23 do
+                set_spec(i, raw[i + 1] or 0)
+            end
+
             for k = 1, 6 do
                 local m = 0
                 for j = (k - 1) * 4 + 1, k * 4 do
@@ -1194,8 +1236,7 @@ function M.start(layout)
     --  Start when the waves are on; stop when they are not.  The timer restarts
     --  cava if it ever leaves on its own.
     local function cava_wanted()
-        if truthy(fact.notch_mode) then return truthy(fact.music_frame_on) end
-        return truthy(fact.wave_on)
+        return truthy(fact.music_frame_on)
     end
     local function cava_want()
         if cava_wanted() then
@@ -1420,13 +1461,13 @@ function M.start(layout)
     local COMMANDS = {
         { "Settings: Wallpaper", "open", open_page(4), "background picture image colors palette" },
         { "Settings: Glass", "open", open_page(1), "blur transparency frosted glass look" },
-        { "Settings: Bar", "open", open_page(2), "height sound panel" },
+        { "Settings: Bar", "open", open_page(2), "notch height sound panel" },
         { "Settings: Font", "open", open_page(3), "typeface text" },
         { "Settings: Frame music", "open", open_page(0), "wave water amplitude sensitivity" },
         { "Settings: Lock screen", "open", open_page(7), "lock password blur clock date mask" },
         { "Settings: Idle", "open", open_page(8), "idle lock screen off timeout seconds swayidle" },
         { "Panel sound: toggle", "action", function() fact.snd_on = not truthy(fact.snd_on) end, "click audio mute" },
-        { "Frame music: toggle", "action", function() fact.wave_on = not truthy(fact.wave_on) end, "wave water audio" },
+        { "Frame music: toggle", "action", function() fact.music_frame_on = not truthy(fact.music_frame_on) end, "notch frame audio" },
         { "Wallpaper: next", "action", function() next_wallpaper() end, "background picture next rotate" },
         { "Screenshot", "action", function() shell("niri msg action screenshot-screen") end, "capture image screen" },
         { "Home folder", "action", function() shell("xdg-open " .. shq("$HOME") .. " >/dev/null 2>&1") end, "files folder documents" },
@@ -1654,12 +1695,6 @@ function M.start(layout)
     end)
 
     --  ── facts and events ────────────────────────────────────────────────
-    on("fact:wave_on", function()
-        save()
-        cava_want()
-        recompute_quiet()
-    end)
-    on("fact:bar_height", function() save() end)
     on("fact:panel_bg_role", function() save() end)
     on("fact:panel_bg_tint", function() save() end)
     on("fact:glass_on", function() save() end)
@@ -1709,17 +1744,17 @@ function M.start(layout)
     on("fact:glass_tint", function() save() end)
     on("fact:glass_frost", function() save() end)
     on("fact:glass_edge", function() save() end)
-    on("fact:wave_depth", function() save() end)
-    on("fact:wave_blend", function() save() end)
-    on("fact:wave_gain", function() save() end)
-    on("fact:wave_amp", function() save() end)
-    on("fact:wave_ripples", function() save() end)
-    on("fact:wave_height", function() save() end)
     on("fact:music_frame_on", function()
         save()
         cava_want()
     end)
-    on("fact:music_frame_sides", function() save() end)
+    on("fact:music_frame_sides",  function() save() end)
+    on("fact:music_frame_sens",   function() save() end)
+    on("fact:music_frame_hgt",    function() save() end)
+    on("fact:music_frame_blend",  function() save() end)
+    on("fact:music_frame_cols",   function() save() end)
+    on("fact:notch_clock_h",      function() save() end)
+    on("fact:notch_clock_w",      function() save() end)
     on("fact:lock_blur", function() save() end)
     on("fact:lock_12h", function() save() end)
     on("fact:lock_ampm", function() save() end)
@@ -1767,10 +1802,14 @@ function M.start(layout)
             set_fx("search")
             text.query = ""
             search_now()
+            start_searchkeys()
             if truthy(fact.center_open) then center.close() end
+        else
+            stop_searchkeys()
         end
         recompute_quiet()
     end)
+    on("launch_close", function() fact.launch_open = false end)
     on("fact:anim_search", function() config_changed("search") end)
     on("fact:anim_panel", function() config_changed("panel") end)
     on("fact:anim_toast", function() config_changed("toast") end)
@@ -1963,6 +2002,9 @@ function M.start(layout)
     on("submit:query", function()
         if truthy(fact.launch_open) then run_result(math.floor(number(fact.la_sel, 0)) + 1) end
     end)
+    on("launch_submit", function()
+        if truthy(fact.launch_open) then run_result(math.floor(number(fact.la_sel, 0)) + 1) end
+    end)
     on("launch", function(i)
         if not truthy(fact.launch_open) then return end
         run_result(math.floor(number(i, 0)) + 1)
@@ -2080,6 +2122,9 @@ function M.start(layout)
     end)
     every(700, function()
         if truthy(fact.panel_open) and settings_key_helper then
+            pcall(sys.call, "say", "settingskeys", "emit key_ping")
+        end
+        if truthy(fact.launch_open) and search_key_helper then
             pcall(sys.call, "say", "settingskeys", "emit key_ping")
         end
     end)

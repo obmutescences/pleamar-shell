@@ -39,7 +39,7 @@ stdenvNoCC.mkDerivation {
   '';
 
   meta = {
-    description = "Pleamar Island/Frame shell with glass panels and cava water";
+    description = "Pleamar Notches shell with glass panels and cava music";
     license = lib.licenses.mit;
     mainProgram = "pleamar-shell";
     platforms = lib.platforms.linux;

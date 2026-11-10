@@ -15,6 +15,7 @@ part CenterPanel {
     let ct.h = 720
     let ct.x = 30
     let ct.y = 110
+    let ct.px = (screen.width - ct.w) / 2
     let ct.wide = 1060
     let ct.tab_x = 300
     let ct.tab_w = 76
@@ -85,6 +86,49 @@ part CenterPanel {
     model sys_mounts max 4 { name: text; info: text; pct: number }
     model sys_temps max 8 { label: text; f: number; heat: number; txt: text }
     model sys_procs max 6 { name: text; cpu: number; cpu_txt: text; mem: number; mem_txt: text }
+
+    //  Reference slider: a calm double-outline pill, the level pencilled in
+    //  tight columns, and a clean ring knob.  x0/y is the left end and the
+    //  centre line; the caller keeps ownership of the hit zone.
+    component CtSlider(x0: number, y: number, w: number, lv: number, hot: number, accent: color) {
+        prop p = 0 ~quick
+        follow p = lv
+        let h = 16
+        let kx = clamp(x0 + w * p, x0 + h * 0.6, x0 + w - h * 0.6)
+        let xs = x0 + h * 0.5
+        let sp = (w - h) / 44
+        let fill_w = max(1, kx - xs)
+        box { from: x0, y - h / 2; size: w, h; corner: h / 2; color: ink; opacity: 4% }
+        group {
+            show: lv > 0.002
+            clip box { from: xs, y - h / 2 + 1; size: fill_w, h - 2; corner: (h - 2) / 2 }
+            box { from: xs, y - h / 2 + 1; size: fill_w, h - 2; corner: (h - 2) / 2; color: accent; opacity: 12% + 4% * hot }
+            repeat i in 0..44 {
+                let hx = xs + i * sp
+                line { from: hx - 0.9, y - h * 0.34; to: hx + 0.9, y + h * 0.34; width: 1.1; color: accent; opacity: 58% + 14% * hot }
+            }
+            repeat i in 0..22 {
+                let hx = xs + i * sp * 2 + 1.4
+                line { from: hx - 0.5, y - h * 0.26; to: hx + 0.5, y + h * 0.26; width: 0.8; color: accent; opacity: 20% + 6% * hot }
+            }
+        }
+        box { from: x0, y - h / 2; size: w, h; corner: h / 2; stroke: 1.4; color: ink; opacity: 54% + 8% * hot }
+        box { from: x0 + 0.4, y - h / 2 + 0.35; size: w - 0.8, h - 0.7; corner: (h - 0.7) / 2; stroke: 0.9; color: ink; opacity: 20% + 8% * hot }
+        ellipse { at: kx, y; radius: h * 0.9 + 1.2 * hot; stroke: 1.5; color: ink; opacity: 90% }
+        ellipse { at: kx + 0.35, y + 0.28; radius: h * 0.75; stroke: 0.9; color: ink; opacity: 26% }
+        ellipse { at: kx, y; radius: h * 0.58; color: ink; opacity: 12% }
+    }
+
+    //  Reference system-monitor rings: the value arc carries a wide, low-
+    //  opacity halo in the neighbouring accent, then a tighter glow, then the
+    //  crisp value.  Kept as one component so CPU, memory, GPU and the
+    //  calendar ring cannot drift apart again.
+    component CtGlowArc(x: number, y: number, radius: number, span: number, rotate: number, width: number, accent: color) {
+        arc { at: x, y; radius: radius; span: span; width: width * 2.3; color: mix(accent, ct.secondary, 0.35); opacity: 11%; rotate: rotate }
+        arc { at: x, y; radius: radius; span: span; width: width * 1.65; color: accent; opacity: 17%; rotate: rotate }
+        arc { at: x, y; radius: radius; span: span; width: width; color: accent; opacity: 96%; rotate: rotate }
+    }
+
     text ct_media_len = ""
     fact ct_has_track = false
 
@@ -198,6 +242,7 @@ part CenterPanel {
             clip inset 0 box { from: 0, 0; size: 1120, 720; corner: 30 }
             PanelBackdrop(0, 0, 1120, 720, 30)
             body {
+                show: not notch_mode
                 color: panel_bg
                 glass: if(glass_on, 100%, 0%)
                 opacity: 1% * max(glass_tint, 84)
@@ -220,8 +265,10 @@ part CenterPanel {
                 shadow: 0, 10, 40, 32%, glass_shadow
                 box { from: 0, 0; size: 1120, 720; corner: 30 }
             }
-            box { from: 0, 0; size: 1120, 720; corner: 30; stroke: 1; color: ink; opacity: 9% }
-            box { from: 18, 1; size: 1084, 1; corner: 0.5; color: ink; opacity: 10% }
+            //  Side and bottom edge only — top merges with the frame.
+            line { from: 28, 720; to: 1092, 720; width: 1; color: ink; opacity: 9%; show: not notch_mode }
+            line { from: 0, 30; to: 0, 720; width: 1; color: ink; opacity: 9%; show: not notch_mode }
+            line { from: 1120, 30; to: 1120, 720; width: 1; color: ink; opacity: 9%; show: not notch_mode }
 
             //  ── header ────────────────────────────────────────────────────
             row ct_clock {
@@ -508,7 +555,7 @@ part CenterPanel {
                         text "PROCESSOR" { at: 52, 274; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
                         text sys_cpu_meta { at: 528, 274; anchor: right center; size: 11; color: faint; width: 260; lines: 1; family: "Space Grotesk" }
                         arc { at: 110, 340; radius: 42; span: 360deg; width: 8; color: ink; opacity: 9% }
-                        arc { at: 110, 340; radius: 42; span: 360 * max(0.004, sys_cpu) * 1deg; width: 8; color: mix(ct.primary, alert, clamp((sys_cpu - 0.8) / 0.2, 0, 1)); rotate: 180 * sys_cpu * 1deg }
+                        CtGlowArc(110, 340, 42, 360 * max(0.004, sys_cpu) * 1deg, 180 * sys_cpu * 1deg, 8, mix(ct.primary, alert, clamp((sys_cpu - 0.8) / 0.2, 0, 1)))
                         text sys_cpu_txt { at: 110, 334; anchor: center; size: 27; weight: 700; color: ink; family: "Space Grotesk" }
                         text "CPU" { at: 110, 354; anchor: center; size: 10; weight: 700; color: faint; family: "Space Grotesk" }
                         text sys_threads { at: 110, 404; anchor: center; size: 10; color: faint; family: "Space Grotesk" }
@@ -533,7 +580,7 @@ part CenterPanel {
                         text "MEMORY" { at: 52, 564; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
                         text sys_mem_total { at: 528, 564; anchor: right center; size: 11; color: faint; family: "Space Grotesk" }
                         arc { at: 110, 632; radius: 38; span: 360deg; width: 9; color: ink; opacity: 9% }
-                        arc { at: 110, 632; radius: 38; span: 360 * max(0.004, sys_mem) * 1deg; width: 9; color: mix(ct.primary, alert, clamp((sys_mem - 0.85) / 0.15, 0, 1)); rotate: -90deg }
+                        CtGlowArc(110, 632, 38, 360 * max(0.004, sys_mem) * 1deg, -90deg, 9, mix(ct.primary, alert, clamp((sys_mem - 0.85) / 0.15, 0, 1)))
                         text sys_mem_pct { at: 110, 626; anchor: center; size: 25; weight: 700; color: ink; family: "Space Grotesk" }
                         text "IN USE" { at: 110, 646; anchor: center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
                         ellipse { at: 172, 584; radius: 3; color: ct.primary }
@@ -577,9 +624,9 @@ part CenterPanel {
                         group {
                             show: sys_gpu_on
                             arc { at: 628, 248; radius: 40; span: 360deg; width: 7; color: ink; opacity: 9% }
-                            arc { at: 628, 248; radius: 40; span: 360 * max(0.004, sys_gpu) * 1deg; width: 7; color: mix(ct.primary, alert, clamp((sys_gpu - 0.8) / 0.2, 0, 1)); rotate: 180 * sys_gpu * 1deg }
+                            CtGlowArc(628, 248, 40, 360 * max(0.004, sys_gpu) * 1deg, 180 * sys_gpu * 1deg, 7, mix(ct.primary, alert, clamp((sys_gpu - 0.8) / 0.2, 0, 1)))
                             arc { at: 628, 248; radius: 27; span: 360deg; width: 5; color: ink; opacity: 8% }
-                            arc { at: 628, 248; radius: 27; span: 360 * max(0.004, sys_vram) * 1deg; width: 5; color: ct.secondary; rotate: 180 * sys_vram * 1deg }
+                            CtGlowArc(628, 248, 27, 360 * max(0.004, sys_vram) * 1deg, 180 * sys_vram * 1deg, 5, ct.secondary)
                             text sys_gpu_txt { at: 628, 244; anchor: center; size: 22; weight: 700; color: ink; family: "Space Grotesk" }
                             text "GPU" { at: 628, 260; anchor: center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
                         }
@@ -718,23 +765,19 @@ part CenterPanel {
                     box { from: 476, 152; size: 596, 500; corner: 18; stroke: 1; color: ink; opacity: 7% }
                     text "VOLUME" { at: 500, 178; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
                     text number(aud.volume * 100, 0, "%") { at: 1048, 178; anchor: right center; size: 20; weight: 700; color: ink; family: "Space Grotesk" }
-                    box { from: 500, 202; size: 548, 8; corner: 4; color: ink; opacity: 10% }
-                    box { from: 500, 202; size: 548 * clamp(aud.volume, 0, 1), 8; corner: 4; color: if(aud.muted, alert, ct.primary); opacity: 90% }
-                    ellipse { at: 500 + 548 * clamp(aud.volume, 0, 1), 206; radius: 8; color: if(aud.muted, alert, ct.primary) }
+                    CtSlider(500, 206, 548, clamp(aud.volume, 0, 1), ct_aud_track.hover, if(aud.muted, alert, ct.primary))
                     zone box ct_aud_track { from: 492, 188; size: 564, 36; cursor: pointer; label: "Output volume" }
-                    on press ct_aud_track { emit center_audio_set(clamp((pointer.x - 500) / 548, 0, 1)) }
-                    on drag ct_aud_track { emit center_audio_set(clamp((pointer.x - 500) / 548, 0, 1)) }
+                    on press ct_aud_track { emit center_audio_set(clamp((pointer.x - ct.px - 500) / 548, 0, 1)) }
+                    on drag ct_aud_track { emit center_audio_set(clamp((pointer.x - ct.px - 500) / 548, 0, 1)) }
                     text "OUTPUT" { at: 500, 234; anchor: left center; size: 9; color: faint; family: "Space Grotesk" }
                     text "DEFAULT SINK" { at: 1048, 234; anchor: right center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
 
                     text "INPUT" { at: 500, 300; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
                     text number(aud.input * 100, 0, "%") { at: 1048, 300; anchor: right center; size: 20; weight: 700; color: ink; family: "Space Grotesk" }
-                    box { from: 500, 324; size: 548, 8; corner: 4; color: ink; opacity: 10% }
-                    box { from: 500, 324; size: 548 * clamp(aud.input, 0, 1), 8; corner: 4; color: if(aud.input_muted, alert, ct.secondary); opacity: 90% }
-                    ellipse { at: 500 + 548 * clamp(aud.input, 0, 1), 328; radius: 8; color: if(aud.input_muted, alert, ct.secondary) }
+                    CtSlider(500, 328, 548, clamp(aud.input, 0, 1), ct_aud_in_track.hover, if(aud.input_muted, alert, ct.secondary))
                     zone box ct_aud_in_track { from: 492, 310; size: 564, 36; cursor: pointer; label: "Input volume" }
-                    on press ct_aud_in_track { emit center_input_set(clamp((pointer.x - 500) / 548, 0, 1)) }
-                    on drag ct_aud_in_track { emit center_input_set(clamp((pointer.x - 500) / 548, 0, 1)) }
+                    on press ct_aud_in_track { emit center_input_set(clamp((pointer.x - ct.px - 500) / 548, 0, 1)) }
+                    on drag ct_aud_in_track { emit center_input_set(clamp((pointer.x - ct.px - 500) / 548, 0, 1)) }
                     box { from: 500, 356; size: 128, 34; corner: 17; color: ink; opacity: 5% }
                     text pick(aud.input_muted, "Mute mic", "Unmute mic") { at: 564, 373; anchor: center; size: 10; weight: 700; color: if(aud.input_muted, alert, faint); family: "Space Grotesk" }
                     zone box ct_aud_in_mute { from: 500, 356; size: 128, 34; corner: 17; cursor: pointer; label: "Mute microphone" }
@@ -879,8 +922,8 @@ part CenterPanel {
                     box { from: 776, 184; size: 296, 460; corner: 18; color: ink; opacity: 4% }
                     box { from: 776, 184; size: 296, 460; corner: 18; stroke: 1; color: ink; opacity: 7% }
                     text "今天" { at: 800, 210; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Noto Sans CJK SC" }
-                    ellipse { at: 924, 326; radius: 92; stroke: 1; color: ink; opacity: 8% }
-                    arc { at: 924, 326; radius: 92; span: 360deg * center_cal_progress; width: 2.5; color: ct.secondary; opacity: 88%; rotate: 180deg * center_cal_progress }
+                    arc { at: 924, 326; radius: 92; span: 360deg; width: 6; color: ink; opacity: 8% }
+                    CtGlowArc(924, 326, 92, 360deg * center_cal_progress, 180deg * center_cal_progress, 6, ct.secondary)
                     ellipse { at: 924, 326; radius: 78; stroke: 1; color: ink; opacity: 8% }
                     text ct_today_day { at: 924, 314; anchor: center; size: 74; weight: 700; color: ct.primary; family: "Space Grotesk" }
                     text ct_today_month { at: 924, 366; anchor: center; size: 13; weight: 700; color: ink; family: "Noto Sans CJK SC" }
@@ -1091,15 +1134,15 @@ part CenterPanel {
                     repeat q in 0..4 {
                         let qx = 36 + q * 254
                         let qy = 320
-                        let q_on = pick(q, wave_on, glass_on, bt_on, wall_auto)
+                        let q_on = pick(q, music_frame_on, glass_on, bt_on, wall_auto)
                         box { from: qx, qy; size: 244, 92; corner: 14; color: ink; opacity: if(q_on, 6%, 3%) }
                         box { from: qx, qy; size: 244, 92; corner: 14; stroke: 1; color: if(q_on, pick(q, ct.primary, ct.secondary, ct.primary, ct.secondary), ink); opacity: if(q_on, 28%, 7%) }
                         ellipse { at: qx + 22, qy + 27; radius: 6; color: pick(q, ct.primary, ct.secondary, ct.primary, ct.secondary); opacity: if(q_on, 85%, 25%) }
-                        text pick(q, "Music wave", "Glass", "Bluetooth", "Wallpaper") { at: qx + 38, qy + 27; anchor: left center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
-                        text pick(q, "Four edge water", "Lens and refraction", bt_sub, "Rotate every few minutes") { at: qx + 18, qy + 50; anchor: left center; size: 9; color: faint; width: 190; lines: 1; family: "Space Grotesk" }
+                        text pick(q, "Frame music", "Glass", "Bluetooth", "Wallpaper") { at: qx + 38, qy + 27; anchor: left center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
+                        text pick(q, "Notch frame bars", "Lens and refraction", bt_sub, "Rotate every few minutes") { at: qx + 18, qy + 50; anchor: left center; size: 9; color: faint; width: 190; lines: 1; family: "Space Grotesk" }
                         box { from: qx + 202, qy + 64; size: 26, 14; corner: 7; color: if(q_on, pick(q, ct.primary, ct.secondary, ct.primary, ct.secondary), ink); opacity: if(q_on, 85%, 18%) }
                         ellipse { at: qx + 208.5 + 12 * (if(q_on, 1, 0)), qy + 71; radius: 4.5; color: if(q_on, ct.card, faint) }
-                        zone box ct_action_quick.$q { from: qx, qy; size: 244, 92; corner: 14; cursor: pointer; label: pick(q, "Music wave", "Glass", "Bluetooth", "Wallpaper rotation") }
+                        zone box ct_action_quick.$q { from: qx, qy; size: 244, 92; corner: 14; cursor: pointer; label: pick(q, "Frame music", "Glass", "Bluetooth", "Wallpaper rotation") }
                         on press ct_action_quick.$q { emit ui_sound; emit center_quick(q) }
                     }
 
@@ -1136,20 +1179,15 @@ part CenterPanel {
                     text "Power actions ask for confirmation. No suspend or sleep action lives here." { at: 36, 602; anchor: left center; size: 11; color: faint; family: "Space Grotesk" }
                     text "Esc or the cross closes the panel." { at: 1064, 602; anchor: right center; size: 10; color: faint; opacity: 70%; family: "Space Grotesk" }
 
-                    group {
-                        show: center_power_confirm >= 0
-                        zone box ct_power_shield { from: 36, 150; size: 1048, 490; corner: 16; active: center_power_confirm >= 0; label: "Power confirmation" }
-                        on press ct_power_shield { emit center_power_cancel }
-                    }
+
                 }
 
             }
 
             //  Keyboard help, subtle, bottom left.
             text "1–7  TABS   ·   TAB  NEXT   ·   ESC  CLOSE" { at: 36, 697; anchor: left center; size: 9; weight: 700; color: faint; opacity: 45%; family: "Space Grotesk" }
-        //  Output picker: its own overlay surface so glass can frost the
-        //  centre panel behind it, like the session dialog.
-        on key Escape while center_open { emit center_close }
+        CenterDialogs()
+        on key Escape while center_open { emit center_key_escape }
     }
 
     surface center_panel {
@@ -1162,107 +1200,103 @@ part CenterPanel {
         keyboard: none
         group {
             NotchDrawerRipples(ct_np)
-            NotchDrawerContent(ct_np, 1120) { CenterPanelContent() }
+            NotchDrawerContent(ct_np, 1120, center_panel_fx) { CenterPanelContent() }
         }
     }
 
-    //  The confirmation lives on its own layer surface: glass can only frost
-    //  what is behind the surface it belongs to, not the same surface's page.
-    surface power_confirm {
-        size: 600, 290
-        anchor: center
-        level: overlay
-        keyboard: none
-        open: center_power_confirm >= 0
-
-        zone box ct_power_body { from: 40, 40; size: 520, 210; corner: 22; active: center_power_confirm >= 0; label: "Cancel power action" }
-        on press ct_power_body { emit center_power_cancel }
-        PanelBackdrop(40, 40, 520, 210, 22)
-        body {
-            color: mix(ct.card2, ct.primary, 0.45)
-            opacity: if(glass_on, 1% * max(glass_tint, 76), 98%)
-            glass: if(glass_on, 100%, 0%)
-            lens: glass_on and glass_bend
-            frost: glass_frost / 100
-            refraction: glass_refr
-            dispersion: glass_disp
-            dome: glass_dome
-            milk: glass_milk
-            smoke: glass_smoke
-            vivid: glass_vivid
-            mirror: glass_mirror
-            highlight: glass_highlight
-            ripple: glass_ripple
-            border: 1.5 * glass_border / 100, ink
-            shine: pointer
-            shadow: 0, 10, 28, 24%, glass_shadow
-            box { from: 40, 40; size: 520, 210; corner: 22 }
-        }
-        box { from: 40, 40; size: 520, 210; corner: 22; stroke: 1.5; color: alert; opacity: 34% }
-        text "SESSION ACTION" { at: 68, 66; anchor: left center; size: 9; weight: 700; color: ct.secondary; family: "Space Grotesk" }
-        text pick(center_power_confirm, "Log out?", "Restart?", "Shut down?") { at: 68, 108; anchor: left center; size: 28; weight: 700; color: ink; family: "Space Grotesk" }
-        text pick(center_power_confirm, "End this niri session and return to the greeter.", "Reboot the machine. Open work will be interrupted.", "Power off the machine. Open work will be interrupted.") { at: 68, 138; anchor: left top; size: 12; color: faint; width: 464; lines: 2; line_height: 1.3; family: "Space Grotesk" }
-        box { from: 68, 194; size: 130, 34; corner: 17; color: ink; opacity: 6% + 8% * ct_power_cancel.hover }
-        text "Cancel" { at: 133, 211; anchor: center; size: 12; weight: 700; color: ink; family: "Space Grotesk" }
-        zone box ct_power_cancel { from: 68, 194; size: 130, 34; corner: 17; cursor: pointer; label: "Cancel power action" }
-        on press ct_power_cancel { emit ui_sound; emit center_power_cancel }
-        box { from: 402, 194; size: 130, 34; corner: 17; color: alert; opacity: 76% + 24% * ct_power_confirm.hover }
-        text "Confirm" { at: 467, 211; anchor: center; size: 12; weight: 700; color: ct.card; family: "Space Grotesk" }
-        zone box ct_power_confirm { from: 402, 194; size: 130, 34; corner: 17; cursor: pointer; label: "Confirm power action" }
-        on press ct_power_confirm { emit ui_sound; emit center_power_do }
-    }
-
-    //  The audio output picker is another layer surface over the centre panel,
-    //  so its glass can frost the page underneath instead of only tinting it.
-    surface audio_picker {
-        size: 1120, 720
-        anchor: center
-        level: overlay
-        keyboard: none
-        open: audio_pick_open and center_tab == 4
-
-        zone box ap_shield { from: 0, 0; size: 1120, 720; active: audio_pick_open; label: "Close output picker" }
-        on press ap_shield { audio_pick_open = false }
-        box { from: 36, 152; size: 420, 500; corner: 18; color: mix(ct.card2, ct.primary, 0.45); opacity: 92% }
-        PanelBackdrop(36, 152, 420, 500, 18)
-        body {
-            color: mix(ct.card2, ct.primary, 0.45)
-            opacity: if(glass_on, 1% * max(glass_tint, 76), 98%)
-            glass: if(glass_on, 100%, 0%)
-            lens: glass_on and glass_bend
-            frost: glass_frost / 100
-            refraction: glass_refr
-            dispersion: glass_disp
-            dome: glass_dome
-            milk: glass_milk
-            smoke: glass_smoke
-            vivid: glass_vivid
-            mirror: glass_mirror
-            highlight: glass_highlight
-            ripple: glass_ripple
-            border: 1.5 * glass_border / 100, ink
-            shine: pointer
-            shadow: 0, 10, 28, 24%, glass_shadow
-            box { from: 36, 152; size: 420, 500; corner: 18 }
-        }
-        box { from: 36, 152; size: 420, 500; corner: 18; stroke: 1.5; color: ct.primary; opacity: 34% }
-        text "OUTPUT DEVICE" { at: 58, 178; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
-        line { from: 58, 196; to: 434, 196; width: 1; color: ink; opacity: 10% }
-        repeat o in 0..8 {
-            let oy = 208 + o * 46
+    component CenterDialogs() {
+        group {
+            show: center_open and center_power_confirm >= 0
+            box { from: 0, 0; size: 1120, 720; corner: 30; color: #000000; opacity: 46% }
+            zone box ct_power_shield { from: 0, 0; size: 1120, 720; label: "Dismiss session confirmation" }
+            on press ct_power_shield { emit center_power_cancel }
             group {
-                show: o < audio_outputs.count
-                box { from: 52, oy; size: 388, 38; corner: 9; color: if(audio_outputs.$o.current, ct.primary, ink); opacity: if(audio_outputs.$o.current, 12%, 3%) }
-                ellipse { at: 70, oy + 19; radius: 4; color: if(audio_outputs.$o.current, ct.primary, faint); opacity: 80% }
-                text audio_outputs.$o.name { at: 84, oy + 19; anchor: left center; size: 12; weight: if(audio_outputs.$o.current, 700, 500); color: if(audio_outputs.$o.current, ct.primary, ink); width: 330; lines: 1; family: "Space Grotesk" }
-                zone box ct_audio_out.$o { from: 52, oy; size: 388, 38; corner: 9; cursor: pointer; label: audio_outputs.$o.name }
-                on press ct_audio_out.$o { emit ui_sound; emit center_audio_default(o) }
+                move: 260, 215
+                zone box ct_power_body { from: 40, 40; size: 520, 210; corner: 22; active: center_power_confirm >= 0; label: "Cancel power action" }
+                on press ct_power_body { center_power_confirm = center_power_confirm }
+                body {
+                    color: mix(ct.card2, ct.primary, 0.45)
+                    opacity: 1% * max(glass_tint, 84)
+                    glass: if(glass_on, 100%, 0%)
+                    lens: glass_on and glass_bend
+                    frost: glass_frost / 100
+                    refraction: glass_refr
+                    dispersion: glass_disp
+                    dome: glass_dome
+                    milk: glass_milk
+                    smoke: glass_smoke
+                    vivid: glass_vivid
+                    mirror: glass_mirror
+                    highlight: glass_highlight
+                    ripple: glass_ripple
+                    border: 1.5 * glass_border / 100, ink
+                    shine: pointer
+                    shadow: 0, 10, 28, 24%, glass_shadow
+                    box { from: 40, 40; size: 520, 210; corner: 22 }
+                }
+                box { from: 40, 40; size: 520, 210; corner: 22; stroke: 1.5; color: alert; opacity: 34% }
+                text "SESSION ACTION" { at: 68, 66; anchor: left center; size: 9; weight: 700; color: ct.secondary; family: "Space Grotesk" }
+                text pick(center_power_confirm, "Log out?", "Restart?", "Shut down?") { at: 68, 108; anchor: left center; size: 28; weight: 700; color: ink; family: "Space Grotesk" }
+                text pick(center_power_confirm, "End this niri session and return to the greeter.", "Reboot the machine. Open work will be interrupted.", "Power off the machine. Open work will be interrupted.") { at: 68, 138; anchor: left top; size: 12; color: faint; width: 464; lines: 2; line_height: 1.3; family: "Space Grotesk" }
+                box { from: 68, 194; size: 130, 34; corner: 17; color: ink; opacity: 6% + 8% * ct_power_cancel.hover }
+                text "Cancel" { at: 133, 211; anchor: center; size: 12; weight: 700; color: ink; family: "Space Grotesk" }
+                zone box ct_power_cancel { from: 68, 194; size: 130, 34; corner: 17; cursor: pointer; label: "Cancel power action" }
+                on press ct_power_cancel { emit ui_sound; emit center_power_cancel }
+                box { from: 402, 194; size: 130, 34; corner: 17; color: alert; opacity: 76% + 24% * ct_power_confirm.hover }
+                text "Confirm" { at: 467, 211; anchor: center; size: 12; weight: 700; color: ct.card; family: "Space Grotesk" }
+                zone box ct_power_confirm { from: 402, 194; size: 130, 34; corner: 17; cursor: pointer; label: "Confirm power action" }
+                on press ct_power_confirm { emit ui_sound; emit center_power_do }
             }
         }
-        text "No output devices." { at: 58, 222; anchor: left center; size: 12; color: faint; show: audio_outputs.count < 1; family: "Space Grotesk" }
-        line { from: 58, 584; to: 434, 584; width: 1; color: ink; opacity: 10% }
-        text "Cancel" { at: 246, 608; anchor: center; size: 11; weight: 700; color: faint; family: "Space Grotesk" }
-        zone box ct_audio_pick_close { from: 150, 590; size: 192, 36; corner: 18; cursor: pointer; label: "Close output picker" }
-        on press ct_audio_pick_close { audio_pick_open = false }
+        group {
+            show: center_open and audio_pick_open and center_tab == 4
+            box { from: 0, 0; size: 1120, 720; corner: 30; color: #000000; opacity: 46% }
+            zone box ap_shield { from: 0, 0; size: 1120, 720; label: "Close output picker" }
+            on press ap_shield { audio_pick_open = false }
+            group {
+                move: 314, -42
+                zone box ap_body { from: 36, 152; size: 420, 500; corner: 18; label: "Output devices" }
+                on press ap_body { audio_pick_open = audio_pick_open }
+                body {
+                    color: mix(ct.card2, ct.primary, 0.45)
+                    opacity: 1% * max(glass_tint, 84)
+                    glass: if(glass_on, 100%, 0%)
+                    lens: glass_on and glass_bend
+                    frost: glass_frost / 100
+                    refraction: glass_refr
+                    dispersion: glass_disp
+                    dome: glass_dome
+                    milk: glass_milk
+                    smoke: glass_smoke
+                    vivid: glass_vivid
+                    mirror: glass_mirror
+                    highlight: glass_highlight
+                    ripple: glass_ripple
+                    border: 1.5 * glass_border / 100, ink
+                    shine: pointer
+                    shadow: 0, 10, 28, 24%, glass_shadow
+                    box { from: 36, 152; size: 420, 500; corner: 18 }
+                }
+                box { from: 36, 152; size: 420, 500; corner: 18; stroke: 1.5; color: ct.primary; opacity: 34% }
+                text "OUTPUT DEVICE" { at: 58, 178; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
+                line { from: 58, 196; to: 434, 196; width: 1; color: ink; opacity: 10% }
+                repeat o in 0..8 {
+                    let oy = 208 + o * 46
+                    group {
+                        show: o < audio_outputs.count
+                        box { from: 52, oy; size: 388, 38; corner: 9; color: if(audio_outputs.$o.current, ct.primary, ink); opacity: if(audio_outputs.$o.current, 12%, 3%) }
+                        ellipse { at: 70, oy + 19; radius: 4; color: if(audio_outputs.$o.current, ct.primary, faint); opacity: 80% }
+                        text audio_outputs.$o.name { at: 84, oy + 19; anchor: left center; size: 12; weight: if(audio_outputs.$o.current, 700, 500); color: if(audio_outputs.$o.current, ct.primary, ink); width: 330; lines: 1; family: "Space Grotesk" }
+                        zone box ct_audio_out.$o { from: 52, oy; size: 388, 38; corner: 9; cursor: pointer; label: audio_outputs.$o.name }
+                        on press ct_audio_out.$o { emit ui_sound; emit center_audio_default(o) }
+                    }
+                }
+                text "No output devices." { at: 58, 222; anchor: left center; size: 12; color: faint; show: audio_outputs.count < 1; family: "Space Grotesk" }
+                line { from: 58, 584; to: 434, 584; width: 1; color: ink; opacity: 10% }
+                text "Cancel" { at: 246, 608; anchor: center; size: 11; weight: 700; color: faint; family: "Space Grotesk" }
+                zone box ct_audio_pick_close { from: 150, 590; size: 192, 36; corner: 18; cursor: pointer; label: "Close output picker" }
+                on press ct_audio_pick_close { audio_pick_open = false }
+            }
+        }
     }
 }

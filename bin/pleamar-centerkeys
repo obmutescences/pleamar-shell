@@ -3,5 +3,5 @@
 set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 bin="$("$root/bin/pleamar-shell" --path)"
-export PLEAMAR_CENTER_PARENT="${PLEAMAR_CENTER_PARENT:-island}"
+export PLEAMAR_CENTER_PARENT="${PLEAMAR_CENTER_PARENT:-notches}"
 exec "$bin" --scene "$root/scenes/centerkeys.plm" --no-hud

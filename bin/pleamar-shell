@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Local dev runner: ./bin/pleamar-shell island|frame|notches [pleamar args...]
+# Local dev runner: ./bin/pleamar-shell notches|lock [pleamar args...]
 # PLEAMAR=/path/to/pleamar overrides discovery.
 set -euo pipefail
 
@@ -73,9 +73,9 @@ fi
 
 mode="${1:-notches}"
 case "$mode" in
-    island|frame|notches|lock) ;;
+    notches|lock) ;;
     *)
-        echo "usage: $0 island|frame|notches|lock [pleamar args...]" >&2
+        echo "usage: $0 notches|lock [pleamar args...]" >&2
         exit 2
         ;;
 esac
@@ -84,7 +84,7 @@ esac
 #  the compositor can kill it ("Null buffer attached"), and on niri an output
 #  hotplug after DPMS makes it request an already locked output, which ends
 #  the scene and leaves niri's red lock overlay.  Vitreus starts its lock
-#  screen with this too; it has no effect on the island/frame scenes.
+#  screen with this too; it has no effect on the Notches scene.
 if [[ "$mode" == "lock" ]]; then
     export PLEAMAR_SWAPCHAIN=1
 fi
@@ -137,14 +137,14 @@ fi
 export PLEAMAR_SHELL_ROOT="$root"
 export PLEAMAR_SHELL_MODE="$mode"
 
-#  Pleamar's frame-pacing diagnostics are useful while tuning a scene, but a
-#  shell should not fill the journal with isolated 34 ms frames.  Set
-#  PLEAMAR_RENDER_LOG=1 to keep them.
+#  Routine renderer diagnostics belong to tuning, including repeated capture
+#  allocation notices. Keep warnings/errors and restore diagnostics with
+#  PLEAMAR_RENDER_LOG=1.
 if [[ "${PLEAMAR_RENDER_LOG:-0}" == "1" ]]; then
     exec "$bin" --scene "$scene" --no-hud "${@:2}"
 fi
 set +e
 "$bin" --scene "$scene" --no-hud "${@:2}" 2>&1 \
-    | sed -u -E '/^render · (slow frame|this scene does not keep up):/d'
+    | sed -u -E '/^render · (slow frame|this scene does not keep up):/d; /^render · captures of a glass go straight onto the card /d'
 code=${PIPESTATUS[0]}
 exit "$code"

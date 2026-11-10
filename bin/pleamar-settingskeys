@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# One-surface keyboard helper for the settings panel.
+# One-surface keyboard helper for settings and search text fields.
 set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 bin="$("$root/bin/pleamar-shell" --path)"
-export PLEAMAR_SETTINGS_PARENT="${PLEAMAR_SETTINGS_PARENT:-island}"
+export PLEAMAR_SETTINGS_PARENT="${PLEAMAR_SETTINGS_PARENT:-notches}"
 export PLEAMAR_SETTINGS_FIELD="${PLEAMAR_SETTINGS_FIELD:-weather_city}"
+export PLEAMAR_SETTINGS_CLOSE_EVENT="${PLEAMAR_SETTINGS_CLOSE_EVENT:-settings_close}"
 exec "$bin" --scene "$root/scenes/settingskeys.plm" --no-hud

@@ -1,6 +1,6 @@
 // A single water ring around the whole screen, in one full-screen shader.
 // The ring follows a rounded rectangle offset by `inset` pixels from the
-// screen edge: 0 for the Island, the rail thickness for the Frame.  Because
+// screen edge: 0 for the old Island, the rail thickness for the Frame.  Because
 // the distance field is one rounded rectangle, the four corners are real
 // arcs, not two strips meeting at 90 degrees.
 //

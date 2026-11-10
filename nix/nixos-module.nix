@@ -21,9 +21,9 @@ in
     };
 
     layout = lib.mkOption {
-      type = lib.types.enum [ "island" "frame" "notches" ];
+      type = lib.types.enum [ "notches" ];
       default = "notches";
-      description = "Pleamar layout to start.";
+      description = "Pleamar layout to start (Notches only).";
     };
 
     skwdWall = lib.mkOption {

@@ -27,13 +27,6 @@ nix build .#default
 ./result/bin/pleamar-shell notches
 ```
 
-The old `island` and `frame` layouts remain available for comparison:
-
-```sh
-./result/bin/pleamar-shell island
-./result/bin/pleamar-shell frame
-```
-
 For local development, the repository launcher works too:
 
 ```sh
@@ -65,7 +58,7 @@ Add the flake input and the NixOS module:
 # configuration.nix
 services.pleamar-shell = {
   enable = true;
-  layout = "notches"; # or "island" / "frame"
+  layout = "notches";
 };
 ```
 

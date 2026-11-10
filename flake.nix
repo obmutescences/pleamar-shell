@@ -1,5 +1,5 @@
 {
-  description = "pleamar-shell — Island/Frame, glass panels, cava water";
+  description = "pleamar-shell — Notches frame, glass panels, cava music";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";

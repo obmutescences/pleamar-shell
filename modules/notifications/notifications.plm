@@ -193,21 +193,13 @@ part Notifications {
 
     //  The notification centre: the recent ones, clear, Do Not Disturb and a
     //  way into the sound settings.
-    surface nt_center {
-        size: 480, 650
-        anchor: top
-        margin: 56, 56, 0, 0
-        level: overlay
-        open: nt_center or ntc_p > 0.01
-        rate: 120, 30 while quiet
-        keyboard: on_demand while nt_center
-
+    component NotificationCenterContent() {
         zone box nt_center_shield { from: 0, 0; size: 480, 650; active: nt_center; label: "Notifications" }
         on press nt_center_shield { nt_center = nt_center }
 
-        PanelPop(center_fx, ntc_p, 480, 650) {
         PanelBackdrop(0, 6, 480, 644, 26)
         body {
+            show: not notch_mode
             color: panel_bg
             glass: if(glass_on, 100%, 0%)
             opacity: 1% * max(glass_tint, 84)
@@ -222,7 +214,7 @@ part Notifications {
             box { from: 160, 0; size: 160, 10; corner: 5 }
             box { from: 0, 6; size: 480, 644; corner: 26 }
         }
-        box { from: 0, 6; size: 480, 644; corner: 26; stroke: 1; color: ink; opacity: 8% }
+        box { from: 0, 6; size: 480, 644; corner: 26; stroke: 1; color: ink; opacity: 8%; show: not notch_mode }
 
         text "NOTIFICATIONS" { at: 28, 36; anchor: left center; size: 11; weight: 700; color: faint; family: "Space Grotesk" }
         text number(nt_unread, 0, "") { at: 452, 36; anchor: right center; size: 13; weight: 700; color: aqua; family: "Space Grotesk" }
@@ -264,7 +256,18 @@ part Notifications {
         text "Close" { at: 411, 607; anchor: center; size: 11; weight: 700; color: faint; family: "Space Grotesk" }
         zone box nt_close_btn { from: 366, 592; size: 90, 30; corner: 15; cursor: pointer; label: "Close notifications" }
         on press nt_close_btn { emit ui_sound; nt_center = false }
-        }
+    }
+
+    surface nt_center {
+        size: 480, 650
+        anchor: top
+        margin: 56, 56, 0, 0
+        level: overlay
+        open: not notch_mode and (nt_center or ntc_p > 0.01)
+        rate: 120, 30 while quiet
+        keyboard: on_demand while nt_center
+
+        PanelPop(center_fx, ntc_p, 480, 650) { NotificationCenterContent() }
 
         on key Escape while nt_center { nt_center = false }
     }
