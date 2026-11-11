@@ -74,13 +74,14 @@ end
 
 local last_clock = nil
 local function show_clock(c)
-    local sec = cfg.show_seconds and string.format(":%02d", c.second or 0) or ""
+    --  Seconds are their own text: no dot and no colon in front of them.
+    text.clock_secs = cfg.show_seconds and string.format("%02d", c.second or 0) or ""
     if cfg.use_12_hour then
         local h12 = c.hour % 12
         if h12 == 0 then h12 = 12 end
-        text.clock_time = string.format("%d:%02d", h12, c.minute) .. sec
+        text.clock_time = string.format("%d:%02d", h12, c.minute)
     else
-        text.clock_time = string.format("%02d:%02d", c.hour, c.minute) .. sec
+        text.clock_time = string.format("%02d:%02d", c.hour, c.minute)
     end
     text.clock_ampm = c.hour >= 12 and "PM" or "AM"
     text.clock_date = date_text(c)
