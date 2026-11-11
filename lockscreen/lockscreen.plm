@@ -148,8 +148,8 @@ scene Lockscreen {
         //  corner falls (ox, oy), the way Marea does hers.
         let w = lk.width
         let h = lk.height
-        let cx = lk.width / 2
-        let cy = lk.height / 2
+        let cx = 320
+        let cy = 220
         let ox = floor(cx - w / 2 + 0.5)
         let oy = floor(cy - h / 2 + 0.5)
 
@@ -290,7 +290,7 @@ scene Lockscreen {
                         image avatar { at: px - 35, bar_y - 35; size: 70, 70; show: has_avatar }
                     }
                     group { show: not has_avatar; GPerson(px, bar_y, 60 / 24, acc, 1, 0) }
-                    text realname { at: px + 48, bar_y - 14; anchor: left center; size: 24; weight: 700; width: 164; lines: 1; color: ink; family: "Space Grotesk" }
+                    text realname { at: px + 48, bar_y - 14; anchor: left center; size: 20; weight: 700; width: 170; lines: 1; color: ink; family: "Space Grotesk" }
                     text status { at: px + 48, bar_y + 13; anchor: left center; size: 11; color: mix(mix(faint, #ef4444, err_t), #10b981, ok_t); family: "Space Grotesk" }
                     text "Esc to exit · test lock" { at: px + 48, bar_y + 36; anchor: left center; size: 10; color: acc; opacity: 80%; family: "Space Grotesk"; show: safe and pw_len == 0 }
                 }
