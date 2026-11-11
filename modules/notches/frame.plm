@@ -1,4 +1,5 @@
 part NotchFrame {
+    shader frame_wave = file "frame_wave.wgsl"
     prop nf_sec_ones = 1 ~quick
     prop nf_sec_tens = 1 ~quick
 
@@ -8,7 +9,7 @@ part NotchFrame {
         reserve: 0
         level: top, overlay while panel_open or center_open or launch_open or nt_center
         open: true
-        rate: 90, 60 while music_frame_on and music_on, 15 while quiet
+        rate: 90, 60 while music_frame_on and music_on, 60 while panel_open or center_open or launch_open or nt_center, 15 while quiet
         keyboard: on_demand while nt_center
 
         let nf.w = notch_frame.width
@@ -32,12 +33,34 @@ part NotchFrame {
         let nf.ntc_p = clamp(ntc_p, 0, 1)
         let nf.search_h = notch_clock_h + 600
         let nf.notify_h = notch_clock_h + 650
-        //  Drawers open and close without a transition; only the notification
-        //  surfaces keep a motion setting.
+        //  Drawer geometry: the drop is a spring; halfway it narrows into a
+        //  bell and opens its corners, and on landing sag/wobble settle it.
         let nf.cp_w = mix(nf.clock_w, 860, nf.cp_p)
         let nf.cp_h = nf.settings_h * nf.cp_p
         let nf.ct_w = mix(nf.clock_w, 1120, nf.ct_p)
         let nf.ct_h = nf.center_h * nf.ct_p
+        let nf.la_w = mix(nf.clock_w, 620, nf.launch_p)
+        let nf.la_h = nf.search_h * nf.launch_p
+        let nf.cp_bell = 4 * min(1, nf.cp_p) * (1 - min(1, nf.cp_p))
+        let nf.ct_bell = 4 * min(1, nf.ct_p) * (1 - min(1, nf.ct_p))
+        let nf.la_bell = 4 * min(1, nf.launch_p) * (1 - min(1, nf.launch_p))
+        let nf.cp_wob = clamp(cp_wobble, -30, 30)
+        let nf.ct_wob = clamp(ct_wobble, -30, 30)
+        let nf.la_wob = clamp(la_wobble, -30, 30)
+        let nf.cp_ew = nf.cp_w * (1 + nf.cp_bell * 0.08 - 0.07 * nf.cp_bell + 0.005 * nf.cp_wob)
+        let nf.cp_eh = nf.cp_h * (1 - nf.cp_bell * 0.04 - 0.002 * nf.cp_wob) + max(0, clamp(cp_sag, 0, 30))
+        let nf.ct_ew = nf.ct_w * (1 + nf.ct_bell * 0.08 - 0.07 * nf.ct_bell + 0.005 * nf.ct_wob)
+        let nf.ct_eh = nf.ct_h * (1 - nf.ct_bell * 0.04 - 0.002 * nf.ct_wob) + max(0, clamp(ct_sag, 0, 30))
+        let nf.la_ew = nf.la_w * (1 + nf.la_bell * 0.08 - 0.07 * nf.la_bell + 0.005 * nf.la_wob)
+        let nf.la_eh = nf.la_h * (1 - nf.la_bell * 0.04 - 0.002 * nf.la_wob) + max(0, clamp(la_sag, 0, 30))
+        //  The wave bends the frame and the open drawer's rim.  It sleeps
+        //  outside music and the short opening/landing window.
+        let nf.wave_panel_on = if(nf.cp_p > 0.01, 1, if(nf.ct_p > 0.01, 1, if(nf.launch_p > 0.01, 1, 0)))
+        let nf.wave_pw = if(nf.cp_p > 0.01, nf.cp_ew, if(nf.ct_p > 0.01, nf.ct_ew, if(nf.launch_p > 0.01, nf.la_ew, 0)))
+        let nf.wave_ph = if(nf.cp_p > 0.01, nf.cp_eh, if(nf.ct_p > 0.01, nf.ct_eh, if(nf.launch_p > 0.01, nf.la_eh, 0)))
+        let nf.wave_cy = nf.wave_ph / 2
+        let nf.wave_bass = clamp(bands.0 * 1.8, 0, 1)
+        let nf.wave_on = nf.wave_panel_on > 0.5 and (nf.music or (nf.cp_p > 0.01 and nf.cp_p < 0.995) or (nf.ct_p > 0.01 and nf.ct_p < 0.995) or (nf.launch_p > 0.01 and nf.launch_p < 0.995) or abs(nf.cp_wob) > 1 or abs(nf.ct_wob) > 1 or abs(nf.la_wob) > 1)
         let nf.sm = music_frame_sens
         let nf.hm = music_frame_hgt
         let nf.bon = if(nf.music, 1, 0)
@@ -51,6 +74,7 @@ part NotchFrame {
         //  only their positions move out of view while a drawer is closed.
         let nf.cp_shift = if(panel_open or nf.cp_p > 0.01, 0, 30000)
         let nf.ct_shift = if(center_open or nf.ct_p > 0.01, 0, 30000)
+        let nf.la_shift = if(launch_open or nf.launch_p > 0.01, 0, 30000)
         //  The frame keeps its neutral glass base.  `bar_bg` carries the Bar
         //  page's Tint depth, so using it here would colour the clock/time
         //  ring while the music bars stayed glass and make the frame split.
@@ -332,6 +356,10 @@ part NotchFrame {
         let nf48.l.47 = clamp(floor(nf48.b.47), 0, 22)
         let nf48.h.47 = if(47 < nf.nuse, min(1, pow(mix(pick(nf48.l.47, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf48.l.47, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf48.b.47 - nf48.l.47), 1.4) * nf.sm) * clamp(min(47.5, 48 - 47 - 0.5) / (2.4000000000000004), 0, 1) * nf.hm * nf.bon, 0)
 
+        //  One glass group for the frame body and the music/drawer rims; the
+        //  wave is gated so it is not a full-surface pass at rest.
+        group {
+            shader: frame_wave, nf.wave_bass, nf.wave_panel_on, nf.cx, nf.wave_cy, nf.wave_pw, nf.wave_ph, nf.cp_wob, 0 while nf.wave_on
         body {
             color: nf.frame_color
             glass: if(glass_on, 100%, 0%)
@@ -359,12 +387,18 @@ part NotchFrame {
             box { from: nf.cx - nf.clock_w / 2 + 14, nf.clock_h - 2; size: nf.clock_w - 28, 1; corner: 0.5 }
             //  Settings drawer — single box growing from clock-width to full 860px,
             //  starting at y=0 so the entire top edge connects to the frame.
-            box { from: nf.cx - nf.cp_w / 2 + if(panel_open or nf.cp_p > 0.01, 0, 30000), 0; size: nf.cp_w, max(0.3, nf.cp_h); corner: mix(20, 26, nf.cp_p); blend: mix(34, 36, nf.cp_p) * nf.cp_p; show: panel_open or nf.cp_p > 0.01 }
+            box { from: nf.cx - nf.cp_ew / 2 + nf.cp_shift + nf.cp_wob * 0.5, 0; size: nf.cp_ew, max(0.3, nf.cp_eh); corner: mix(20, 26, nf.cp_p); blend: mix(34, 36, nf.cp_p) * nf.cp_p; show: panel_open or nf.cp_p > 0.01 }
+            ellipse { at: nf.cx - nf.cp_ew / 2 + 20 + nf.cp_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.cp_bell); blend: 16 * nf.cp_bell; show: (panel_open or nf.cp_p > 0.01) and nf.cp_bell > 0.02 }
+            ellipse { at: nf.cx + nf.cp_ew / 2 - 20 + nf.cp_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.cp_bell); blend: 16 * nf.cp_bell; show: (panel_open or nf.cp_p > 0.01) and nf.cp_bell > 0.02 }
             //  Centre drawer — same pattern, full width 1120px.
-            box { from: nf.cx - nf.ct_w / 2 + if(center_open or nf.ct_p > 0.01, 0, 30000), 0; size: nf.ct_w, max(0.3, nf.ct_h); corner: mix(20, 30, nf.ct_p); blend: mix(34, 36, nf.ct_p) * nf.ct_p; show: center_open or nf.ct_p > 0.01 }
+            box { from: nf.cx - nf.ct_ew / 2 + nf.ct_shift + nf.ct_wob * 0.5, 0; size: nf.ct_ew, max(0.3, nf.ct_eh); corner: mix(20, 30, nf.ct_p); blend: mix(34, 36, nf.ct_p) * nf.ct_p; show: center_open or nf.ct_p > 0.01 }
+            ellipse { at: nf.cx - nf.ct_ew / 2 + 20 + nf.ct_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.ct_bell); blend: 16 * nf.ct_bell; show: (center_open or nf.ct_p > 0.01) and nf.ct_bell > 0.02 }
+            ellipse { at: nf.cx + nf.ct_ew / 2 - 20 + nf.ct_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.ct_bell); blend: 16 * nf.ct_bell; show: (center_open or nf.ct_p > 0.01) and nf.ct_bell > 0.02 }
             //  Search and notifications share this glass body, while their
             //  toasts remain independent surfaces.
-            box { from: nf.cx - mix(nf.clock_w, 620, nf.launch_p) / 2 + if(launch_open or nf.launch_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 620, nf.launch_p), max(0.3, nf.search_h * nf.launch_p); corner: mix(20, 24, nf.launch_p); blend: mix(34, 36, nf.launch_p) * nf.launch_p; show: launch_open or nf.launch_p > 0.01 }
+            box { from: nf.cx - nf.la_ew / 2 + nf.la_shift + nf.la_wob * 0.5, 0; size: nf.la_ew, max(0.3, nf.la_eh); corner: mix(20, 24, nf.launch_p); blend: mix(34, 36, nf.launch_p) * nf.launch_p; show: launch_open or nf.launch_p > 0.01 }
+            ellipse { at: nf.cx - nf.la_ew / 2 + 20 + nf.la_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.la_bell); blend: 16 * nf.la_bell; show: (launch_open or nf.launch_p > 0.01) and nf.la_bell > 0.02 }
+            ellipse { at: nf.cx + nf.la_ew / 2 - 20 + nf.la_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.la_bell); blend: 16 * nf.la_bell; show: (launch_open or nf.launch_p > 0.01) and nf.la_bell > 0.02 }
             box { from: nf.cx - mix(nf.clock_w, 480, nf.ntc_p) / 2 + if(nt_center or nf.ntc_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 480, nf.ntc_p), max(0.3, nf.notify_h * nf.ntc_p); corner: mix(20, 26, nf.ntc_p); blend: mix(34, 36, nf.ntc_p) * nf.ntc_p; show: nt_center or nf.ntc_p > 0.01 }
 
             box { at: nf.w * 0.5 / 6 + if(nf6.h.0 > 1 and abs(nf.w * 0.5 / 6 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf6.h.0 / 2; size: nf.bw, nf6.h.0; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl; show: nf6.h.0 > 1 and abs(nf.w * 0.5 / 6 - nf.cx) > nf.clock_w / 2 + 16 }
@@ -500,10 +534,16 @@ part NotchFrame {
             box { from: nf.cx - nf.clock_w / 2 + 14, nf.clock_h - 2; size: nf.clock_w - 28, 1; corner: 0.5 }
             //  Settings drawer — single box growing from clock-width to full 860px,
             //  starting at y=0 so the entire top edge connects to the frame.
-            box { from: nf.cx - nf.cp_w / 2 + if(panel_open or nf.cp_p > 0.01, 0, 30000), 0; size: nf.cp_w, max(0.3, nf.cp_h); corner: mix(20, 26, nf.cp_p); blend: mix(34, 36, nf.cp_p) * nf.cp_p; show: panel_open or nf.cp_p > 0.01 }
+            box { from: nf.cx - nf.cp_ew / 2 + nf.cp_shift + nf.cp_wob * 0.5, 0; size: nf.cp_ew, max(0.3, nf.cp_eh); corner: mix(20, 26, nf.cp_p); blend: mix(34, 36, nf.cp_p) * nf.cp_p; show: panel_open or nf.cp_p > 0.01 }
+            ellipse { at: nf.cx - nf.cp_ew / 2 + 20 + nf.cp_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.cp_bell); blend: 16 * nf.cp_bell; show: (panel_open or nf.cp_p > 0.01) and nf.cp_bell > 0.02 }
+            ellipse { at: nf.cx + nf.cp_ew / 2 - 20 + nf.cp_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.cp_bell); blend: 16 * nf.cp_bell; show: (panel_open or nf.cp_p > 0.01) and nf.cp_bell > 0.02 }
             //  Centre drawer — same pattern, full width 1120px.
-            box { from: nf.cx - nf.ct_w / 2 + if(center_open or nf.ct_p > 0.01, 0, 30000), 0; size: nf.ct_w, max(0.3, nf.ct_h); corner: mix(20, 30, nf.ct_p); blend: mix(34, 36, nf.ct_p) * nf.ct_p; show: center_open or nf.ct_p > 0.01 }
-            box { from: nf.cx - mix(nf.clock_w, 620, nf.launch_p) / 2 + if(launch_open or nf.launch_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 620, nf.launch_p), max(0.3, nf.search_h * nf.launch_p); corner: mix(20, 24, nf.launch_p); blend: mix(34, 36, nf.launch_p) * nf.launch_p; show: launch_open or nf.launch_p > 0.01 }
+            box { from: nf.cx - nf.ct_ew / 2 + nf.ct_shift + nf.ct_wob * 0.5, 0; size: nf.ct_ew, max(0.3, nf.ct_eh); corner: mix(20, 30, nf.ct_p); blend: mix(34, 36, nf.ct_p) * nf.ct_p; show: center_open or nf.ct_p > 0.01 }
+            ellipse { at: nf.cx - nf.ct_ew / 2 + 20 + nf.ct_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.ct_bell); blend: 16 * nf.ct_bell; show: (center_open or nf.ct_p > 0.01) and nf.ct_bell > 0.02 }
+            ellipse { at: nf.cx + nf.ct_ew / 2 - 20 + nf.ct_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.ct_bell); blend: 16 * nf.ct_bell; show: (center_open or nf.ct_p > 0.01) and nf.ct_bell > 0.02 }
+            box { from: nf.cx - nf.la_ew / 2 + nf.la_shift + nf.la_wob * 0.5, 0; size: nf.la_ew, max(0.3, nf.la_eh); corner: mix(20, 24, nf.launch_p); blend: mix(34, 36, nf.launch_p) * nf.launch_p; show: launch_open or nf.launch_p > 0.01 }
+            ellipse { at: nf.cx - nf.la_ew / 2 + 20 + nf.la_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.la_bell); blend: 16 * nf.la_bell; show: (launch_open or nf.launch_p > 0.01) and nf.la_bell > 0.02 }
+            ellipse { at: nf.cx + nf.la_ew / 2 - 20 + nf.la_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.la_bell); blend: 16 * nf.la_bell; show: (launch_open or nf.launch_p > 0.01) and nf.la_bell > 0.02 }
             box { from: nf.cx - mix(nf.clock_w, 480, nf.ntc_p) / 2 + if(nt_center or nf.ntc_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 480, nf.ntc_p), max(0.3, nf.notify_h * nf.ntc_p); corner: mix(20, 26, nf.ntc_p); blend: mix(34, 36, nf.ntc_p) * nf.ntc_p; show: nt_center or nf.ntc_p > 0.01 }
 
             box { at: nf.w * 0.5 / 12 + if(nf12.h.0 > 1 and abs(nf.w * 0.5 / 12 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf12.h.0 / 2; size: nf.bw, nf12.h.0; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl; show: nf12.h.0 > 1 and abs(nf.w * 0.5 / 12 - nf.cx) > nf.clock_w / 2 + 16 }
@@ -663,10 +703,16 @@ part NotchFrame {
             box { from: nf.cx - nf.clock_w / 2 + 14, nf.clock_h - 2; size: nf.clock_w - 28, 1; corner: 0.5 }
             //  Settings drawer — single box growing from clock-width to full 860px,
             //  starting at y=0 so the entire top edge connects to the frame.
-            box { from: nf.cx - nf.cp_w / 2 + if(panel_open or nf.cp_p > 0.01, 0, 30000), 0; size: nf.cp_w, max(0.3, nf.cp_h); corner: mix(20, 26, nf.cp_p); blend: mix(34, 36, nf.cp_p) * nf.cp_p; show: panel_open or nf.cp_p > 0.01 }
+            box { from: nf.cx - nf.cp_ew / 2 + nf.cp_shift + nf.cp_wob * 0.5, 0; size: nf.cp_ew, max(0.3, nf.cp_eh); corner: mix(20, 26, nf.cp_p); blend: mix(34, 36, nf.cp_p) * nf.cp_p; show: panel_open or nf.cp_p > 0.01 }
+            ellipse { at: nf.cx - nf.cp_ew / 2 + 20 + nf.cp_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.cp_bell); blend: 16 * nf.cp_bell; show: (panel_open or nf.cp_p > 0.01) and nf.cp_bell > 0.02 }
+            ellipse { at: nf.cx + nf.cp_ew / 2 - 20 + nf.cp_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.cp_bell); blend: 16 * nf.cp_bell; show: (panel_open or nf.cp_p > 0.01) and nf.cp_bell > 0.02 }
             //  Centre drawer — same pattern, full width 1120px.
-            box { from: nf.cx - nf.ct_w / 2 + if(center_open or nf.ct_p > 0.01, 0, 30000), 0; size: nf.ct_w, max(0.3, nf.ct_h); corner: mix(20, 30, nf.ct_p); blend: mix(34, 36, nf.ct_p) * nf.ct_p; show: center_open or nf.ct_p > 0.01 }
-            box { from: nf.cx - mix(nf.clock_w, 620, nf.launch_p) / 2 + if(launch_open or nf.launch_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 620, nf.launch_p), max(0.3, nf.search_h * nf.launch_p); corner: mix(20, 24, nf.launch_p); blend: mix(34, 36, nf.launch_p) * nf.launch_p; show: launch_open or nf.launch_p > 0.01 }
+            box { from: nf.cx - nf.ct_ew / 2 + nf.ct_shift + nf.ct_wob * 0.5, 0; size: nf.ct_ew, max(0.3, nf.ct_eh); corner: mix(20, 30, nf.ct_p); blend: mix(34, 36, nf.ct_p) * nf.ct_p; show: center_open or nf.ct_p > 0.01 }
+            ellipse { at: nf.cx - nf.ct_ew / 2 + 20 + nf.ct_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.ct_bell); blend: 16 * nf.ct_bell; show: (center_open or nf.ct_p > 0.01) and nf.ct_bell > 0.02 }
+            ellipse { at: nf.cx + nf.ct_ew / 2 - 20 + nf.ct_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.ct_bell); blend: 16 * nf.ct_bell; show: (center_open or nf.ct_p > 0.01) and nf.ct_bell > 0.02 }
+            box { from: nf.cx - nf.la_ew / 2 + nf.la_shift + nf.la_wob * 0.5, 0; size: nf.la_ew, max(0.3, nf.la_eh); corner: mix(20, 24, nf.launch_p); blend: mix(34, 36, nf.launch_p) * nf.launch_p; show: launch_open or nf.launch_p > 0.01 }
+            ellipse { at: nf.cx - nf.la_ew / 2 + 20 + nf.la_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.la_bell); blend: 16 * nf.la_bell; show: (launch_open or nf.launch_p > 0.01) and nf.la_bell > 0.02 }
+            ellipse { at: nf.cx + nf.la_ew / 2 - 20 + nf.la_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.la_bell); blend: 16 * nf.la_bell; show: (launch_open or nf.launch_p > 0.01) and nf.la_bell > 0.02 }
             box { from: nf.cx - mix(nf.clock_w, 480, nf.ntc_p) / 2 + if(nt_center or nf.ntc_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 480, nf.ntc_p), max(0.3, nf.notify_h * nf.ntc_p); corner: mix(20, 26, nf.ntc_p); blend: mix(34, 36, nf.ntc_p) * nf.ntc_p; show: nt_center or nf.ntc_p > 0.01 }
 
             box { at: nf.w * 0.5 / 24 + if(nf24.h.0 > 1 and abs(nf.w * 0.5 / 24 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf24.h.0 / 2; size: nf.bw, nf24.h.0; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl; show: nf24.h.0 > 1 and abs(nf.w * 0.5 / 24 - nf.cx) > nf.clock_w / 2 + 16 }
@@ -874,10 +920,16 @@ part NotchFrame {
             box { from: nf.cx - nf.clock_w / 2 + 14, nf.clock_h - 2; size: nf.clock_w - 28, 1; corner: 0.5 }
             //  Settings drawer — single box growing from clock-width to full 860px,
             //  starting at y=0 so the entire top edge connects to the frame.
-            box { from: nf.cx - nf.cp_w / 2 + if(panel_open or nf.cp_p > 0.01, 0, 30000), 0; size: nf.cp_w, max(0.3, nf.cp_h); corner: mix(20, 26, nf.cp_p); blend: mix(34, 36, nf.cp_p) * nf.cp_p; show: panel_open or nf.cp_p > 0.01 }
+            box { from: nf.cx - nf.cp_ew / 2 + nf.cp_shift + nf.cp_wob * 0.5, 0; size: nf.cp_ew, max(0.3, nf.cp_eh); corner: mix(20, 26, nf.cp_p); blend: mix(34, 36, nf.cp_p) * nf.cp_p; show: panel_open or nf.cp_p > 0.01 }
+            ellipse { at: nf.cx - nf.cp_ew / 2 + 20 + nf.cp_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.cp_bell); blend: 16 * nf.cp_bell; show: (panel_open or nf.cp_p > 0.01) and nf.cp_bell > 0.02 }
+            ellipse { at: nf.cx + nf.cp_ew / 2 - 20 + nf.cp_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.cp_bell); blend: 16 * nf.cp_bell; show: (panel_open or nf.cp_p > 0.01) and nf.cp_bell > 0.02 }
             //  Centre drawer — same pattern, full width 1120px.
-            box { from: nf.cx - nf.ct_w / 2 + if(center_open or nf.ct_p > 0.01, 0, 30000), 0; size: nf.ct_w, max(0.3, nf.ct_h); corner: mix(20, 30, nf.ct_p); blend: mix(34, 36, nf.ct_p) * nf.ct_p; show: center_open or nf.ct_p > 0.01 }
-            box { from: nf.cx - mix(nf.clock_w, 620, nf.launch_p) / 2 + if(launch_open or nf.launch_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 620, nf.launch_p), max(0.3, nf.search_h * nf.launch_p); corner: mix(20, 24, nf.launch_p); blend: mix(34, 36, nf.launch_p) * nf.launch_p; show: launch_open or nf.launch_p > 0.01 }
+            box { from: nf.cx - nf.ct_ew / 2 + nf.ct_shift + nf.ct_wob * 0.5, 0; size: nf.ct_ew, max(0.3, nf.ct_eh); corner: mix(20, 30, nf.ct_p); blend: mix(34, 36, nf.ct_p) * nf.ct_p; show: center_open or nf.ct_p > 0.01 }
+            ellipse { at: nf.cx - nf.ct_ew / 2 + 20 + nf.ct_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.ct_bell); blend: 16 * nf.ct_bell; show: (center_open or nf.ct_p > 0.01) and nf.ct_bell > 0.02 }
+            ellipse { at: nf.cx + nf.ct_ew / 2 - 20 + nf.ct_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.ct_bell); blend: 16 * nf.ct_bell; show: (center_open or nf.ct_p > 0.01) and nf.ct_bell > 0.02 }
+            box { from: nf.cx - nf.la_ew / 2 + nf.la_shift + nf.la_wob * 0.5, 0; size: nf.la_ew, max(0.3, nf.la_eh); corner: mix(20, 24, nf.launch_p); blend: mix(34, 36, nf.launch_p) * nf.launch_p; show: launch_open or nf.launch_p > 0.01 }
+            ellipse { at: nf.cx - nf.la_ew / 2 + 20 + nf.la_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.la_bell); blend: 16 * nf.la_bell; show: (launch_open or nf.launch_p > 0.01) and nf.la_bell > 0.02 }
+            ellipse { at: nf.cx + nf.la_ew / 2 - 20 + nf.la_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.la_bell); blend: 16 * nf.la_bell; show: (launch_open or nf.launch_p > 0.01) and nf.la_bell > 0.02 }
             box { from: nf.cx - mix(nf.clock_w, 480, nf.ntc_p) / 2 + if(nt_center or nf.ntc_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 480, nf.ntc_p), max(0.3, nf.notify_h * nf.ntc_p); corner: mix(20, 26, nf.ntc_p); blend: mix(34, 36, nf.ntc_p) * nf.ntc_p; show: nt_center or nf.ntc_p > 0.01 }
 
             box { at: nf.w * 0.5 / 48 + if(nf48.h.0 > 1 and abs(nf.w * 0.5 / 48 - nf.cx) > nf.clock_w / 2 + 16, 0, 30000), nf.rail + nf48.h.0 / 2; size: nf.bw, nf48.h.0; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl; show: nf48.h.0 > 1 and abs(nf.w * 0.5 / 48 - nf.cx) > nf.clock_w / 2 + 16 }
@@ -1153,6 +1205,7 @@ part NotchFrame {
             box { at: nf.cx + nf.ct_w / 2 - nf.rail - nf12.h.10 / 2 + nf.ct_shift, nf.clock_h + (nf.ct_h - nf.clock_h) * 10.5/12; size: nf12.h.10, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl; show: nf.ct_shift == 0 and nf12.h.10 > 1 }
             box { at: nf.cx + nf.ct_w / 2 - nf.rail - nf12.h.11 / 2 + nf.ct_shift, nf.clock_h + (nf.ct_h - nf.clock_h) * 11.5/12; size: nf12.h.11, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl; show: nf.ct_shift == 0 and nf12.h.11 > 1 }
         }
+        }
 
         //  Clock text vertically centred in the notch.
         row {
@@ -1185,20 +1238,20 @@ part NotchFrame {
         group {
             show: panel_open or cp_np > 0.01
             NotchDrawerRipples(cp_np)
-            NotchDrawerContent(cp_np, 860, 0) { ConfigPanelContent() }
+            NotchDrawerContent(cp_np, 860, nf.settings_h, 5) { ConfigPanelContent() }
         }
         group {
             show: center_open or ct_np > 0.01
             NotchDrawerRipples(ct_np)
-            NotchDrawerContent(ct_np, 1120, 0) { CenterPanelContent() }
+            NotchDrawerContent(ct_np, 1120, nf.center_h, 5) { CenterPanelContent() }
         }
         group {
             show: launch_open or la_p > 0.01
-            NotchDrawerContent(la_p, 620, 0) { LauncherContent() }
+            NotchDrawerContent(la_p, 620, nf.search_h, 5) { LauncherContent() }
         }
         group {
             show: nt_center or ntc_p > 0.01
-            NotchDrawerContent(ntc_p, 480, center_fx) { NotificationCenterContent() }
+            NotchDrawerContent(ntc_p, 480, nf.notify_h, center_fx) { NotificationCenterContent() }
         }
     }
 }

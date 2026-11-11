@@ -114,18 +114,18 @@ part Common {
         }
     }
 
-    component NotchDrawerContent(p: number, w: number, effect: number) {
+    component NotchDrawerContent(p: number, w: number, h: number, effect: number) {
         let nd.p = clamp(p, 0, 1)
         let nd.cx = screen.width / 2
         //  Content starts at the bottom of the clock notch, flush with the frame.
         let nd.y = notch_clock_h
-        let nd.sx = if(effect == 1, 0.70 + 0.30 * nd.p, if(effect == 4, 0.38 + 0.62 * nd.p, 1))
-        let nd.sy = if(effect == 1, 0.58 + 0.42 * nd.p, if(effect == 2, pow(nd.p, 1.55), if(effect == 3, 0.82 + 0.18 * nd.p, nd.p)))
-        let nd.fade = if(effect == 1, min(1, nd.p * 2), min(1, nd.p * 1.5))
+        let nd.sx = if(effect == 5, 0.86 + 0.14 * nd.p, if(effect == 1, 0.70 + 0.30 * nd.p, if(effect == 4, 0.38 + 0.62 * nd.p, 1)))
+        let nd.sy = if(effect == 5, 0.86 + 0.14 * nd.p, if(effect == 1, 0.58 + 0.42 * nd.p, if(effect == 2, pow(nd.p, 1.55), if(effect == 3, 0.82 + 0.18 * nd.p, nd.p))))
+        let nd.fade = if(effect == 5, clamp((nd.p - 0.65) / 0.35, 0, 1), if(effect == 1, min(1, nd.p * 2), min(1, nd.p * 1.5)))
         let nd.dy = if(effect == 3, -56 * (1 - nd.p), if(effect == 4, -14 * (1 - nd.p), 0))
         group {
             move: nd.cx - w / 2, nd.y + nd.dy
-            pivot: w / 2, 0
+            pivot: w / 2, if(effect == 5, h / 2, 0)
             scale: nd.sx, max(nd.sy, 0.015)
             opacity: clamp(nd.fade, 0, 1)
             children
@@ -142,9 +142,9 @@ part Common {
     //  Note: NotchDrawer is not used in notch_mode; the frame handles everything.
 
     fact settings_page: number = 1
-    //  Notification motion only (0 fade, 1 spin, 2 unfold, 3 drop,
+    //  Notification motion settings (0 fade, 1 spin, 2 unfold, 3 drop,
     //  4 aperture, 5 random).  The toast and notification centre keep their
-    //  pose through close; the drawers and search open without motion.
+    //  pose through close; drawers and search use notch_drop and the wave.
     fact anim_toast: number = 0
     fact anim_center: number = 0
     fact toast_fx: number = 0
@@ -299,6 +299,11 @@ part Common {
     prop spec.s.23 = 0 ~nf_spike
     follow spec.s.23 = spec.23
 
+    //  Drawer motion: the drop overshoots, then sag/wobble settle it like a
+    //  drop landing.  Notifications keep their own springs.
+    spring notch_drop = 170, 18
+    spring notch_hang = 260, 32
+    spring notch_splash = 420, 13
     prop music_frame_knob = 0 ~quick
     follow music_frame_knob = music_frame_on
     prop notch_tint_knob = 0 ~quick

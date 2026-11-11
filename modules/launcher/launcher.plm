@@ -8,8 +8,14 @@ part Launcher {
     let la.w = 620
     let la.top = 0
     let la.h = 600
-    prop la_p = 0 ~0ms
+    prop la_p = 0 ~notch_drop
+    prop la_sag = 0 ~notch_hang
+    prop la_wobble = 0 ~notch_splash
     follow la_p = launch_open
+    on change la_p > 0.97 while la_p > 0.97 and not motion.reduced {
+        impulse la_sag 220
+        impulse la_wobble -260
+    }
     //  A delayed focus loan: the surface has to be mapped before its field
     //  can take the keyboard, exactly as Vitreus does for its launcher.
     prop la_focus = 0 ~quick

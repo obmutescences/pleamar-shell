@@ -133,8 +133,14 @@ part ConfigPanel {
     let cp.idle_off_pct = clamp(idle_off_i / 16, 0, 1)
     measure cp_parent
     let wp.min_pct = clamp((wall_minutes - 1) / 59, 0, 1)
-    prop cp_np = 0 ~0ms
+    prop cp_np = 0 ~notch_drop
+    prop cp_sag = 0 ~notch_hang
+    prop cp_wobble = 0 ~notch_splash
     follow cp_np = panel_open
+    on change cp_np > 0.97 while cp_np > 0.97 and not motion.reduced {
+        impulse cp_sag 220
+        impulse cp_wobble -260
+    }
     //  Sidebar slot of each page, in visual order:
     //  LOOK: Wallpaper, Glass, Theme · SHELL: Bar, Frame music, Typeface,
     //  Motion, Notifications · SCREEN: Lock, Idle · SYSTEM: Weather.
@@ -1154,7 +1160,7 @@ part ConfigPanel {
         keyboard: none
         group {
             NotchDrawerRipples(cp_np)
-            NotchDrawerContent(cp_np, 860, 0) { ConfigPanelContent() }
+            NotchDrawerContent(cp_np, 860, 820, 5) { ConfigPanelContent() }
         }
     }
 }
