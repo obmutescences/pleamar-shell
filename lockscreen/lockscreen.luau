@@ -76,13 +76,20 @@ local last_clock = nil
 local function show_clock(c)
     --  Seconds are their own text: no dot and no colon in front of them.
     text.clock_secs = cfg.show_seconds and string.format("%02d", c.second or 0) or ""
+    local h, m
     if cfg.use_12_hour then
-        local h12 = c.hour % 12
-        if h12 == 0 then h12 = 12 end
-        text.clock_time = string.format("%d:%02d", h12, c.minute)
+        h = c.hour % 12
+        if h == 0 then h = 12 end
+        text.clock_time = string.format("%d:%02d", h, c.minute)
     else
-        text.clock_time = string.format("%02d:%02d", c.hour, c.minute)
+        h = c.hour
+        text.clock_time = string.format("%02d:%02d", h, c.minute)
     end
+    --  The glass face is four digit paths; seconds remain a separate text.
+    fact.clock_d0 = math.floor(h / 10)
+    fact.clock_d1 = h % 10
+    fact.clock_d2 = math.floor(c.minute / 10)
+    fact.clock_d3 = c.minute % 10
     text.clock_ampm = c.hour >= 12 and "PM" or "AM"
     text.clock_date = date_text(c)
 end
