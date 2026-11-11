@@ -37,6 +37,8 @@ if [[ " $* " == *" --version "* ]]; then echo "fake 1.0"; exit 0; fi
 echo 'render · slow frame: 34 ms at 90.55 s'
 echo 'render · this scene does not keep up: 12.1 ms a frame'
 echo 'render · captures of a glass go straight onto the card (480×560), the processor never reads them'
+echo 'render · the compositor is not showing this surface: painting once a second until it shows it again'
+echo 'render · the compositor is showing it again'
 echo 'render · failed to import capture'
 echo 'kept line'
 echo 'fatal kept on stderr' >&2
@@ -49,8 +51,10 @@ grep -q 'fatal kept on stderr' "$tmp/filtered" || { echo "render filter ate stde
 PLEAMAR="$tmp/fake-pleamar" PLEAMAR_RENDER_LOG=1 "$root/bin/pleamar-shell" notches >"$tmp/unfiltered" 2>&1
 grep -q '^render · slow frame' "$tmp/unfiltered" || { echo "PLEAMAR_RENDER_LOG did not restore logs" >&2; exit 1; }
 ! grep -q '^render · captures of a glass' "$tmp/filtered" || { echo "render filter left capture notices" >&2; exit 1; }
+! grep -q '^render · the compositor is' "$tmp/filtered" || { echo "render filter left compositor pacing notices" >&2; exit 1; }
 grep -q '^render · failed to import capture' "$tmp/filtered" || { echo "render filter ate a failure" >&2; exit 1; }
 grep -q '^render · captures of a glass' "$tmp/unfiltered" || { echo "PLEAMAR_RENDER_LOG did not restore capture notices" >&2; exit 1; }
+grep -q '^render · the compositor is not showing this surface' "$tmp/unfiltered" || { echo "PLEAMAR_RENDER_LOG did not restore compositor notices" >&2; exit 1; }
 bash -n "$root/bin/pleamar-lock" "$root/bin/pleamar-lock-keeper" "$root/bin/pleamar-settingskeys"
 
 #  The centre panel's System page is fed by this helper; a broken JSON line

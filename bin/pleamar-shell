@@ -156,6 +156,6 @@ if [[ "${PLEAMAR_RENDER_LOG:-0}" == "1" ]]; then
 fi
 set +e
 "$bin" --scene "$scene" --no-hud "${@:2}" 2>&1 \
-    | sed -u -E '/^render · (slow frame|this scene does not keep up):/d; /^render · captures of a glass go straight onto the card /d'
+    | sed -u -E '/^render · (slow frame|this scene does not keep up):/d; /^render · captures of a glass go straight onto the card /d; /^render · the compositor is not showing .*surface/d; /^render · the compositor is showing it again$/d'
 code=${PIPESTATUS[0]}
 exit "$code"
