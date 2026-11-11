@@ -218,37 +218,15 @@ scene Lockscreen {
                 //  The clock, with its glow, and the AM/PM pill beside it.
                 //  The clock is in the middle of the screen whether or not there is a pill: the pill hangs off its right edge and does not count.
                 let ck_x = cx
-                //  The time is the one glass surface.  It is neutral: the
-                //  wallpaper supplies the tint; the numerals stay ink and only
-                //  the seconds carry the primary colour.
-                box { at: cx, cy - 220; size: 760, 260; corner: 36; color: #080b0a; opacity: 22% }
-                body {
-                    color: #080b0a
-                    glass: 100%
-                    opacity: 62%
-                    refraction: 75%
-                    dispersion: 25%
-                    frost: 58%
-                    border: 1, mix(#ffffff, deep, 22%)
-                    box { at: cx, cy - 220; size: 760, 260; corner: 36 }
-                }
+                //  No plate: the hour and minute glyphs themselves are glass.
                 group {
                     //  Bold beyond the font's heaviest weight: the same text again around it, 3 px out in twelve directions. (A text
                     //  `outline` did the same but left rough notches on the glyphs.) They are only there once the card has landed
                     //  (the entrance passes 85 % when its last spring ends): while it moves, twelve copies each snapped to the pixel
                     //  their own way show as lines between them.
-                    repeat i in 0..12 {
-                        text clock_time { at: ck_x + 3 * cos(i * 30), ckc + 3 * sin(i * 30); anchor: center; size: 200; weight: 700; color: ink; family: "Space Grotesk"; opacity: clamp((e - 0.85) / 0.1, 0, 1); show: e > 0.85 and clock_px >= 175 }
-                    }
-                    text clock_time { at: ck_x, ckc; anchor: center; size: 200; weight: 700; color: ink; family: "Space Grotesk"; letter_scale: 1 + 1.1 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_move: 0, 50 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_opacity: (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3)); show: clock_px >= 175 }
-                    repeat i in 0..12 {
-                        text clock_time { at: ck_x + 2.2 * cos(i * 30), ckc + 2.2 * sin(i * 30); anchor: center; size: 150; weight: 700; color: ink; family: "Space Grotesk"; opacity: clamp((e - 0.85) / 0.1, 0, 1); show: e > 0.85 and clock_px >= 125 and clock_px < 175 }
-                    }
-                    text clock_time { at: ck_x, ckc; anchor: center; size: 150; weight: 700; color: ink; family: "Space Grotesk"; letter_scale: 1 + 1.1 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_move: 0, 50 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_opacity: (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3)); show: clock_px >= 125 and clock_px < 175 }
-                    repeat i in 0..12 {
-                        text clock_time { at: ck_x + 1.5 * cos(i * 30), ckc + 1.5 * sin(i * 30); anchor: center; size: 100; weight: 700; color: ink; family: "Space Grotesk"; opacity: clamp((e - 0.85) / 0.1, 0, 1); show: e > 0.85 and clock_px < 125 }
-                    }
-                    text clock_time { at: ck_x, ckc; anchor: center; size: 100; weight: 700; color: ink; family: "Space Grotesk"; letter_scale: 1 + 1.1 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_move: 0, 50 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_opacity: (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3)); show: clock_px < 125 }
+                    text clock_time { at: ck_x, ckc; anchor: center; size: 200; weight: 700; color: #ffffff; family: "Space Grotesk"; gradient: 0, ckc - 80 to 0, ckc + 80, #ffffff, #c7d7d2, #ffffff; shadow: 0, 2, 16, 26%, #b7d6cc; opacity: 88%; letter_scale: 1 + 1.1 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_move: 0, 50 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_opacity: (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3)); show: clock_px >= 175 }
+                    text clock_time { at: ck_x, ckc; anchor: center; size: 150; weight: 700; color: #ffffff; family: "Space Grotesk"; gradient: 0, ckc - 80 to 0, ckc + 80, #ffffff, #c7d7d2, #ffffff; shadow: 0, 2, 16, 26%, #b7d6cc; opacity: 88%; letter_scale: 1 + 1.1 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_move: 0, 50 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_opacity: (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3)); show: clock_px >= 125 and clock_px < 175 }
+                    text clock_time { at: ck_x, ckc; anchor: center; size: 100; weight: 700; color: #ffffff; family: "Space Grotesk"; gradient: 0, ckc - 80 to 0, ckc + 80, #ffffff, #c7d7d2, #ffffff; shadow: 0, 2, 16, 26%, #b7d6cc; opacity: 88%; letter_scale: 1 + 1.1 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_move: 0, 50 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_opacity: (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3)); show: clock_px < 125 }
                     //  Its width, measured at 200 and not seen: the pill goes where the clock ends, whichever size is shown.
                     text clock_time { at: ck_x, ckc; anchor: center; size: 200; weight: 700; color: ink; family: "Space Grotesk"; measure: ck_w; opacity: 0 }
                 }
@@ -388,10 +366,10 @@ scene Lockscreen {
                     opacity: media_in
                     show: media_in > 0.01
                     let mx = cx
-                    text "NOW PLAYING" { at: mx, media_y - 22; anchor: center; size: 9; weight: 600; color: #c3d652; family: "Space Grotesk" }
-                    text med.title { at: mx, media_y - 1; anchor: center; size: 14; weight: 700; width: 260; lines: 1; color: ink; family: "Space Grotesk" }
-                    text med.artist { at: mx, media_y + 18; anchor: center; size: 11; width: 260; lines: 1; color: faint; family: "Space Grotesk" }
-                    ellipse { at: mx, media_y + 43; radius: 3; color: #c3d652; opacity: 65% }
+                    text "NOW PLAYING" { at: mx, media_y - 22; anchor: center; size: 9; weight: 600; color: acc; family: "Space Grotesk" }
+                    text med.title { at: mx, media_y - 1; anchor: center; size: 14; weight: 700; width: 260; lines: 1; color: acc; family: "Space Grotesk" }
+                    text med.artist { at: mx, media_y + 18; anchor: center; size: 11; width: 260; lines: 1; color: acc; opacity: 78%; family: "Space Grotesk" }
+                    ellipse { at: mx, media_y + 43; radius: 3; color: acc; opacity: 65% }
                 }
 
                 //  The bar is the one big target: a click anywhere else asks for the keyboard again.
