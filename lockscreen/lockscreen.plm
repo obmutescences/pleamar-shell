@@ -175,12 +175,15 @@ scene Lockscreen {
         let vel_c = if(ph_c >= 1, 0, exp(-5 * ph_c) * (5 * cos(688 * ph_c) + 12 * sin(688 * ph_c)) / 0.50)
         let st_c = 1 + min(abs(34 * vel_c) * 0.000119, 0.07)
 
-        //  The centred hero and the horizontal glass dock below it.
-        let ckc = cy - 260
-        let date_y = cy - 158
-        let bar_y = cy + 236
-        let dock_w = 1120
-        let dock_h = 260
+        //  Direct time above, and a taller, narrower glass dock below.
+        let ckc = cy - 290
+        let date_y = cy - 195
+        let dock_y = cy + 265
+        let bar_y = dock_y + 5
+        let profile_y = dock_y - 120
+        let media_y = dock_y + 145
+        let dock_w = 720
+        let dock_h = 420
         let panel_x = cx - dock_w / 2
         let acc = mint
 
@@ -215,23 +218,6 @@ scene Lockscreen {
                 //  The clock, with its glow, and the AM/PM pill beside it.
                 //  The clock is in the middle of the screen whether or not there is a pill: the pill hangs off its right edge and does not count.
                 let ck_x = cx
-                //  The clock sits on a frosted glass plate, like the desktop
-                //  clock widget: the wallpaper stays visible underneath, but
-                //  the numerals get a quiet, readable field.
-                box { at: cx, cy - 170; size: 1100, 390; corner: 40; color: panel; opacity: 26% }
-                body {
-                    color: panel
-                    glass: 100%
-                    opacity: 82%
-                    refraction: 100%
-                    dispersion: 55%
-                    frost: 82%
-                    vivid: 118%
-                    shine: pointer
-                    border: 1, mix(#ffffff, mint, 34%)
-                    shadow: 0, 18, 46, 22%, #000000
-                    box { at: cx, cy - 170; size: 1100, 390; corner: 40 }
-                }
                 group {
                     glow: 18, 70%, acc
                     //  Bold beyond the font's heaviest weight: the same text again around it, 3 px out in twelve directions. (A text
@@ -261,9 +247,10 @@ scene Lockscreen {
                 text clock_ampm { at: ap_x, ckc; anchor: center; size: 11; weight: 700; color: acc; family: "Space Grotesk"; show: show_ampm }
                 text clock_date { at: cx, date_y; anchor: center; size: 21; weight: 500; color: mint; family: "Space Grotesk"; letter_scale: 1 + 0.6 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.012) / 0.3, 0, 1), 3))); letter_move: 0, 16 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.012) / 0.3, 0, 1), 3))); letter_opacity: (1 - pow(1 - clamp((e - 0.35 - letter * 0.012) / 0.3, 0, 1), 3)) }
 
-                text "The night is still here. Take your time." { at: cx, cy - 100; anchor: center; size: 17; color: faint; opacity: 78%; family: "Space Grotesk" }
+                text "The night is still here. Take your time." { at: cx, cy - 135; anchor: center; size: 17; color: faint; opacity: 78%; family: "Space Grotesk" }
 
-                //  The glass dock: profile left, password centre, now playing right.
+                //  The glass dock: taller and narrower, with the profile above,
+                //  the password centred and now playing underneath.
                 body {
                     color: panel
                     glass: 100%
@@ -275,24 +262,24 @@ scene Lockscreen {
                     shine: pointer
                     border: 1, mix(#ffffff, mint, 28%)
                     shadow: 0, 20, 54, 24%, #000000
-                    box { at: cx, bar_y; size: dock_w, dock_h; corner: 36 }
+                    box { at: cx, dock_y; size: dock_w, dock_h; corner: 36 }
                 }
-                text "SESSION / 01" { at: panel_x + 34, bar_y - 105; anchor: left center; size: 10; color: faint; opacity: 80%; family: "Space Grotesk" }
-                text "LOCKED" { at: panel_x + dock_w - 34, bar_y - 105; anchor: right center; size: 10; color: #c3d652; family: "Space Grotesk" }
+                text "SESSION / 01" { at: panel_x + 34, dock_y - 180; anchor: left center; size: 10; color: faint; opacity: 80%; family: "Space Grotesk" }
+                text "LOCKED" { at: panel_x + dock_w - 34, dock_y - 180; anchor: right center; size: 10; color: #c3d652; family: "Space Grotesk" }
 
                 group {
                     opacity: ease_c
-                    let px = cx - 500
-                    ellipse { at: px, bar_y; radius: 36; color: panel; opacity: 55% }
-                    ellipse { at: px, bar_y; radius: 36; stroke: 1; color: mix(#ffffff, mint, 42%); opacity: 45% }
+                    let px = cx - 100
+                    ellipse { at: px, profile_y; radius: 36; color: panel; opacity: 55% }
+                    ellipse { at: px, profile_y; radius: 36; stroke: 1; color: mix(#ffffff, mint, 42%); opacity: 45% }
                     group {
-                        clip ellipse { at: px, bar_y; radius: 35 }
-                        image avatar { at: px - 35, bar_y - 35; size: 70, 70; show: has_avatar }
+                        clip ellipse { at: px, profile_y; radius: 35 }
+                        image avatar { at: px - 35, profile_y - 35; size: 70, 70; show: has_avatar }
                     }
-                    group { show: not has_avatar; GPerson(px, bar_y, 60 / 24, acc, 1, 0) }
-                    text realname { at: px + 48, bar_y - 14; anchor: left center; size: 20; weight: 700; width: 170; lines: 1; color: ink; family: "Space Grotesk" }
-                    text status { at: px + 48, bar_y + 13; anchor: left center; size: 11; color: mix(mix(faint, #ef4444, err_t), #10b981, ok_t); family: "Space Grotesk" }
-                    text "Esc to exit · test lock" { at: px + 48, bar_y + 36; anchor: left center; size: 10; color: acc; opacity: 80%; family: "Space Grotesk"; show: safe and pw_len == 0 }
+                    group { show: not has_avatar; GPerson(px, profile_y, 60 / 24, acc, 1, 0) }
+                    text realname { at: px + 48, profile_y - 14; anchor: left center; size: 22; weight: 700; width: 190; lines: 1; color: ink; family: "Space Grotesk" }
+                    text status { at: px + 48, profile_y + 13; anchor: left center; size: 11; color: mix(mix(faint, #ef4444, err_t), #10b981, ok_t); family: "Space Grotesk" }
+                    text "Esc to exit · test lock" { at: px + 48, profile_y + 36; anchor: left center; size: 10; color: acc; opacity: 80%; family: "Space Grotesk"; show: safe and pw_len == 0 }
                 }
 
                 //  4. THE PASSWORD BAR
@@ -419,11 +406,11 @@ scene Lockscreen {
                 group {
                     opacity: media_in
                     show: media_in > 0.01
-                    let mx = cx + 430
-                    text "NOW PLAYING" { at: mx, bar_y - 22; anchor: center; size: 9; weight: 600; color: #c3d652; family: "Space Grotesk" }
-                    text med.title { at: mx, bar_y - 1; anchor: center; size: 14; weight: 700; width: 210; lines: 1; color: ink; family: "Space Grotesk" }
-                    text med.artist { at: mx, bar_y + 18; anchor: center; size: 11; width: 210; lines: 1; color: faint; family: "Space Grotesk" }
-                    ellipse { at: mx, bar_y + 43; radius: 3; color: #c3d652; opacity: 65% }
+                    let mx = cx
+                    text "NOW PLAYING" { at: mx, media_y - 22; anchor: center; size: 9; weight: 600; color: #c3d652; family: "Space Grotesk" }
+                    text med.title { at: mx, media_y - 1; anchor: center; size: 14; weight: 700; width: 260; lines: 1; color: ink; family: "Space Grotesk" }
+                    text med.artist { at: mx, media_y + 18; anchor: center; size: 11; width: 260; lines: 1; color: faint; family: "Space Grotesk" }
+                    ellipse { at: mx, media_y + 43; radius: 3; color: #c3d652; opacity: 65% }
                 }
 
                 //  The bar is the one big target: a click anywhere else asks for the keyboard again.
