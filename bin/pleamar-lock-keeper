@@ -58,6 +58,11 @@ lock_if_needed() {
     locked_hint || return 0
     for _ in $(seq 1 80); do
         if "$bin" --say lockscreen "get locked" >/dev/null 2>&1; then
+            #  A keeper restart is a warm start with no pleamar-lock sync.
+            #  Push config.json (blur, clock, palette) before locking; without
+            #  this the fresh scene kept the previous scene's lock settings and
+            #  wallpaper while niri showed its red fallback.
+            "$root/bin/pleamar-lock" sync >>"$log" 2>&1 8>&- || true
             #  The socket answers before the first frame; one commit is what
             #  lets niri attach a buffer to the lock surface instead of its
             #  red fallback.

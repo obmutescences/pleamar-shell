@@ -241,6 +241,7 @@ on("media_next", function() sys.call("media.next") end)
 -- blurs away.
 local prep_busy = false
 local prep_started = 0
+local prep_pending = false
 local made_key = nil
 
 local function hash(str)
@@ -273,19 +274,32 @@ local function publish(s, b, done)
     end)
 end
 
-local function prepare_wallpaper()
+local function prepare_wallpaper(force)
     --  A `run` callback that never comes (a scene started during a lock race,
     --  a killed helper) used to leave prep_busy true for the rest of the
     --  process: every lock after that had no wallpaper at all.
     if prep_busy then
-        if os.time() - prep_started < 15 then return end
+        if os.time() - prep_started < 15 then
+            if force then prep_pending = true end
+            return
+        end
         prep_busy = false
     end
-    if fact.locked or home == "" then return end
+    if home == "" then return end
+    --  A scene started by the keeper is already locked.  It still needs the
+    --  wallpaper of the current config; the old code returned here and left
+    --  the previous blur (often made for another wallpaper) on the lock.
+    if fact.locked and fact.has_wall and not force then return end
     prep_busy = true
     prep_started = os.time()
     local dir = home .. "/.cache/pleamar-shell/lockscreen"
-    local function done() prep_busy = false end
+    local function done()
+        prep_busy = false
+        if prep_pending then
+            prep_pending = false
+            prepare_wallpaper(true)
+        end
+    end
     run("cat", { home .. "/.config/pleamar-shell/config.json" }, function(out)
         local ok, data = pcall(json.decode, out or "")
         local path = ok and type(data) == "table" and data.wallpaper or nil
@@ -338,7 +352,7 @@ on("fact:cfg_blur", function(v)
     cfg.blur = math.max(0, math.min(120, n))
     save_cfg()
     made_key = nil                          -- the blurred picture is made again, at the new blur
-    prepare_wallpaper()
+    prepare_wallpaper(true)
 end)
 every(5000, prepare_wallpaper)
 after(500, prepare_wallpaper)
@@ -460,20 +474,23 @@ local function after_unlock()
     reset()
     fact.settled = false
     fact.safe = false                        -- a test lock (safe: Esc or a minute opens it) is a test of one lock only
+    --  This also runs when the logic itself unlocks (the password), where the
+    --  `fact:locked` handler below does not fire.  The wallpaper may have
+    --  changed while the lock was up.
+    after(300, prepare_wallpaper)
 end
 
 on("fact:locked", function(v)
     if v then
         reset()
         fact.settled = false
+        --  A fresh scene can be told to lock before its first wallpaper tick.
+        --  Prepare now so the lock never falls back to an older cache.
+        prepare_wallpaper(true)
         -- the entrance is 2.2 s; after that nothing on the screen needs the clock any more
         after(2400, function() fact.settled = true end)
     else
         after_unlock()
-        --  The desktop wallpaper may have changed while the lock was up:
-        --  make its pictures again as soon as the lock is gone, instead of
-        --  waiting for the next five-second tick.
-        after(300, prepare_wallpaper)
     end
 end)
 
