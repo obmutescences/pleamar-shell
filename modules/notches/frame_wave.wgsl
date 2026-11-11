@@ -3,7 +3,7 @@
 //  instead of being separate overlays.
 //
 //  s.a: bass, panel-present, panel centre x, panel centre y
-//  s.b: panel width, panel height, drawer wobble, unused
+//  s.b: panel width, panel height, strength, speed
 
 fn shade(s: Shader) -> vec4<f32> {
     let p = s.pos;
@@ -12,7 +12,9 @@ fn shade(s: Shader) -> vec4<f32> {
     let panel = clamp(s.a.y, 0.0, 1.0);
     let pc = vec2<f32>(s.a.z, s.a.w);
     let half = vec2<f32>(max(s.b.x, 0.0) * 0.5, max(s.b.y, 0.0) * 0.5);
-    let wobble = s.b.z;
+    let strength = clamp(s.b.z, 0.0, 2.0);
+    let speed = clamp(s.b.w, 0.25, 2.0);
+    let ts = t * speed;
 
     //  The screen edge: the same slow travelling wave as the music frame,
     //  fading over about 40 px so the centre is not warped.
@@ -20,22 +22,22 @@ fn shade(s: Shader) -> vec4<f32> {
     let wb = exp(-(s.size.y - p.y) / 40.0);
     let wl = exp(-p.x / 40.0);
     let wr = exp(-(s.size.x - p.x) / 40.0);
-    let ay = 5.0 * (wt + wb) *
-        (0.65 * sin(p.x * 0.0125 - t * 2.0) +
-         0.35 * sin(p.x * 0.0053 + t * 1.2 + 1.7));
-    let ax = 5.0 * (wl + wr) *
-        (0.65 * sin(p.y * 0.0125 - t * 2.0 + 2.0) +
-         0.35 * sin(p.y * 0.0053 + t * 1.2 + 4.1));
+    let ay = 5.0 * strength * (wt + wb) *
+        (0.65 * sin(p.x * 0.0125 - ts * 2.0) +
+         0.35 * sin(p.x * 0.0053 + ts * 1.2 + 1.7));
+    let ax = 5.0 * strength * (wl + wr) *
+        (0.65 * sin(p.y * 0.0125 - ts * 2.0 + 2.0) +
+         0.35 * sin(p.y * 0.0053 + ts * 1.2 + 4.1));
 
     //  The open drawer's rim: a soft rounded-rectangle band, so its border
-    //  moves with the same water as the screen edge.  The wobble after landing
+    //  moves with the same water as the screen edge.  The slider scales it.
     //  briefly widens the band.
     let d = abs(p - pc) - half;
     let sd = length(max(d, vec2<f32>(0.0, 0.0))) + min(max(d.x, d.y), 0.0);
     let rim = exp(-abs(sd) / 18.0) * panel;
-    let amp = (2.5 + 4.5 * bass + abs(wobble) * 0.01) * rim;
-    let bx = amp * sin((p.x + p.y) * 0.035 - t * 4.5);
-    let by = amp * cos((p.x - p.y) * 0.031 + t * 3.8);
+    let amp = (2.5 + 4.5 * bass) * rim * strength;
+    let bx = amp * sin((p.x + p.y) * 0.035 - ts * 4.5);
+    let by = amp * cos((p.x - p.y) * 0.031 + ts * 3.8);
 
     return inside(s, vec2<f32>(p.x + ax + bx, p.y + ay + by));
 }

@@ -41,18 +41,22 @@ part NotchFrame {
         let nf.ct_h = nf.center_h * nf.ct_p
         let nf.la_w = mix(nf.clock_w, 620, nf.launch_p)
         let nf.la_h = nf.search_h * nf.launch_p
-        let nf.cp_bell = 4 * min(1, nf.cp_p) * (1 - min(1, nf.cp_p))
-        let nf.ct_bell = 4 * min(1, nf.ct_p) * (1 - min(1, nf.ct_p))
-        let nf.la_bell = 4 * min(1, nf.launch_p) * (1 - min(1, nf.launch_p))
-        let nf.cp_wob = clamp(cp_wobble, -30, 30)
-        let nf.ct_wob = clamp(ct_wobble, -30, 30)
-        let nf.la_wob = clamp(la_wobble, -30, 30)
-        let nf.cp_ew = nf.cp_w * (1 + nf.cp_bell * 0.08 - 0.07 * nf.cp_bell + 0.005 * nf.cp_wob)
-        let nf.cp_eh = nf.cp_h * (1 - nf.cp_bell * 0.04 - 0.002 * nf.cp_wob) + max(0, clamp(cp_sag, 0, 30))
-        let nf.ct_ew = nf.ct_w * (1 + nf.ct_bell * 0.08 - 0.07 * nf.ct_bell + 0.005 * nf.ct_wob)
-        let nf.ct_eh = nf.ct_h * (1 - nf.ct_bell * 0.04 - 0.002 * nf.ct_wob) + max(0, clamp(ct_sag, 0, 30))
-        let nf.la_ew = nf.la_w * (1 + nf.la_bell * 0.08 - 0.07 * nf.la_bell + 0.005 * nf.la_wob)
-        let nf.la_eh = nf.la_h * (1 - nf.la_bell * 0.04 - 0.002 * nf.la_wob) + max(0, clamp(la_sag, 0, 30))
+        let nf.motion_k = clamp(drawer_motion / 100, 0, 2)
+        let nf.neck_k = clamp(drawer_neck / 100, 0, 2)
+        let nf.wave_k = clamp(frame_wave_strength / 100, 0, 2)
+        let nf.wave_speed = clamp(frame_wave_speed / 100, 0.25, 2)
+        let nf.cp_bell = 4 * min(1, nf.cp_p) * (1 - min(1, nf.cp_p)) * nf.neck_k
+        let nf.ct_bell = 4 * min(1, nf.ct_p) * (1 - min(1, nf.ct_p)) * nf.neck_k
+        let nf.la_bell = 4 * min(1, nf.launch_p) * (1 - min(1, nf.launch_p)) * nf.neck_k
+        let nf.cp_wob = clamp(cp_wobble * nf.motion_k, -60, 60)
+        let nf.ct_wob = clamp(ct_wobble * nf.motion_k, -60, 60)
+        let nf.la_wob = clamp(la_wobble * nf.motion_k, -60, 60)
+        let nf.cp_ew = nf.cp_w * (1 + nf.cp_bell * 0.08 * nf.motion_k - 0.07 * nf.cp_bell + 0.005 * nf.cp_wob)
+        let nf.cp_eh = nf.cp_h * (1 - nf.cp_bell * 0.04 * nf.motion_k - 0.002 * nf.cp_wob) + max(0, clamp(cp_sag, 0, 30)) * nf.motion_k
+        let nf.ct_ew = nf.ct_w * (1 + nf.ct_bell * 0.08 * nf.motion_k - 0.07 * nf.ct_bell + 0.005 * nf.ct_wob)
+        let nf.ct_eh = nf.ct_h * (1 - nf.ct_bell * 0.04 * nf.motion_k - 0.002 * nf.ct_wob) + max(0, clamp(ct_sag, 0, 30)) * nf.motion_k
+        let nf.la_ew = nf.la_w * (1 + nf.la_bell * 0.08 * nf.motion_k - 0.07 * nf.la_bell + 0.005 * nf.la_wob)
+        let nf.la_eh = nf.la_h * (1 - nf.la_bell * 0.04 * nf.motion_k - 0.002 * nf.la_wob) + max(0, clamp(la_sag, 0, 30)) * nf.motion_k
         //  The wave bends the frame and the open drawer's rim.  It sleeps
         //  outside music and the short opening/landing window.
         let nf.wave_panel_on = if(nf.cp_p > 0.01, 1, if(nf.ct_p > 0.01, 1, if(nf.launch_p > 0.01, 1, 0)))
@@ -60,7 +64,7 @@ part NotchFrame {
         let nf.wave_ph = if(nf.cp_p > 0.01, nf.cp_eh, if(nf.ct_p > 0.01, nf.ct_eh, if(nf.launch_p > 0.01, nf.la_eh, 0)))
         let nf.wave_cy = nf.wave_ph / 2
         let nf.wave_bass = clamp(bands.0 * 1.8, 0, 1)
-        let nf.wave_on = nf.wave_panel_on > 0.5 and (nf.music or (nf.cp_p > 0.01 and nf.cp_p < 0.995) or (nf.ct_p > 0.01 and nf.ct_p < 0.995) or (nf.launch_p > 0.01 and nf.launch_p < 0.995) or abs(nf.cp_wob) > 1 or abs(nf.ct_wob) > 1 or abs(nf.la_wob) > 1)
+        let nf.wave_on = frame_wave_on and nf.wave_k > 0.001 and nf.wave_panel_on > 0.5 and (nf.music or (nf.cp_p > 0.01 and nf.cp_p < 0.995) or (nf.ct_p > 0.01 and nf.ct_p < 0.995) or (nf.launch_p > 0.01 and nf.launch_p < 0.995) or abs(nf.cp_wob) > 1 or abs(nf.ct_wob) > 1 or abs(nf.la_wob) > 1)
         let nf.sm = music_frame_sens
         let nf.hm = music_frame_hgt
         let nf.bon = if(nf.music, 1, 0)
@@ -359,7 +363,7 @@ part NotchFrame {
         //  One glass group for the frame body and the music/drawer rims; the
         //  wave is gated so it is not a full-surface pass at rest.
         group {
-            shader: frame_wave, nf.wave_bass, nf.wave_panel_on, nf.cx, nf.wave_cy, nf.wave_pw, nf.wave_ph, nf.cp_wob, 0 while nf.wave_on
+            shader: frame_wave, nf.wave_bass, nf.wave_panel_on, nf.cx, nf.wave_cy, nf.wave_pw, nf.wave_ph, nf.wave_k, nf.wave_speed while nf.wave_on
         body {
             color: nf.frame_color
             glass: if(glass_on, 100%, 0%)

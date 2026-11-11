@@ -144,6 +144,12 @@ function M.start(layout)
         idle_off_seconds = 0,
         anim_toast = 0,
         anim_center = 0,
+        drawer_motion = 100,
+        drawer_neck = 100,
+        drawer_pop = 100,
+        frame_wave_on = true,
+        frame_wave_strength = 100,
+        frame_wave_speed = 100,
         weather_city = "",
     }
 
@@ -279,6 +285,12 @@ function M.start(layout)
         cfg.idle_off_seconds = math.floor(clamp(off_s, 0, 7200))
         cfg.anim_toast = math.floor(clamp(number(saved.anim_toast, cfg.anim_toast), 0, 5))
         cfg.anim_center = math.floor(clamp(number(saved.anim_center, cfg.anim_center), 0, 5))
+        cfg.drawer_motion = math.floor(clamp(number(saved.drawer_motion, cfg.drawer_motion), 0, 200))
+        cfg.drawer_neck = math.floor(clamp(number(saved.drawer_neck, cfg.drawer_neck), 0, 200))
+        cfg.drawer_pop = math.floor(clamp(number(saved.drawer_pop, cfg.drawer_pop), 0, 200))
+        if type(saved.frame_wave_on) == "boolean" then cfg.frame_wave_on = saved.frame_wave_on end
+        cfg.frame_wave_strength = math.floor(clamp(number(saved.frame_wave_strength, cfg.frame_wave_strength), 0, 200))
+        cfg.frame_wave_speed = math.floor(clamp(number(saved.frame_wave_speed, cfg.frame_wave_speed), 0, 200))
         if type(saved.weather_city) == "string" then
             cfg.weather_city = saved.weather_city:gsub("^%s+", ""):gsub("%s+$", "")
         end
@@ -355,6 +367,12 @@ function M.start(layout)
         text.idle_off_t = idle_words(cfg.idle_off_seconds)
         fact.anim_toast = cfg.anim_toast
         fact.anim_center = cfg.anim_center
+        fact.drawer_motion = cfg.drawer_motion
+        fact.drawer_neck = cfg.drawer_neck
+        fact.drawer_pop = cfg.drawer_pop
+        fact.frame_wave_on = cfg.frame_wave_on
+        fact.frame_wave_strength = cfg.frame_wave_strength
+        fact.frame_wave_speed = cfg.frame_wave_speed
     end
 
     local save_pending, save_running = nil, false
@@ -424,6 +442,12 @@ function M.start(layout)
             idle_off_seconds = number(fact.idle_off_seconds, 0),
             anim_toast = number(fact.anim_toast, 0),
             anim_center = number(fact.anim_center, 0),
+            drawer_motion = number(fact.drawer_motion, 100),
+            drawer_neck = number(fact.drawer_neck, 100),
+            drawer_pop = number(fact.drawer_pop, 100),
+            frame_wave_on = truthy(fact.frame_wave_on),
+            frame_wave_strength = number(fact.frame_wave_strength, 100),
+            frame_wave_speed = number(fact.frame_wave_speed, 100),
         }
         --  One writer at a time, latest snapshot wins.  A wallpaper apply and
         --  the colour read that follows it both save; without this queue a
@@ -1808,6 +1832,12 @@ function M.start(layout)
     end)
     on("fact:anim_toast", function() config_changed("toast") end)
     on("fact:anim_center", function() config_changed("center") end)
+    on("fact:drawer_motion", function() save() end)
+    on("fact:drawer_neck", function() save() end)
+    on("fact:drawer_pop", function() save() end)
+    on("fact:frame_wave_on", function() save() end)
+    on("fact:frame_wave_strength", function() save() end)
+    on("fact:frame_wave_speed", function() save() end)
     on("anim_set", function(packed)
         local v = math.floor(number(packed, 0))
         local kind = ANIM_KINDS[math.floor(v / 6) + 1]

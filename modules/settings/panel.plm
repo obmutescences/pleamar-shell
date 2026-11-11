@@ -127,6 +127,11 @@ part ConfigPanel {
     let cp.light_pct = clamp(glass_light, 0, 1)
     let cp.border_pct = clamp(glass_border / 100, 0, 1)
     let cp.grad_pct = clamp(panel_gradient_strength / 100, 0, 1)
+    let cp.motion_pct = clamp(drawer_motion / 200, 0, 1)
+    let cp.neck_pct = clamp(drawer_neck / 200, 0, 1)
+    let cp.pop_pct = clamp(drawer_pop / 200, 0, 1)
+    let cp.wave_pct = clamp(frame_wave_strength / 200, 0, 1)
+    let cp.wave_speed_pct = clamp(frame_wave_speed / 200, 0, 1)
     //  IDLE_STEPS in scenes/lib/shell.luau has 17 entries (0, 5 s, 10 s, 30 s,
     //  then minutes to 2 h); the slider addresses its last index, 16.
     let cp.idle_lock_pct = clamp(idle_lock_i / 16, 0, 1)
@@ -406,7 +411,7 @@ part ConfigPanel {
 
         //  ── page header ──────────────────────────────────────────────────
         text pick(settings_page, "Frame music", "Glass", "Bar", "Font", "Wallpaper", "Notifications", "Motion", "Lock screen", "Idle", "Weather", "Theme") { at: 250, 132; anchor: left center; size: 19.5; weight: 700; color: ink; family: "Space Grotesk" }
-        text pick(settings_page, "Changes apply right away.", "Changes apply right away.", "Changes apply right away.", "Save; restart the service.", "Click a picture to set it.", "Position, sounds, countdown.", "Notification toast and centre.", "Lock appearance and a safe test.", "Lock and screen-off timers; no suspend.", "City for the centre panel.", "Presets, gradient, light and border.") { at: 820, 132; anchor: right center; size: 15; color: faint; opacity: 80%; family: "Space Grotesk" }
+        text pick(settings_page, "Changes apply right away.", "Changes apply right away.", "Changes apply right away.", "Save; restart the service.", "Click a picture to set it.", "Position, sounds, countdown.", "Drawers, frame and notifications.", "Lock appearance and a safe test.", "Lock and screen-off timers; no suspend.", "City for the centre panel.", "Presets, gradient, light and border.") { at: 820, 132; anchor: right center; size: 15; color: faint; opacity: 80%; family: "Space Grotesk" }
 
         //  ── FRAME MUSIC ──────────────────────────────────────────────────
         group {
@@ -835,8 +840,64 @@ part ConfigPanel {
         group {
             show: settings_page == 6
 
+            text "DRAWERS & FRAME" { at: 250, 176; anchor: left center; size: 10; weight: 700; color: faint; family: "Space Grotesk" }
+
+            CpCard(250, 194, 570, 62)
+            text "Motion strength" { at: 266, 204; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "Bell, neck and landing bounce." { at: 266, 222; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(520, 241, 200, cp.motion_pct, cp_motion_track.hover, cp.mint, ink, cp.track)
+            text number(drawer_motion, 0, "%") { at: 736, 241; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_motion_track { from: 510, 226; size: 240, 30; cursor: pointer; label: "Drawer motion strength" }
+            on press cp_motion_track { drawer_motion = clamp(round((pointer.x - cp.sx - 520) / 200 * 200), 0, 200) }
+            on drag  cp_motion_track { drawer_motion = clamp(round((pointer.x - cp.sx - 520) / 200 * 200), 0, 200) }
+
+            CpCard(250, 260, 570, 62)
+            text "Liquid neck" { at: 266, 270; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "How far the drawer narrows into the frame." { at: 266, 288; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(520, 307, 200, cp.neck_pct, cp_neck_track.hover, cp.mint, ink, cp.track)
+            text number(drawer_neck, 0, "%") { at: 736, 307; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_neck_track { from: 510, 292; size: 240, 30; cursor: pointer; label: "Liquid neck" }
+            on press cp_neck_track { drawer_neck = clamp(round((pointer.x - cp.sx - 520) / 200 * 200), 0, 200) }
+            on drag  cp_neck_track { drawer_neck = clamp(round((pointer.x - cp.sx - 520) / 200 * 200), 0, 200) }
+
+            CpCard(250, 326, 570, 62)
+            text "Centre pop" { at: 266, 336; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "How far the content scales in from its middle." { at: 266, 354; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(520, 373, 200, cp.pop_pct, cp_pop_track.hover, cp.mint, ink, cp.track)
+            text number(drawer_pop, 0, "%") { at: 736, 373; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_pop_track { from: 510, 358; size: 240, 30; cursor: pointer; label: "Centre pop" }
+            on press cp_pop_track { drawer_pop = clamp(round((pointer.x - cp.sx - 520) / 200 * 200), 0, 200) }
+            on drag  cp_pop_track { drawer_pop = clamp(round((pointer.x - cp.sx - 520) / 200 * 200), 0, 200) }
+
+            CpCard(250, 392, 570, 62)
+            text "Wave strength" { at: 266, 402; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "Displacement of the edge and drawer rim." { at: 266, 420; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(520, 439, 200, cp.wave_pct, cp_wave_track.hover, cp.mint, ink, cp.track)
+            text number(frame_wave_strength, 0, "%") { at: 736, 439; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_wave_track { from: 510, 424; size: 240, 30; cursor: pointer; label: "Wave strength" }
+            on press cp_wave_track { frame_wave_strength = clamp(round((pointer.x - cp.sx - 520) / 200 * 200), 0, 200) }
+            on drag  cp_wave_track { frame_wave_strength = clamp(round((pointer.x - cp.sx - 520) / 200 * 200), 0, 200) }
+
+            CpCard(250, 458, 570, 62)
+            text "Wave speed" { at: 266, 468; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "How fast the border water travels." { at: 266, 486; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(520, 505, 200, cp.wave_speed_pct, cp_wave_speed_track.hover, cp.mint, ink, cp.track)
+            text number(frame_wave_speed, 0, "%") { at: 736, 505; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_wave_speed_track { from: 510, 490; size: 240, 30; cursor: pointer; label: "Wave speed" }
+            on press cp_wave_speed_track { frame_wave_speed = clamp(round((pointer.x - cp.sx - 520) / 200 * 200), 0, 200) }
+            on drag  cp_wave_speed_track { frame_wave_speed = clamp(round((pointer.x - cp.sx - 520) / 200 * 200), 0, 200) }
+
+            CpCard(250, 524, 570, 62)
+            text "Frame wave" { at: 266, 534; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "Bend the frame and drawer rim; it already sleeps at rest." { at: 266, 552; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSwitch(770, 543, 44, 24, if(frame_wave_on, 1, 0), frame_wave_knob, cp_wave_switch.hover, cp.mint, ink, cp.track)
+            zone box cp_wave_switch { from: 760, 534; size: 64, 38; corner: 19; cursor: pointer; label: "Frame wave" }
+            on press cp_wave_switch { emit ui_sound; toggle frame_wave_on }
+
+            text "NOTIFICATIONS" { at: 250, 604; anchor: left center; size: 10; weight: 700; color: faint; family: "Space Grotesk" }
+
             repeat r in 0..1 {
-                let ry = 176 + r * 84
+                let ry = 620 + r * 78
                 CpCard(250, ry, 570, 74)
                 text pick(r, "Notification toast", "Notification centre") { at: 266, ry + 18; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
                 text pick(r, "The toast under the bar", "Notification drawer") { at: 266, ry + 38; anchor: left center; size: 13; color: faint; family: "Space Grotesk" }
@@ -852,31 +913,31 @@ part ConfigPanel {
                 }
             }
             //  Static hit areas: toast 0–5, notification centre 6–11.
-            zone box cp_motion_0_0 { from: 540, 184; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Fade" }
+            zone box cp_motion_0_0 { from: 540, 628; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Fade" }
             on press cp_motion_0_0 { emit ui_sound; emit anim_set(0) }
-            zone box cp_motion_0_1 { from: 634, 184; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Spin" }
+            zone box cp_motion_0_1 { from: 634, 628; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Spin" }
             on press cp_motion_0_1 { emit ui_sound; emit anim_set(1) }
-            zone box cp_motion_0_2 { from: 728, 184; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Unfold" }
+            zone box cp_motion_0_2 { from: 728, 628; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Unfold" }
             on press cp_motion_0_2 { emit ui_sound; emit anim_set(2) }
-            zone box cp_motion_0_3 { from: 540, 214; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Drop" }
+            zone box cp_motion_0_3 { from: 540, 658; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Drop" }
             on press cp_motion_0_3 { emit ui_sound; emit anim_set(3) }
-            zone box cp_motion_0_4 { from: 634, 214; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Aperture" }
+            zone box cp_motion_0_4 { from: 634, 658; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Aperture" }
             on press cp_motion_0_4 { emit ui_sound; emit anim_set(4) }
-            zone box cp_motion_0_5 { from: 728, 214; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Random" }
+            zone box cp_motion_0_5 { from: 728, 658; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Random" }
             on press cp_motion_0_5 { emit ui_sound; emit anim_set(5) }
-            zone box cp_motion_1_0 { from: 540, 268; size: 88, 24; corner: 12; cursor: pointer; label: "Notification centre Flow" }
+            zone box cp_motion_1_0 { from: 540, 706; size: 88, 24; corner: 12; cursor: pointer; label: "Notification centre Flow" }
             on press cp_motion_1_0 { emit ui_sound; emit anim_set(6) }
-            zone box cp_motion_1_1 { from: 634, 268; size: 88, 24; corner: 12; cursor: pointer; label: "Notification centre Bloom" }
+            zone box cp_motion_1_1 { from: 634, 706; size: 88, 24; corner: 12; cursor: pointer; label: "Notification centre Bloom" }
             on press cp_motion_1_1 { emit ui_sound; emit anim_set(7) }
-            zone box cp_motion_1_2 { from: 728, 268; size: 88, 24; corner: 12; cursor: pointer; label: "Notification centre Unfold" }
+            zone box cp_motion_1_2 { from: 728, 706; size: 88, 24; corner: 12; cursor: pointer; label: "Notification centre Unfold" }
             on press cp_motion_1_2 { emit ui_sound; emit anim_set(8) }
-            zone box cp_motion_1_3 { from: 540, 298; size: 88, 24; corner: 12; cursor: pointer; label: "Notification centre Cascade" }
+            zone box cp_motion_1_3 { from: 540, 736; size: 88, 24; corner: 12; cursor: pointer; label: "Notification centre Cascade" }
             on press cp_motion_1_3 { emit ui_sound; emit anim_set(9) }
-            zone box cp_motion_1_4 { from: 634, 298; size: 88, 24; corner: 12; cursor: pointer; label: "Notification centre Iris" }
+            zone box cp_motion_1_4 { from: 634, 736; size: 88, 24; corner: 12; cursor: pointer; label: "Notification centre Iris" }
             on press cp_motion_1_4 { emit ui_sound; emit anim_set(10) }
-            zone box cp_motion_1_5 { from: 728, 298; size: 88, 24; corner: 12; cursor: pointer; label: "Notification centre Random" }
+            zone box cp_motion_1_5 { from: 728, 736; size: 88, 24; corner: 12; cursor: pointer; label: "Notification centre Random" }
             on press cp_motion_1_5 { emit ui_sound; emit anim_set(11) }
-            text "Random changes the next opening." { at: 266, 356; anchor: left center; size: 13; color: faint; opacity: 78%; family: "Space Grotesk" }
+            text "Random changes the next notification opening." { at: 266, 794; anchor: left center; size: 13; color: faint; opacity: 78%; family: "Space Grotesk" }
         }
 
         //  ── LOCK SCREEN ──────────────────────────────────────────────────

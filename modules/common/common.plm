@@ -119,8 +119,10 @@ part Common {
         let nd.cx = screen.width / 2
         //  Content starts at the bottom of the clock notch, flush with the frame.
         let nd.y = notch_clock_h
-        let nd.sx = if(effect == 5, 0.86 + 0.14 * nd.p, if(effect == 1, 0.70 + 0.30 * nd.p, if(effect == 4, 0.38 + 0.62 * nd.p, 1)))
-        let nd.sy = if(effect == 5, 0.86 + 0.14 * nd.p, if(effect == 1, 0.58 + 0.42 * nd.p, if(effect == 2, pow(nd.p, 1.55), if(effect == 3, 0.82 + 0.18 * nd.p, nd.p))))
+        let nd.pop = clamp(drawer_pop / 100, 0, 2)
+        let nd.s = 1 - (1 - (0.86 + 0.14 * nd.p)) * nd.pop
+        let nd.sx = if(effect == 5, nd.s, if(effect == 1, 0.70 + 0.30 * nd.p, if(effect == 4, 0.38 + 0.62 * nd.p, 1)))
+        let nd.sy = if(effect == 5, nd.s, if(effect == 1, 0.58 + 0.42 * nd.p, if(effect == 2, pow(nd.p, 1.55), if(effect == 3, 0.82 + 0.18 * nd.p, nd.p))))
         let nd.fade = if(effect == 5, clamp((nd.p - 0.65) / 0.35, 0, 1), if(effect == 1, min(1, nd.p * 2), min(1, nd.p * 1.5)))
         let nd.dy = if(effect == 3, -56 * (1 - nd.p), if(effect == 4, -14 * (1 - nd.p), 0))
         group {
@@ -149,6 +151,13 @@ part Common {
     fact anim_center: number = 0
     fact toast_fx: number = 0
     fact center_fx: number = 0
+    //  Liquid drawer / frame controls (0..200%, 100 is the default).
+    fact drawer_motion: number = 100
+    fact drawer_neck: number = 100
+    fact drawer_pop: number = 100
+    fact frame_wave_on = true
+    fact frame_wave_strength: number = 100
+    fact frame_wave_speed: number = 100
     event anim_set ->
     //  0 Liquid · 1 Clear · 2 Smoked · 3 Milky · 4 Mirror
     event glass_preset ->
@@ -324,6 +333,8 @@ part Common {
     follow nt_dnd_knob = nt_dnd
     prop panel_grad_knob = 0 ~quick
     follow panel_grad_knob = panel_gradient != 0
+    prop frame_wave_knob = 0 ~quick
+    follow frame_wave_knob = frame_wave_on
 
     //  Panels and the launcher.  They share the bar's facts and the same glass.
     fact panel_open = false
