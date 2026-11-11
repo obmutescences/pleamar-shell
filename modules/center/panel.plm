@@ -215,7 +215,7 @@ part CenterPanel {
     event center_power_do ->
     event ipc_open_center ->
 
-    prop ct_np = 0 ~notch_drip
+    prop ct_np = 0 ~0ms
     follow ct_np = center_open
     prop ct_tab = 0 ~quick
     follow ct_tab = center_tab
@@ -1200,7 +1200,7 @@ part CenterPanel {
         keyboard: none
         group {
             NotchDrawerRipples(ct_np)
-            NotchDrawerContent(ct_np, 1120, center_panel_fx) { CenterPanelContent() }
+            NotchDrawerContent(ct_np, 1120, 0) { CenterPanelContent() }
         }
     }
 

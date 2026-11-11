@@ -133,7 +133,7 @@ part ConfigPanel {
     let cp.idle_off_pct = clamp(idle_off_i / 16, 0, 1)
     measure cp_parent
     let wp.min_pct = clamp((wall_minutes - 1) / 59, 0, 1)
-    prop cp_np = 0 ~notch_drip
+    prop cp_np = 0 ~0ms
     follow cp_np = panel_open
     //  Sidebar slot of each page, in visual order:
     //  LOOK: Wallpaper, Glass, Theme · SHELL: Bar, Frame music, Typeface,
@@ -325,7 +325,7 @@ part ConfigPanel {
                 line { from: 52, yy + 23; to: 69, yy + 23; width: 1.4; color: sc; opacity: 85% }
             }
             text "Motion" { at: 78, yy + 14; anchor: left center; size: 15; weight: 600; color: mix(faint, cp.mint, sel); opacity: 72% + 28% * sel; family: "Space Grotesk" }
-            zone box cp_page_motion { from: 38, yy; size: 174, 28; corner: 10; cursor: pointer; label: "Panel motion settings" }
+            zone box cp_page_motion { from: 38, yy; size: 174, 28; corner: 10; cursor: pointer; label: "Notification motion settings" }
             on press cp_page_motion { emit ui_sound; settings_page = 6 }
         }
 
@@ -400,7 +400,7 @@ part ConfigPanel {
 
         //  ── page header ──────────────────────────────────────────────────
         text pick(settings_page, "Frame music", "Glass", "Bar", "Font", "Wallpaper", "Notifications", "Motion", "Lock screen", "Idle", "Weather", "Theme") { at: 250, 132; anchor: left center; size: 19.5; weight: 700; color: ink; family: "Space Grotesk" }
-        text pick(settings_page, "Changes apply right away.", "Changes apply right away.", "Changes apply right away.", "Save; restart the service.", "Click a picture to set it.", "Position, sounds, countdown.", "One pose per panel.", "Lock appearance and a safe test.", "Lock and screen-off timers; no suspend.", "City for the centre panel.", "Presets, gradient, light and border.") { at: 820, 132; anchor: right center; size: 15; color: faint; opacity: 80%; family: "Space Grotesk" }
+        text pick(settings_page, "Changes apply right away.", "Changes apply right away.", "Changes apply right away.", "Save; restart the service.", "Click a picture to set it.", "Position, sounds, countdown.", "Notification toast and centre.", "Lock appearance and a safe test.", "Lock and screen-off timers; no suspend.", "City for the centre panel.", "Presets, gradient, light and border.") { at: 820, 132; anchor: right center; size: 15; color: faint; opacity: 80%; family: "Space Grotesk" }
 
         //  ── FRAME MUSIC ──────────────────────────────────────────────────
         group {
@@ -829,85 +829,48 @@ part ConfigPanel {
         group {
             show: settings_page == 6
 
-            repeat r in 0..5 {
+            repeat r in 0..1 {
                 let ry = 176 + r * 84
                 CpCard(250, ry, 570, 74)
-                text pick(r, "Search panel", "Settings panel", "Notification toast", "Notification centre", "Centre panel") { at: 266, ry + 18; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-                text pick(r, "Search drawer", "This settings drawer", "The toast under the bar", "Notification drawer", "The control drawer") { at: 266, ry + 38; anchor: left center; size: 13; color: faint; family: "Space Grotesk" }
+                text pick(r, "Notification toast", "Notification centre") { at: 266, ry + 18; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+                text pick(r, "The toast under the bar", "Notification drawer") { at: 266, ry + 38; anchor: left center; size: 13; color: faint; family: "Space Grotesk" }
                 repeat k in 0..6 {
                     let col = k - if(k < 3, 0, 3)
                     let row = if(k < 3, 0, 1)
                     let bx = 540 + col * 94
                     let by = ry + 8 + row * 30
-                    let chosen = pick(r, anim_search, anim_panel, anim_toast, anim_center, anim_center_panel)
+                    let chosen = pick(r, anim_toast, anim_center)
                     CpPill(bx, by, 88, 24, if(chosen == k, 1, 0), 0, cp.mint, ink)
-                    text pick(k, "Flow", "Bloom", "Unfold", "Cascade", "Iris", "Random") { at: bx + 44, by + 12; anchor: center; size: 9.5; weight: 600; color: if(chosen == k, cp.mint, faint); width: 84; lines: 1; align: center; family: "Space Grotesk"; show: notch_mode and r != 2 }
-                    text pick(k, "Fade", "Spin", "Unfold", "Drop", "Aperture", "Random") { at: bx + 44, by + 12; anchor: center; size: 9.5; weight: 600; color: if(chosen == k, cp.mint, faint); width: 84; lines: 1; align: center; family: "Space Grotesk"; show: not notch_mode or r == 2 }
+                    text pick(k, "Fade", "Spin", "Unfold", "Drop", "Aperture", "Random") { at: bx + 44, by + 12; anchor: center; size: 9.5; weight: 600; color: if(chosen == k, cp.mint, faint); width: 84; lines: 1; align: center; family: "Space Grotesk"; show: r == 0 }
+                    text pick(k, "Flow", "Bloom", "Unfold", "Cascade", "Iris", "Random") { at: bx + 44, by + 12; anchor: center; size: 9.5; weight: 600; color: if(chosen == k, cp.mint, faint); width: 84; lines: 1; align: center; family: "Space Grotesk"; show: r == 1 }
                 }
             }
-            //  Static hit areas keep every chip addressable by name; the
-            //  visual chips above are drawn by the repeat.
-            zone box cp_motion_0_0 { from: 540, 184; size: 88, 24; corner: 12; cursor: pointer; label: "Search Flow" }
+            //  Static hit areas: toast 0–5, notification centre 6–11.
+            zone box cp_motion_0_0 { from: 540, 184; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Fade" }
             on press cp_motion_0_0 { emit ui_sound; emit anim_set(0) }
-            zone box cp_motion_0_1 { from: 634, 184; size: 88, 24; corner: 12; cursor: pointer; label: "Search Bloom" }
+            zone box cp_motion_0_1 { from: 634, 184; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Spin" }
             on press cp_motion_0_1 { emit ui_sound; emit anim_set(1) }
-            zone box cp_motion_0_2 { from: 728, 184; size: 88, 24; corner: 12; cursor: pointer; label: "Search Unfold" }
+            zone box cp_motion_0_2 { from: 728, 184; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Unfold" }
             on press cp_motion_0_2 { emit ui_sound; emit anim_set(2) }
-            zone box cp_motion_0_3 { from: 540, 214; size: 88, 24; corner: 12; cursor: pointer; label: "Search Cascade" }
+            zone box cp_motion_0_3 { from: 540, 214; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Drop" }
             on press cp_motion_0_3 { emit ui_sound; emit anim_set(3) }
-            zone box cp_motion_0_4 { from: 634, 214; size: 88, 24; corner: 12; cursor: pointer; label: "Search Iris" }
+            zone box cp_motion_0_4 { from: 634, 214; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Aperture" }
             on press cp_motion_0_4 { emit ui_sound; emit anim_set(4) }
-            zone box cp_motion_0_5 { from: 728, 214; size: 88, 24; corner: 12; cursor: pointer; label: "Search Random" }
+            zone box cp_motion_0_5 { from: 728, 214; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Random" }
             on press cp_motion_0_5 { emit ui_sound; emit anim_set(5) }
-            zone box cp_motion_1_0 { from: 540, 268; size: 88, 24; corner: 12; cursor: pointer; label: "Settings Flow" }
+            zone box cp_motion_1_0 { from: 540, 268; size: 88, 24; corner: 12; cursor: pointer; label: "Notification centre Flow" }
             on press cp_motion_1_0 { emit ui_sound; emit anim_set(6) }
-            zone box cp_motion_1_1 { from: 634, 268; size: 88, 24; corner: 12; cursor: pointer; label: "Settings Bloom" }
+            zone box cp_motion_1_1 { from: 634, 268; size: 88, 24; corner: 12; cursor: pointer; label: "Notification centre Bloom" }
             on press cp_motion_1_1 { emit ui_sound; emit anim_set(7) }
-            zone box cp_motion_1_2 { from: 728, 268; size: 88, 24; corner: 12; cursor: pointer; label: "Settings Unfold" }
+            zone box cp_motion_1_2 { from: 728, 268; size: 88, 24; corner: 12; cursor: pointer; label: "Notification centre Unfold" }
             on press cp_motion_1_2 { emit ui_sound; emit anim_set(8) }
-            zone box cp_motion_1_3 { from: 540, 298; size: 88, 24; corner: 12; cursor: pointer; label: "Settings Cascade" }
+            zone box cp_motion_1_3 { from: 540, 298; size: 88, 24; corner: 12; cursor: pointer; label: "Notification centre Cascade" }
             on press cp_motion_1_3 { emit ui_sound; emit anim_set(9) }
-            zone box cp_motion_1_4 { from: 634, 298; size: 88, 24; corner: 12; cursor: pointer; label: "Settings Iris" }
+            zone box cp_motion_1_4 { from: 634, 298; size: 88, 24; corner: 12; cursor: pointer; label: "Notification centre Iris" }
             on press cp_motion_1_4 { emit ui_sound; emit anim_set(10) }
-            zone box cp_motion_1_5 { from: 728, 298; size: 88, 24; corner: 12; cursor: pointer; label: "Settings Random" }
+            zone box cp_motion_1_5 { from: 728, 298; size: 88, 24; corner: 12; cursor: pointer; label: "Notification centre Random" }
             on press cp_motion_1_5 { emit ui_sound; emit anim_set(11) }
-            zone box cp_motion_2_0 { from: 540, 352; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Fade" }
-            on press cp_motion_2_0 { emit ui_sound; emit anim_set(12) }
-            zone box cp_motion_2_1 { from: 634, 352; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Spin" }
-            on press cp_motion_2_1 { emit ui_sound; emit anim_set(13) }
-            zone box cp_motion_2_2 { from: 728, 352; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Unfold" }
-            on press cp_motion_2_2 { emit ui_sound; emit anim_set(14) }
-            zone box cp_motion_2_3 { from: 540, 382; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Drop" }
-            on press cp_motion_2_3 { emit ui_sound; emit anim_set(15) }
-            zone box cp_motion_2_4 { from: 634, 382; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Aperture" }
-            on press cp_motion_2_4 { emit ui_sound; emit anim_set(16) }
-            zone box cp_motion_2_5 { from: 728, 382; size: 88, 24; corner: 12; cursor: pointer; label: "Toast Random" }
-            on press cp_motion_2_5 { emit ui_sound; emit anim_set(17) }
-            zone box cp_motion_3_0 { from: 540, 436; size: 88, 24; corner: 12; cursor: pointer; label: "Centre Flow" }
-            on press cp_motion_3_0 { emit ui_sound; emit anim_set(18) }
-            zone box cp_motion_3_1 { from: 634, 436; size: 88, 24; corner: 12; cursor: pointer; label: "Centre Bloom" }
-            on press cp_motion_3_1 { emit ui_sound; emit anim_set(19) }
-            zone box cp_motion_3_2 { from: 728, 436; size: 88, 24; corner: 12; cursor: pointer; label: "Centre Unfold" }
-            on press cp_motion_3_2 { emit ui_sound; emit anim_set(20) }
-            zone box cp_motion_3_3 { from: 540, 466; size: 88, 24; corner: 12; cursor: pointer; label: "Centre Cascade" }
-            on press cp_motion_3_3 { emit ui_sound; emit anim_set(21) }
-            zone box cp_motion_3_4 { from: 634, 466; size: 88, 24; corner: 12; cursor: pointer; label: "Centre Iris" }
-            on press cp_motion_3_4 { emit ui_sound; emit anim_set(22) }
-            zone box cp_motion_3_5 { from: 728, 466; size: 88, 24; corner: 12; cursor: pointer; label: "Centre Random" }
-            on press cp_motion_3_5 { emit ui_sound; emit anim_set(23) }
-            zone box cp_motion_4_0 { from: 540, 520; size: 88, 24; corner: 12; cursor: pointer; label: "Centre panel Flow" }
-            on press cp_motion_4_0 { emit ui_sound; emit anim_set(24) }
-            zone box cp_motion_4_1 { from: 634, 520; size: 88, 24; corner: 12; cursor: pointer; label: "Centre panel Bloom" }
-            on press cp_motion_4_1 { emit ui_sound; emit anim_set(25) }
-            zone box cp_motion_4_2 { from: 728, 520; size: 88, 24; corner: 12; cursor: pointer; label: "Centre panel Unfold" }
-            on press cp_motion_4_2 { emit ui_sound; emit anim_set(26) }
-            zone box cp_motion_4_3 { from: 540, 550; size: 88, 24; corner: 12; cursor: pointer; label: "Centre panel Cascade" }
-            on press cp_motion_4_3 { emit ui_sound; emit anim_set(27) }
-            zone box cp_motion_4_4 { from: 634, 550; size: 88, 24; corner: 12; cursor: pointer; label: "Centre panel Iris" }
-            on press cp_motion_4_4 { emit ui_sound; emit anim_set(28) }
-            zone box cp_motion_4_5 { from: 728, 550; size: 88, 24; corner: 12; cursor: pointer; label: "Centre panel Random" }
-            on press cp_motion_4_5 { emit ui_sound; emit anim_set(29) }
-            text "Random changes the next opening. Drawers stay joined to the frame." { at: 266, 612; anchor: left center; size: 13; color: faint; opacity: 78%; family: "Space Grotesk" }
+            text "Random changes the next opening." { at: 266, 356; anchor: left center; size: 13; color: faint; opacity: 78%; family: "Space Grotesk" }
         }
 
         //  ── LOCK SCREEN ──────────────────────────────────────────────────
@@ -1191,7 +1154,7 @@ part ConfigPanel {
         keyboard: none
         group {
             NotchDrawerRipples(cp_np)
-            NotchDrawerContent(cp_np, 860, panel_fx) { ConfigPanelContent() }
+            NotchDrawerContent(cp_np, 860, 0) { ConfigPanelContent() }
         }
     }
 }

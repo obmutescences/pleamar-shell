@@ -6,7 +6,6 @@ local N_HIST = 60
 local hist = {}
 local proc = nil
 local root_of = nil
-local on_open = nil
 local cal_off = 0
 local last_iface = nil
 local audio_out_ids = {}
@@ -569,13 +568,11 @@ local function open(tab)
     refresh_weather()
     refresh_audio_outputs()
     start_keys()
-    if on_open then on_open() end
     refresh_sys()
 end
 
-function M.start(root_getter, fx)
+function M.start(root_getter)
     root_of = root_getter
-    on_open = fx
 
     on("fact:center_open", function(v)
         if truthy(v) then

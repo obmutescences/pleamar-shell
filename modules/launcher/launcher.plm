@@ -8,7 +8,7 @@ part Launcher {
     let la.w = 620
     let la.top = 0
     let la.h = 600
-    prop la_p = 0 ~gentle
+    prop la_p = 0 ~0ms
     follow la_p = launch_open
     //  A delayed focus loan: the surface has to be mapped before its field
     //  can take the keyboard, exactly as Vitreus does for its launcher.
@@ -109,7 +109,7 @@ part Launcher {
         //  Notches uses the main frame for drawing and a one-pixel helper for
         //  text input.
         keyboard: exclusive
-        PanelPop(search_fx, la_p, 620, 600) { LauncherContent() }
+        PanelPop(0, la_p, 620, 600) { LauncherContent() }
 
         on change launch_open while launch_open { la_focus: 1 after 220ms }
         on change launch_open while not launch_open { la_focus: 0 }

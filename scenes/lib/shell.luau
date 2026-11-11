@@ -142,11 +142,8 @@ function M.start(layout)
         lock_pal = 1,
         idle_lock_seconds = 0,
         idle_off_seconds = 0,
-        anim_search = 0,
-        anim_panel = 0,
         anim_toast = 0,
         anim_center = 0,
-        anim_center_panel = 0,
         weather_city = "",
     }
 
@@ -280,11 +277,8 @@ function M.start(layout)
         if off_s == nil then off_s = (tonumber(saved.idle_off_minutes) or 0) * 60 end
         cfg.idle_lock_seconds = math.floor(clamp(lock_s, 0, 7200))
         cfg.idle_off_seconds = math.floor(clamp(off_s, 0, 7200))
-        cfg.anim_search = math.floor(clamp(number(saved.anim_search, cfg.anim_search), 0, 5))
-        cfg.anim_panel = math.floor(clamp(number(saved.anim_panel, cfg.anim_panel), 0, 5))
         cfg.anim_toast = math.floor(clamp(number(saved.anim_toast, cfg.anim_toast), 0, 5))
         cfg.anim_center = math.floor(clamp(number(saved.anim_center, cfg.anim_center), 0, 5))
-        cfg.anim_center_panel = math.floor(clamp(number(saved.anim_center_panel, cfg.anim_center_panel), 0, 5))
         if type(saved.weather_city) == "string" then
             cfg.weather_city = saved.weather_city:gsub("^%s+", ""):gsub("%s+$", "")
         end
@@ -359,11 +353,8 @@ function M.start(layout)
         fact.idle_off_i = idle_index(cfg.idle_off_seconds)
         text.idle_lock_t = idle_words(cfg.idle_lock_seconds)
         text.idle_off_t = idle_words(cfg.idle_off_seconds)
-        fact.anim_search = cfg.anim_search
-        fact.anim_panel = cfg.anim_panel
         fact.anim_toast = cfg.anim_toast
         fact.anim_center = cfg.anim_center
-        fact.anim_center_panel = cfg.anim_center_panel
     end
 
     local save_pending, save_running = nil, false
@@ -431,11 +422,8 @@ function M.start(layout)
             lock_pal = number(fact.lock_pal, 1),
             idle_lock_seconds = number(fact.idle_lock_seconds, 0),
             idle_off_seconds = number(fact.idle_off_seconds, 0),
-            anim_search = number(fact.anim_search, 0),
-            anim_panel = number(fact.anim_panel, 0),
             anim_toast = number(fact.anim_toast, 0),
             anim_center = number(fact.anim_center, 0),
-            anim_center_panel = number(fact.anim_center_panel, 0),
         }
         --  One writer at a time, latest snapshot wins.  A wallpaper apply and
         --  the colour read that follows it both save; without this queue a
@@ -474,11 +462,11 @@ function M.start(layout)
         end
     end
 
-    --  ── opening motion ─────────────────────────────────────────────────
-    --  A panel chooses its pose once and keeps it for the whole move.  Six
-    --  settings: 0 fade, 1 spin, 2 unfold, 3 drop, 4 aperture, 5 random.
-    --  The pose is chosen when a panel opens and kept through its close.
-    local ANIM_KINDS = { "search", "panel", "toast", "center", "center_panel" }
+    --  ── notification motion ────────────────────────────────────────────
+    --  A notification surface chooses its pose once and keeps it for the
+    --  whole move.  Six settings: 0 fade, 1 spin, 2 unfold, 3 drop,
+    --  4 aperture, 5 random.  Drawers and search do not animate.
+    local ANIM_KINDS = { "toast", "center" }
     local function current_fx(kind)
         return math.floor(clamp(number(fact[kind .. "_fx"], 0), 0, 4))
     end
@@ -496,10 +484,7 @@ function M.start(layout)
         for _, kind in ipairs(ANIM_KINDS) do set_fx(kind) end
     end
     local function open_value(kind)
-        if kind == "search" then return fact.launch_open end
-        if kind == "panel" then return fact.panel_open end
         if kind == "toast" then return fact.nt_has end
-        if kind == "center_panel" then return fact.center_open end
         return fact.nt_center
     end
     local function config_changed(kind)
@@ -528,7 +513,7 @@ function M.start(layout)
     --  scene.  The launcher exports it; a hand-started scene simply has none.
     local shell_root = ""
     local start_settingskeys, start_searchkeys
-    center.start(function() return shell_root end, function() set_fx("center_panel") end)
+    center.start(function() return shell_root end)
     run("sh", { "-c", 'printf %s "${PLEAMAR_SHELL_ROOT:-}"' }, function(out)
         if out then shell_root = tostring(out):gsub("%s+$", "") end
         center.refresh_root()
@@ -1791,7 +1776,6 @@ function M.start(layout)
     end)
     on("fact:panel_open", function()
         if truthy(fact.panel_open) then
-            set_fx("panel")
             if truthy(fact.center_open) then center.close() end
             start_settingskeys()
         else
@@ -1809,7 +1793,6 @@ function M.start(layout)
     on("fact:launch_open", function()
         if truthy(fact.launch_open) then
             stop_settingskeys()
-            set_fx("search")
             text.query = ""
             search_now()
             start_searchkeys()
@@ -1823,11 +1806,8 @@ function M.start(layout)
         fact.launch_open = false
         stop_searchkeys()
     end)
-    on("fact:anim_search", function() config_changed("search") end)
-    on("fact:anim_panel", function() config_changed("panel") end)
     on("fact:anim_toast", function() config_changed("toast") end)
     on("fact:anim_center", function() config_changed("center") end)
-    on("fact:anim_center_panel", function() config_changed("center_panel") end)
     on("anim_set", function(packed)
         local v = math.floor(number(packed, 0))
         local kind = ANIM_KINDS[math.floor(v / 6) + 1]
@@ -2043,7 +2023,6 @@ function M.start(layout)
         fact.panel_open = false
         stop_settingskeys()
         fact.nt_center = false
-        if not truthy(fact.launch_open) then set_fx("search") end
         fact.launch_open = true
         text.query = ""
         search_now()
@@ -2060,7 +2039,6 @@ function M.start(layout)
         end
         fact.launch_open = false
         fact.nt_center = false
-        if not truthy(fact.panel_open) then set_fx("panel") end
         fact.panel_open = true
         start_settingskeys()
     end)

@@ -142,19 +142,13 @@ part Common {
     //  Note: NotchDrawer is not used in notch_mode; the frame handles everything.
 
     fact settings_page: number = 1
-    //  Per-panel opening motion (0 fade, 1 spin, 2 unfold, 3 drop,
-    //  4 aperture, 5 random).  The *_fx facts are the pose chosen when a
-    //  panel opens; the close keeps that pose, so it never changes mid-move.
-    fact anim_search: number = 0
-    fact anim_panel: number = 0
+    //  Notification motion only (0 fade, 1 spin, 2 unfold, 3 drop,
+    //  4 aperture, 5 random).  The toast and notification centre keep their
+    //  pose through close; the drawers and search open without motion.
     fact anim_toast: number = 0
     fact anim_center: number = 0
-    fact anim_center_panel: number = 0
-    fact search_fx: number = 0
-    fact panel_fx: number = 0
     fact toast_fx: number = 0
     fact center_fx: number = 0
-    fact center_panel_fx: number = 0
     event anim_set ->
     //  0 Liquid · 1 Clear · 2 Smoked · 3 Milky · 4 Mirror
     event glass_preset ->
@@ -305,9 +299,6 @@ part Common {
     prop spec.s.23 = 0 ~nf_spike
     follow spec.s.23 = spec.23
 
-    //  A slower, underdamped spring for the Notches drawer: the neck stretches
-    //  and settles like the reference's drip, instead of easing like a card.
-    spring notch_drip = 170, 18
     prop music_frame_knob = 0 ~quick
     follow music_frame_knob = music_frame_on
     prop notch_tint_knob = 0 ~quick

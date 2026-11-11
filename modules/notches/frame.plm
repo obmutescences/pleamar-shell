@@ -32,21 +32,12 @@ part NotchFrame {
         let nf.ntc_p = clamp(ntc_p, 0, 1)
         let nf.search_h = notch_clock_h + 600
         let nf.notify_h = notch_clock_h + 650
-        //  The drawer glass follows the selected opening motion as well as
-        //  the content: Flow is linear, Bloom opens fast, Unfold is slow
-        //  vertically, Cascade drops in, Iris opens mostly sideways.
-        let nf.cp_w = mix(nf.clock_w, 860,
-            if(panel_fx == 4, pow(nf.cp_p, 1.60),
-            if(panel_fx == 1, pow(nf.cp_p, 0.70), nf.cp_p)))
-        let nf.cp_h = nf.settings_h * (if(panel_fx == 2, pow(nf.cp_p, 1.45),
-            if(panel_fx == 3, pow(nf.cp_p, 0.65),
-            if(panel_fx == 1, pow(nf.cp_p, 0.85), nf.cp_p))))
-        let nf.ct_w = mix(nf.clock_w, 1120,
-            if(center_panel_fx == 4, pow(nf.ct_p, 1.60),
-            if(center_panel_fx == 1, pow(nf.ct_p, 0.70), nf.ct_p)))
-        let nf.ct_h = nf.center_h * (if(center_panel_fx == 2, pow(nf.ct_p, 1.45),
-            if(center_panel_fx == 3, pow(nf.ct_p, 0.65),
-            if(center_panel_fx == 1, pow(nf.ct_p, 0.85), nf.ct_p))))
+        //  Drawers open and close without a transition; only the notification
+        //  surfaces keep a motion setting.
+        let nf.cp_w = mix(nf.clock_w, 860, nf.cp_p)
+        let nf.cp_h = nf.settings_h * nf.cp_p
+        let nf.ct_w = mix(nf.clock_w, 1120, nf.ct_p)
+        let nf.ct_h = nf.center_h * nf.ct_p
         let nf.sm = music_frame_sens
         let nf.hm = music_frame_hgt
         let nf.bon = if(nf.music, 1, 0)
@@ -1194,16 +1185,16 @@ part NotchFrame {
         group {
             show: panel_open or cp_np > 0.01
             NotchDrawerRipples(cp_np)
-            NotchDrawerContent(cp_np, 860, panel_fx) { ConfigPanelContent() }
+            NotchDrawerContent(cp_np, 860, 0) { ConfigPanelContent() }
         }
         group {
             show: center_open or ct_np > 0.01
             NotchDrawerRipples(ct_np)
-            NotchDrawerContent(ct_np, 1120, center_panel_fx) { CenterPanelContent() }
+            NotchDrawerContent(ct_np, 1120, 0) { CenterPanelContent() }
         }
         group {
             show: launch_open or la_p > 0.01
-            NotchDrawerContent(la_p, 620, search_fx) { LauncherContent() }
+            NotchDrawerContent(la_p, 620, 0) { LauncherContent() }
         }
         group {
             show: nt_center or ntc_p > 0.01
