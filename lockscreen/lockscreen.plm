@@ -218,60 +218,55 @@ scene Lockscreen {
                 //  The clock, with its glow, and the AM/PM pill beside it.
                 //  The clock is in the middle of the screen whether or not there is a pill: the pill hangs off its right edge and does not count.
                 let ck_x = cx
+                //  The time is the one glass surface.  It is neutral: the
+                //  wallpaper supplies the tint; the numerals stay ink and only
+                //  the seconds carry the primary colour.
+                box { at: cx, cy - 220; size: 760, 260; corner: 36; color: #080b0a; opacity: 22% }
+                body {
+                    color: #080b0a
+                    glass: 100%
+                    opacity: 62%
+                    refraction: 75%
+                    dispersion: 25%
+                    frost: 58%
+                    border: 1, mix(#ffffff, deep, 22%)
+                    box { at: cx, cy - 220; size: 760, 260; corner: 36 }
+                }
                 group {
-                    glow: 18, 70%, acc
                     //  Bold beyond the font's heaviest weight: the same text again around it, 3 px out in twelve directions. (A text
                     //  `outline` did the same but left rough notches on the glyphs.) They are only there once the card has landed
                     //  (the entrance passes 85 % when its last spring ends): while it moves, twelve copies each snapped to the pixel
                     //  their own way show as lines between them.
                     repeat i in 0..12 {
-                        text clock_time { at: ck_x + 3 * cos(i * 30), ckc + 3 * sin(i * 30); anchor: center; size: 200; weight: 700; color: mint; family: "Space Grotesk"; opacity: clamp((e - 0.85) / 0.1, 0, 1); show: e > 0.85 and clock_px >= 175 }
+                        text clock_time { at: ck_x + 3 * cos(i * 30), ckc + 3 * sin(i * 30); anchor: center; size: 200; weight: 700; color: ink; family: "Space Grotesk"; opacity: clamp((e - 0.85) / 0.1, 0, 1); show: e > 0.85 and clock_px >= 175 }
                     }
-                    text clock_time { at: ck_x, ckc; anchor: center; size: 200; weight: 700; color: mint; family: "Space Grotesk"; letter_scale: 1 + 1.1 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_move: 0, 50 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_opacity: (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3)); show: clock_px >= 175 }
+                    text clock_time { at: ck_x, ckc; anchor: center; size: 200; weight: 700; color: ink; family: "Space Grotesk"; letter_scale: 1 + 1.1 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_move: 0, 50 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_opacity: (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3)); show: clock_px >= 175 }
                     repeat i in 0..12 {
-                        text clock_time { at: ck_x + 2.2 * cos(i * 30), ckc + 2.2 * sin(i * 30); anchor: center; size: 150; weight: 700; color: mint; family: "Space Grotesk"; opacity: clamp((e - 0.85) / 0.1, 0, 1); show: e > 0.85 and clock_px >= 125 and clock_px < 175 }
+                        text clock_time { at: ck_x + 2.2 * cos(i * 30), ckc + 2.2 * sin(i * 30); anchor: center; size: 150; weight: 700; color: ink; family: "Space Grotesk"; opacity: clamp((e - 0.85) / 0.1, 0, 1); show: e > 0.85 and clock_px >= 125 and clock_px < 175 }
                     }
-                    text clock_time { at: ck_x, ckc; anchor: center; size: 150; weight: 700; color: mint; family: "Space Grotesk"; letter_scale: 1 + 1.1 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_move: 0, 50 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_opacity: (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3)); show: clock_px >= 125 and clock_px < 175 }
+                    text clock_time { at: ck_x, ckc; anchor: center; size: 150; weight: 700; color: ink; family: "Space Grotesk"; letter_scale: 1 + 1.1 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_move: 0, 50 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_opacity: (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3)); show: clock_px >= 125 and clock_px < 175 }
                     repeat i in 0..12 {
-                        text clock_time { at: ck_x + 1.5 * cos(i * 30), ckc + 1.5 * sin(i * 30); anchor: center; size: 100; weight: 700; color: mint; family: "Space Grotesk"; opacity: clamp((e - 0.85) / 0.1, 0, 1); show: e > 0.85 and clock_px < 125 }
+                        text clock_time { at: ck_x + 1.5 * cos(i * 30), ckc + 1.5 * sin(i * 30); anchor: center; size: 100; weight: 700; color: ink; family: "Space Grotesk"; opacity: clamp((e - 0.85) / 0.1, 0, 1); show: e > 0.85 and clock_px < 125 }
                     }
-                    text clock_time { at: ck_x, ckc; anchor: center; size: 100; weight: 700; color: mint; family: "Space Grotesk"; letter_scale: 1 + 1.1 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_move: 0, 50 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_opacity: (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3)); show: clock_px < 125 }
+                    text clock_time { at: ck_x, ckc; anchor: center; size: 100; weight: 700; color: ink; family: "Space Grotesk"; letter_scale: 1 + 1.1 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_move: 0, 50 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3))); letter_opacity: (1 - pow(1 - clamp((e - 0.35 - letter * 0.035) / 0.3, 0, 1), 3)); show: clock_px < 125 }
                     //  Its width, measured at 200 and not seen: the pill goes where the clock ends, whichever size is shown.
-                    text clock_time { at: ck_x, ckc; anchor: center; size: 200; weight: 700; color: mint; family: "Space Grotesk"; measure: ck_w; opacity: 0 }
+                    text clock_time { at: ck_x, ckc; anchor: center; size: 200; weight: 700; color: ink; family: "Space Grotesk"; measure: ck_w; opacity: 0 }
                 }
                 let sec_x = floor(cx + ck_w.width * clock_px / 400 + 19 + 0.5)
                 text clock_secs { at: sec_x, ckc + 4; anchor: left center; size: 17; weight: 500; color: mint; family: "Space Grotesk"; show: cfg_secs }
                 let ap_x = floor(cx + ck_w.width * clock_px / 400 + if(cfg_secs, 55, 32) + 0.5)
                 box { at: ap_x, ckc; size: 48, 28; corner: 14; color: acc; opacity: 18%; show: show_ampm }
                 box { at: ap_x, ckc; size: 48, 28; corner: 14; color: acc; opacity: 0%; stroke: 1; show: show_ampm }
-                text clock_ampm { at: ap_x, ckc; anchor: center; size: 11; weight: 700; color: acc; family: "Space Grotesk"; show: show_ampm }
-                text clock_date { at: cx, date_y; anchor: center; size: 21; weight: 500; color: mint; family: "Space Grotesk"; letter_scale: 1 + 0.6 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.012) / 0.3, 0, 1), 3))); letter_move: 0, 16 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.012) / 0.3, 0, 1), 3))); letter_opacity: (1 - pow(1 - clamp((e - 0.35 - letter * 0.012) / 0.3, 0, 1), 3)) }
+                text clock_ampm { at: ap_x, ckc; anchor: center; size: 11; weight: 700; color: faint; family: "Space Grotesk"; show: show_ampm }
+                text clock_date { at: cx, date_y; anchor: center; size: 21; weight: 500; color: faint; family: "Space Grotesk"; letter_scale: 1 + 0.6 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.012) / 0.3, 0, 1), 3))); letter_move: 0, 16 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.012) / 0.3, 0, 1), 3))); letter_opacity: (1 - pow(1 - clamp((e - 0.35 - letter * 0.012) / 0.3, 0, 1), 3)) }
 
                 text "The night is still here. Take your time." { at: cx, cy - 135; anchor: center; size: 17; color: faint; opacity: 78%; family: "Space Grotesk" }
 
-                //  The glass dock: taller and narrower, with the profile above,
-                //  the password centred and now playing underneath.
-                body {
-                    color: panel
-                    glass: 100%
-                    opacity: 78%
-                    refraction: 110%
-                    dispersion: 50%
-                    frost: 76%
-                    vivid: 118%
-                    shine: pointer
-                    border: 1, mix(#ffffff, mint, 28%)
-                    shadow: 0, 20, 54, 24%, #000000
-                    box { at: cx, dock_y; size: dock_w, dock_h; corner: 36 }
-                }
-                text "SESSION / 01" { at: panel_x + 34, dock_y - 180; anchor: left center; size: 10; color: faint; opacity: 80%; family: "Space Grotesk" }
-                text "LOCKED" { at: panel_x + dock_w - 34, dock_y - 180; anchor: right center; size: 10; color: #c3d652; family: "Space Grotesk" }
-
+                //  No plate below: the profile, password and media sit flat on
+                //  the wallpaper.
                 group {
                     opacity: ease_c
                     let px = cx - 100
-                    ellipse { at: px, profile_y; radius: 36; color: panel; opacity: 55% }
-                    ellipse { at: px, profile_y; radius: 36; stroke: 1; color: mix(#ffffff, mint, 42%); opacity: 45% }
                     group {
                         clip ellipse { at: px, profile_y; radius: 35 }
                         image avatar { at: px - 35, profile_y - 35; size: 70, 70; show: has_avatar }
@@ -285,21 +280,8 @@ scene Lockscreen {
                 //  4. THE PASSWORD BAR
                 group {
                     move: shake, 0
-                    body {
-                        color: panel
-                        glass: 100%
-                        opacity: 72%
-                        refraction: 120%
-                        dispersion: 80%
-                        frost: 80%
-                        vivid: 115%
-                        shine: pointer
-                        border: 1.5, mix(mix(mix(#ffffff, mint, typed_t), #ef4444, err_t), #10b981, ok_t)
-                        shadow: 0, 0, 10 + 8 * (err_t + ok_t), 30% + 30% * (err_t + ok_t), mix(mix(mint, #ef4444, err_t), #10b981, ok_t)
-                        box { at: cx, bar_y; size: 520, 58; corner: 29 }
-                    }
+                    line { from: cx - 260, bar_y + 30; to: cx + 260, bar_y + 30; width: 1; color: #ffffff; opacity: 22% }
                     //  the lock, its disc tinted by how the last try went
-                    ellipse { at: cx - 226, bar_y; radius: 18; color: mix(mix(#ffffff, #ef4444, err_t * 0.9), #10b981, ok_t * 0.9); opacity: 8% + 10% * (err_t + ok_t) }
                     group { show: not right and not wrong; GLock(cx - 226, bar_y, 20 / 24, acc, 1, 0) }
                     group { show: right; GLockOpen(cx - 226, bar_y, 20 / 24, #10b981, 1, 0) }
                     group { show: wrong and not right; GRetry(cx - 226, bar_y, 20 / 24, #ef4444, 1, 0) }
@@ -389,8 +371,7 @@ scene Lockscreen {
                         ellipse { at: cx + 184, bar_y; radius: 16; color: mix(#ffffff, #ef4444, clr_hot); opacity: 8% + 12% * clr_hot }
                         GCancel(cx + 184, bar_y, 18 / 24, mix(faint, #ef4444, clr_hot), 1, if(clr_hot > 0.5, lkf, 0))
                     }
-                    ellipse { at: cx + 230, bar_y; radius: 20; color: mix(#ffffff, acc, typed_t); opacity: 8% + 77% * typed_t + 15% * go_hot * typed_t }
-                    group { show: not authing; GArrow(cx + 230, bar_y, 22 / 24, mix(faint, deep, typed_t), 1, 0) }
+                    group { show: not authing; GArrow(cx + 230, bar_y, 22 / 24, mix(faint, ink, typed_t), 1, 0) }
                     group { pivot: cx + 230, bar_y; rotate: time * 450; show: authing
                         GSpinner(cx + 230, bar_y, 0, 22 / 24, deep, 1, 0)
                     }
