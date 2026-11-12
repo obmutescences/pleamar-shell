@@ -753,7 +753,7 @@ function M.start(root_getter)
         local rows = {}
         tray_keys = {}
         for i, it in ipairs(items or {}) do
-            if i > 8 then break end
+            if i > 32 then break end
             local name = tostring(it.title or "")
             if name == "" then name = tostring(it.id or "Tray item") end
             local sub = tostring(it.tooltip_body or it.tooltip or it.id or "")
