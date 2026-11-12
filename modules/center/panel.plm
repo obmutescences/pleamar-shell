@@ -148,10 +148,11 @@ part CenterPanel {
                 opacity: if(open > 0.5 and sel == r.index, 24%, 6%)
             }
             box { from: 0, ty; size: 3, 48; corner: 1.5; color: ct.primary; opacity: 88%; show: open > 0.5 and sel == r.index }
-            ellipse { at: 20, ty + 24; radius: 12; color: if(mod(r.index, 2) == 0, ct.primary, ct.secondary); opacity: 13% }
-            text pick(mod(r.index, 4), "●", "◆", "○", "◇") { at: 20, ty + 24; anchor: center; size: 13; color: if(mod(r.index, 2) == 0, ct.primary, ct.secondary); family: "Space Grotesk" }
-            text r.name { at: 40, cy; anchor: left center; size: 12; weight: 600; color: ink; width: 178; lines: 1; family: "Space Grotesk" }
-            text r.sub { at: 40, ty + 33; anchor: left center; size: 9; color: faint; width: 178; lines: 1; show: r.has_sub; family: "Space Grotesk" }
+            image r.icon { at: 8, 12; size: 24, 24; fit: contain; show: r.has_icon }
+            ellipse { at: 20, ty + 24; radius: 12; color: if(mod(r.index, 2) == 0, ct.primary, ct.secondary); opacity: 13%; show: not r.has_icon }
+            text pick(mod(r.index, 4), "●", "◆", "○", "◇") { at: 20, ty + 24; anchor: center; size: 13; color: if(mod(r.index, 2) == 0, ct.primary, ct.secondary); family: "Space Grotesk"; show: not r.has_icon }
+            text r.name { at: 44, cy; anchor: left center; size: 12; weight: 600; color: ink; width: 174; lines: 1; family: "Space Grotesk" }
+            text r.sub { at: 44, ty + 33; anchor: left center; size: 9; color: faint; width: 174; lines: 1; show: r.has_sub; family: "Space Grotesk" }
             text r.status { at: 264, cy; anchor: right center; size: 8; weight: 700; color: faint; family: "Space Grotesk" }
             zone box tray_hit { from: 0, ty; size: 268, 48; corner: 12; cursor: pointer; label: r.name }
             on press tray_hit { emit ui_sound; emit activate(r.index) }
@@ -177,7 +178,7 @@ part CenterPanel {
 
     //  StatusNotifier items, as the tray reports them.
     fact tray_count: number = 0
-    model tray_items max 32 { name: text; sub: text; status: text; has_sub: bool }
+    model tray_items max 32 { icon: image 24, 24; has_icon: bool; name: text; sub: text; status: text; has_sub: bool }
     fact tray_menu_open = false
     fact tray_menu_row: number = -1
     fact tray_menu_sel: number = -1

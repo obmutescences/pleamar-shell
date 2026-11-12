@@ -757,7 +757,8 @@ function M.start(root_getter)
             local name = tostring(it.title or "")
             if name == "" then name = tostring(it.id or "Tray item") end
             local sub = tostring(it.tooltip_body or it.tooltip or it.id or "")
-            rows[i] = { name = name, sub = sub, status = tostring(it.status or ""), has_sub = sub ~= "" }
+            local icon = tostring(it.icon or "")
+            rows[i] = { icon = icon, has_icon = icon ~= "", name = name, sub = sub, status = tostring(it.status or ""), has_sub = sub ~= "" }
             tray_keys[i] = it.key
         end
         model.tray_items = rows
