@@ -12,7 +12,7 @@ import "clockface.plm"
 
 scene Lockscreen {
     //  The scene needs a surface of its own; the lock surface below is the one that matters.
-    surface lockscreen_bg { size: 1, 1; anchor: top_left; level: background }
+    surface lockscreen_bg { size: 1, 1; anchor: top_left; level: background; rate: 1 }
 
     permissions {
         services: "clock", "clock.seconds", "battery", "media", "media.*", "auth", "files", "files.write", "session.*"
@@ -26,6 +26,7 @@ scene Lockscreen {
     //  ── what the logic reports ───────────────────────────────────────────────
     fact safe = false              // true while testing a lock: Esc on an empty box, or a minute, opens it. Off: only the password does
     fact locked = false            // set from outside to lock; the logic clears it after a good password
+    fact screen_on = true           // false while the monitor is in DPMS off: stop the water and the frames
     fact settled = false           // the entrance is over: nothing reads `time` any more
     fact authing = false           // PAM is thinking
     fact wrong = false             // the last try failed
@@ -74,7 +75,7 @@ scene Lockscreen {
     //  shader reads time, so the scene has to keep painting.  The lock surface
     //  is capped at 30 fps below; that is smooth for water and leaves the
     //  entrance's own springs running at the same pace.
-    spin time by if(locked, 1, 0)
+    spin time by if(locked and screen_on, 1, 0)
     text password = ""
     text status = "System Locked"
     text realname = "User"
@@ -144,7 +145,7 @@ scene Lockscreen {
         kind: lock
         screens: "all"
         size: 640, 440
-        rate: 30
+        rate: 30, 1 while not screen_on
         open: locked
 
         //  A lock surface is a box centred on each monitor, and what lies around it shows too: everything is

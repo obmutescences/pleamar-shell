@@ -51,6 +51,19 @@ locked_hint() {
     [[ "$out" == "yes" ]]
 }
 
+#  DPMS state is the one thing the lock scene cannot poll once its clock has
+#  stopped. The keeper is independent of that clock, so it wakes the water when
+#  the monitor comes back and stops it when the monitor goes dark.
+dpms_on() {
+    local f
+    for f in /sys/class/drm/card*-*/dpms; do
+        [[ "$f" == *Writeback* ]] && continue
+        [[ -r "$f" ]] || continue
+        [[ "$(cat "$f" 2>/dev/null || true)" == "On" ]] && return 0
+    done
+    return 1
+}
+
 #  The new scene starts warm (`locked = false`).  If the session is still
 #  locked, asking it to lock again is what makes niri replace its red fallback
 #  with the lock face.
@@ -76,6 +89,7 @@ lock_if_needed() {
 }
 
 quick=0
+last_screen=""
 lock_file="$runtime/pleamar/lock-scene.lock"
 mkdir -p "$runtime/pleamar" 2>/dev/null || true
 while :; do
@@ -84,6 +98,11 @@ while :; do
         #  The shell or a previous process already owns the scene.  Wait for it
         #  to stop rather than starting a second one.  The short poll keeps the
         #  compositor's red fallback visible for as little time as possible.
+        if dpms_on; then screen=true; else screen=false; fi
+        if [[ "$screen" != "$last_screen" ]]; then
+            "$bin" --say lockscreen "fact screen_on $screen" >/dev/null 2>&1 || true
+            last_screen="$screen"
+        fi
         sleep 0.5
         continue
     fi

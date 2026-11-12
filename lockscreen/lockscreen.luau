@@ -183,8 +183,13 @@ end
 
 on("palette_sync", push_palette)
 
+--  Defined below; the HOME callback can run before the file has finished
+--  loading, so keep the name in scope here and assign it later.
+local prepare_wallpaper
+
 run("printenv", { "HOME" }, function(out)
     home = (out or ""):gsub("%s+$", "")
+    if prepare_wallpaper then prepare_wallpaper(true) end
     run("printenv", { "USER" }, function(uout)
         user = (uout or ""):gsub("%s+$", "")
         -- the name shown is the real name if there is one, and the login name if not
@@ -276,13 +281,15 @@ local function publish(s, b, done)
                 text.wp_sharp = fs .. version
                 text.wp_blur = fb .. version
                 fact.has_wall = true
+            else
+                log("lock wallpaper: publish failed (" .. tostring(c1) .. ", " .. tostring(c2) .. ")")
             end
             if done then done() end
         end)
     end)
 end
 
-local function prepare_wallpaper(force)
+prepare_wallpaper = function(force)
     --  A `run` callback that never comes (a scene started during a lock race,
     --  a killed helper) used to leave prep_busy true for the rest of the
     --  process: every lock after that had no wallpaper at all.
@@ -293,7 +300,10 @@ local function prepare_wallpaper(force)
         end
         prep_busy = false
     end
-    if home == "" then return end
+    if home == "" then
+        log("lock wallpaper: HOME is not ready")
+        return
+    end
     --  A scene started by the keeper is already locked.  It still needs the
     --  wallpaper of the current config; the old code returned here and left
     --  the previous blur (often made for another wallpaper) on the lock.
@@ -336,7 +346,10 @@ local function prepare_wallpaper(force)
             end
             run("mkdir", { "-p", dir }, function()
                 run("magick", { path, "-resize", geo .. "^", "-gravity", "center", "-extent", geo, "-resize", "1280x720!", "-quality", "90", s }, function(_, c1)
-                    if c1 ~= 0 then return done() end
+                    if c1 ~= 0 then
+                        log("lock wallpaper: sharp render failed (" .. tostring(c1) .. ")")
+                        return done()
+                    end
                     run("magick", { path, "-resize", geo .. "^", "-gravity", "center", "-extent", geo, "-resize", "480x", "-blur", "0x" .. sigma, "-resize", "960x540!", "-quality", "95", "-sampling-factor", "4:4:4", b }, function(_, c2)
                         if c2 == 0 then
                             made_key = key
@@ -345,6 +358,7 @@ local function prepare_wallpaper(force)
                                 done()
                             end)
                         else
+                            log("lock wallpaper: blur render failed (" .. tostring(c2) .. ")")
                             done()
                         end
                     end)
@@ -362,8 +376,58 @@ on("fact:cfg_blur", function(v)
     made_key = nil                          -- the blurred picture is made again, at the new blur
     prepare_wallpaper(true)
 end)
-every(5000, prepare_wallpaper)
-after(500, prepare_wallpaper)
+--  The cache is the last pair the lock actually drew. Show it immediately on
+--  a keeper restart, before `prepare_wallpaper` has finished reading config or
+--  running magick; otherwise the lock falls back to the opaque deep box.
+local function seed_wallpaper()
+    if home == "" then
+        after(1000, seed_wallpaper)
+        return
+    end
+    local dir = home .. "/.cache/pleamar-shell/lockscreen"
+    run("ls", { dir .. "/sharp.jpg", dir .. "/blur.jpg" }, function(_, code)
+        if code == 0 then
+            text.wp_sharp = dir .. "/sharp.jpg"
+            text.wp_blur = dir .. "/blur.jpg"
+            fact.has_wall = true
+            log("lock wallpaper: cache seed")
+        end
+        prepare_wallpaper(true)
+    end)
+end
+after(800, seed_wallpaper)
+every(5000, function()
+    if fact.locked and not fact.has_wall then seed_wallpaper() end
+end)
+
+--  A DPMS-off monitor must not keep the lock painting: the wall of frames is
+--  what grows niri's heap. `screen_on` stops the clock's spin; the keeper also
+--  pushes it, so this works even when the scene has gone idle.
+local function check_screen()
+    run("ls", { "/sys/class/drm" }, function(listing)
+        local any, pending = false, 0
+        for name in (listing or ""):gmatch("[^\n]+") do
+            if name:match("^card%d+%-") and not name:find("Writeback") then
+                pending = pending + 1
+                run("cat", { "/sys/class/drm/" .. name .. "/dpms" }, function(out, code)
+                    if code == 0 and (out or ""):match("On") then any = true end
+                    pending = pending - 1
+                    if pending == 0 then fact.screen_on = any end
+                end)
+            end
+        end
+        if pending == 0 then fact.screen_on = false end
+    end)
+end
+after(1000, check_screen)
+every(2000, check_screen)
+
+on("fact:screen_on", function(v)
+    if truthy(v) then
+        made_key = nil
+        prepare_wallpaper(true)
+    end
+end)
 
 -- ── The password, as shapes ──────────────────────────────────────────────────────────────────────────
 -- Every character typed becomes a random shape (one of 16), turned a random quarter and, one time in
