@@ -68,7 +68,10 @@ dpms_on() {
 #  locked, asking it to lock again is what makes niri replace its red fallback
 #  with the lock face.
 lock_if_needed() {
-    locked_hint || return 0
+    local force="${1:-false}"
+    if [[ "$force" != true ]]; then
+        locked_hint || return 0
+    fi
     for _ in $(seq 1 80); do
         if "$bin" --say lockscreen "get locked" >/dev/null 2>&1; then
             #  A keeper restart is a warm start with no pleamar-lock sync.
@@ -88,8 +91,20 @@ lock_if_needed() {
     return 1
 }
 
+#  Whether the running scene is actually reachable, not merely a process.
+#  A scene started while a dead scene's socket was still there takes a
+#  numbered name, so `--say lockscreen` reaches the dead one.
+scene_locked() {
+    local out
+    out="$("$bin" --say lockscreen "get locked" 2>/dev/null || true)"
+    [[ "$out" == "true" ]]
+}
+
 quick=0
 last_screen=""
+last_locked=false
+needs_lock=false
+ticks=0
 lock_file="$runtime/pleamar/lock-scene.lock"
 mkdir -p "$runtime/pleamar" 2>/dev/null || true
 while :; do
@@ -103,13 +118,25 @@ while :; do
             "$bin" --say lockscreen "fact screen_on $screen" >/dev/null 2>&1 || true
             last_screen="$screen"
         fi
+        #  Remember whether it was locked before it disappears.  logind's
+        #  LockedHint can be stale across an output reconnect, but the scene
+        #  itself knows: a new scene must lock again when this one did.
+        ticks=$((ticks + 1))
+        if (( ticks % 4 == 0 )); then
+            if scene_locked; then
+                last_locked=true
+                needs_lock=false
+            elif [[ "$needs_lock" != true ]]; then
+                last_locked=false
+            fi
+        fi
         sleep 0.5
         continue
     fi
 
     #  The same single-owner rule as pleamar-lock.  Whoever holds this file
     #  starts the scene; a starter that loses the race re-checks and leaves the
-    #  running scene alone instead of adding a second locker.
+    #  running scene alone instead of adding a second one.
     exec 8>>"$lock_file"
     if ! flock -w 10 8; then
         sleep 0.5
@@ -121,14 +148,28 @@ while :; do
         continue
     fi
 
+    #  A crashed scene can leave its socket behind.  A new scene would then
+    #  take a numbered name, while `--say lockscreen` and `lock_if_needed`
+    #  keep addressing the dead one -- exactly the state that leaves niri's
+    #  red fallback up.  pleamar-lock's ensure() already removes these.
+    rm -f "$runtime/pleamar/lockscreen.sock" "$runtime/pleamar/lockscreen.display"
+
+    force_lock=false
+    if [[ "$needs_lock" == true ]]; then
+        force_lock=true
+        echo "keeper   · previous scene was locked: re-locking the new one" >>"$log"
+    fi
+
     started="$(date +%s)"
     echo "keeper   · starting lock scene" >>"$log"
     PLEAMAR_SWAPCHAIN=1 "$root/bin/pleamar-shell" lock >>"$log" 2>&1 8>&- &
     child=$!
-    lock_if_needed >>"$log" 2>&1 8>&- &
+    lock_if_needed "$force_lock" >>"$log" 2>&1 8>&- &
     flock -u 8
     wait "$child"
     code=$?
+
+    if [[ "$last_locked" == true ]]; then needs_lock=true; fi
 
     compositor_alive || exit 0
     if (( $(date +%s) - started < 30 )); then

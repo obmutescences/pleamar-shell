@@ -123,7 +123,21 @@ case "${1:-lock}" in
     ensure) take_lock && ensure ;;
     sync) sync ;;
     alive) alive ;;
-    lock) take_lock && { ensure; sync; say "fact locked true"; } ;;
+    lock) take_lock && {
+        #  A scene that is running but does not answer is not a lock scene any
+        #  more: niri is showing its red fallback while the process sits on a
+        #  stale socket (or a numbered one).  Replace it, then lock.
+        if running && ! alive; then
+            sleep 1
+            if running && ! alive; then
+                echo "lock: replacing an unreachable lock scene" >&2
+                stop
+            fi
+        fi
+        ensure
+        sync
+        say "fact locked true"
+    } ;;
     test) take_lock && { fresh; sync; say "fact safe true"; say "fact locked true"; } ;;
     *) echo "usage: $0 ensure|lock|test|sync|alive" >&2; exit 2 ;;
 esac

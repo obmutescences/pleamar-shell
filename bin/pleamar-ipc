@@ -61,6 +61,10 @@ if [[ "$action" == "picker" ]]; then
     exit 0
 fi
 
+if [[ "$action" == "lock" ]]; then
+    exec "$root/bin/pleamar-lock" lock
+fi
+
 if [[ -z "$scene" ]]; then
     if pgrep -f -- "pleamar --scene .*/scenes/notches.plm" >/dev/null; then
         scene=notches
@@ -68,10 +72,6 @@ if [[ -z "$scene" ]]; then
         echo "no pleamar-shell scene is running" >&2
         exit 1
     fi
-fi
-
-if [[ "$action" == "lock" ]]; then
-    exec "$root/bin/pleamar-lock" lock
 fi
 
 case "$action" in

@@ -76,7 +76,7 @@ in
       startLimitIntervalSec = 0;
       serviceConfig = {
         Type = "simple";
-        ExecStart = "${cfg.package}/share/pleamar-shell/bin/pleamar-lock-keeper";
+        ExecStart = "${cfg.package}/bin/pleamar-lock-keeper";
         Restart = "on-failure";
         RestartSec = 2;
         Environment = [ "PATH=${config.system.path}/bin" ];

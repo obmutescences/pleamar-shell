@@ -30,6 +30,11 @@ stdenvNoCC.mkDerivation {
       --set SWAYBG ${swaybg}/bin/swaybg \
       --prefix PATH : ${pleamar}/bin \
       --suffix PATH : ${lib.makeBinPath runtimePackages}
+    makeWrapper ${bash}/bin/bash $out/bin/pleamar-lock-keeper \
+      --add-flags "$out/share/pleamar-shell/bin/pleamar-lock-keeper" \
+      --set PLEAMAR ${pleamar}/bin/pleamar \
+      --prefix PATH : ${pleamar}/bin \
+      --suffix PATH : ${lib.makeBinPath runtimePackages}
     makeWrapper ${bash}/bin/bash $out/bin/pleamar-ipc \
       --add-flags "$out/share/pleamar-shell/bin/pleamar-ipc" \
       --set PLEAMAR ${pleamar}/bin/pleamar \
