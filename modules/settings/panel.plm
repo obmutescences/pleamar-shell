@@ -595,25 +595,48 @@ part ConfigPanel {
         group {
             show: settings_page == 2
 
-            CpCard(250, 176, 570, 94)
+            CpCard(250, 176, 570, 62)
             text "Clock notch height" { at: 266, 186; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "Height of the time notch in the frame." { at: 266, 204; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            CpSlider(520, 243, 200, clamp((notch_clock_h - 10) / 86, 0, 1), cp_nf_clkh_track.hover, cp.mint, ink, cp.track)
-            text number(notch_clock_h, 0, " px") { at: 736, 243; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
-            zone box cp_nf_clkh_track { from: 510, 228; size: 240, 30; cursor: pointer; label: "Clock notch height" }
+            CpSlider(520, 223, 200, clamp((notch_clock_h - 10) / 86, 0, 1), cp_nf_clkh_track.hover, cp.mint, ink, cp.track)
+            text number(notch_clock_h, 0, " px") { at: 736, 223; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_nf_clkh_track { from: 510, 208; size: 240, 30; cursor: pointer; label: "Clock notch height" }
             on press cp_nf_clkh_track { notch_clock_h = clamp(round(10 + (pointer.x - cp.sx - 520) / 200 * 86), 10, 96) }
             on drag  cp_nf_clkh_track { notch_clock_h = clamp(round(10 + (pointer.x - cp.sx - 520) / 200 * 86), 10, 96) }
 
-            CpCard(250, 286, 570, 94)
-            text "Clock notch width" { at: 266, 296; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "Width of the time notch in the frame." { at: 266, 314; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            CpSlider(520, 353, 200, clamp((notch_clock_w - 120) / 140, 0, 1), cp_nf_clkw_track.hover, cp.mint, ink, cp.track)
-            text number(notch_clock_w, 0, " px") { at: 736, 353; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
-            zone box cp_nf_clkw_track { from: 510, 338; size: 240, 30; cursor: pointer; label: "Clock notch width" }
-            on press cp_nf_clkw_track { notch_clock_w = clamp(round(120 + (pointer.x - cp.sx - 520) / 200 * 140), 120, 260) }
-            on drag  cp_nf_clkw_track { notch_clock_w = clamp(round(120 + (pointer.x - cp.sx - 520) / 200 * 140), 120, 260) }
+            CpCard(250, 242, 570, 62)
+            text "Clock notch width" { at: 266, 252; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "Minimum width; expands automatically for date." { at: 266, 270; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(520, 289, 200, clamp((notch_clock_w - 120) / 360, 0, 1), cp_nf_clkw_track.hover, cp.mint, ink, cp.track)
+            text number(notch_clock_w, 0, " px") { at: 736, 289; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_nf_clkw_track { from: 510, 274; size: 240, 30; cursor: pointer; label: "Clock notch width" }
+            on press cp_nf_clkw_track { notch_clock_w = clamp(round(120 + (pointer.x - cp.sx - 520) / 200 * 360), 120, 480) }
+            on drag  cp_nf_clkw_track { notch_clock_w = clamp(round(120 + (pointer.x - cp.sx - 520) / 200 * 360), 120, 480) }
 
-            let cp.bar_snd_y = 380
+            text "BAR DATE" { at: 250, 318; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
+
+            CpCard(250, 330, 570, 62)
+            text "Date" { at: 266, 340; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "显示日期，如 11-23。" { at: 266, 358; anchor: left center; size: 13.5; color: faint; family: "Noto Sans CJK SC" }
+            CpSwitch(770, 349, 44, 24, if(bar_show_date, 1, 0), bar_date_knob, cp_bar_date_switch.hover, cp.mint, ink, cp.track)
+            zone box cp_bar_date_switch { from: 760, 340; size: 64, 38; corner: 19; cursor: pointer; label: "Show Chinese date on bar" }
+            on press cp_bar_date_switch { emit ui_sound; toggle bar_show_date }
+
+            CpCard(250, 396, 570, 62)
+            text "Lunar date" { at: 266, 406; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "显示农历日期，如 农历十月十四。" { at: 266, 424; anchor: left center; size: 13.5; color: faint; family: "Noto Sans CJK SC" }
+            CpSwitch(770, 415, 44, 24, if(bar_show_lunar, 1, 0), bar_lunar_knob, cp_bar_lunar_switch.hover, cp.mint, ink, cp.track)
+            zone box cp_bar_lunar_switch { from: 760, 406; size: 64, 38; corner: 19; cursor: pointer; label: "Show lunar date on bar" }
+            on press cp_bar_lunar_switch { emit ui_sound; toggle bar_show_lunar }
+
+            CpCard(250, 462, 570, 62)
+            text "Weekday" { at: 266, 472; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "显示星期，如 星期一。" { at: 266, 490; anchor: left center; size: 13.5; color: faint; family: "Noto Sans CJK SC" }
+            CpSwitch(770, 481, 44, 24, if(bar_show_weekday, 1, 0), bar_weekday_knob, cp_bar_weekday_switch.hover, cp.mint, ink, cp.track)
+            zone box cp_bar_weekday_switch { from: 760, 472; size: 64, 38; corner: 19; cursor: pointer; label: "Show weekday on bar" }
+            on press cp_bar_weekday_switch { emit ui_sound; toggle bar_show_weekday }
+
+            let cp.bar_snd_y = 528
             CpCard(250, cp.bar_snd_y, 570, 62)
             text "Panel sound" { at: 266, cp.bar_snd_y + 10; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
             text "A small click when the bar or a panel is pressed." { at: 266, cp.bar_snd_y + 28; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
@@ -623,24 +646,24 @@ part ConfigPanel {
 
             let cp.tint_y0 = cp.bar_snd_y + 76
             text "PANEL TINT" { at: 250, cp.tint_y0; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
-            CpCard(250, cp.tint_y0 + 14, 570, 62)
-            text "Panel colour" { at: 266, cp.tint_y0 + 24; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "Wallpaper role behind every panel." { at: 266, cp.tint_y0 + 42; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            CpPill(610, cp.tint_y0 + 30, 100, 30, if(panel_bg_role == 0, 1, 0), 0, cp.mint, ink)
-            text "Primary" { at: 660, cp.tint_y0 + 45; anchor: center; size: 11; weight: 700; color: if(panel_bg_role == 0, cp.mint, faint); family: "Space Grotesk" }
-            zone box cp_panel_role_primary { from: 610, cp.tint_y0 + 30; size: 100, 30; corner: 15; cursor: pointer; label: "Primary panel colour" }
+            CpCard(250, cp.tint_y0 + 12, 570, 62)
+            text "Panel colour" { at: 266, cp.tint_y0 + 22; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "Wallpaper role behind every panel." { at: 266, cp.tint_y0 + 40; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpPill(610, cp.tint_y0 + 28, 100, 30, if(panel_bg_role == 0, 1, 0), 0, cp.mint, ink)
+            text "Primary" { at: 660, cp.tint_y0 + 43; anchor: center; size: 11; weight: 700; color: if(panel_bg_role == 0, cp.mint, faint); family: "Space Grotesk" }
+            zone box cp_panel_role_primary { from: 610, cp.tint_y0 + 28; size: 100, 30; corner: 15; cursor: pointer; label: "Primary panel colour" }
             on press cp_panel_role_primary { panel_bg_role = 0 }
-            CpPill(714, cp.tint_y0 + 30, 100, 30, if(panel_bg_role == 1, 1, 0), 0, cp.mint, ink)
-            text "Secondary" { at: 764, cp.tint_y0 + 45; anchor: center; size: 11; weight: 700; color: if(panel_bg_role == 1, cp.mint, faint); family: "Space Grotesk" }
-            zone box cp_panel_role_secondary { from: 714, cp.tint_y0 + 30; size: 100, 30; corner: 15; cursor: pointer; label: "Secondary panel colour" }
+            CpPill(714, cp.tint_y0 + 28, 100, 30, if(panel_bg_role == 1, 1, 0), 0, cp.mint, ink)
+            text "Secondary" { at: 764, cp.tint_y0 + 43; anchor: center; size: 11; weight: 700; color: if(panel_bg_role == 1, cp.mint, faint); family: "Space Grotesk" }
+            zone box cp_panel_role_secondary { from: 714, cp.tint_y0 + 28; size: 100, 30; corner: 15; cursor: pointer; label: "Secondary panel colour" }
             on press cp_panel_role_secondary { panel_bg_role = 1 }
 
-            CpCard(250, cp.tint_y0 + 80, 570, 62)
-            text "Tint depth" { at: 266, cp.tint_y0 + 90; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
-            text "How much of that colour to mix in." { at: 266, cp.tint_y0 + 108; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
-            CpSlider(520, cp.tint_y0 + 127, 200, cp.panel_pct, cp_panel_tint_track.hover, cp.mint, ink, cp.track)
-            text number(panel_bg_tint, 0, "%") { at: 736, cp.tint_y0 + 127; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
-            zone box cp_panel_tint_track { from: 510, cp.tint_y0 + 112; size: 240, 30; cursor: pointer; label: "Panel tint depth" }
+            CpCard(250, cp.tint_y0 + 78, 570, 62)
+            text "Tint depth" { at: 266, cp.tint_y0 + 88; anchor: left center; size: 17; weight: 700; color: ink; family: "Space Grotesk" }
+            text "How much of that colour to mix in." { at: 266, cp.tint_y0 + 106; anchor: left center; size: 14; color: faint; family: "Space Grotesk" }
+            CpSlider(520, cp.tint_y0 + 125, 200, cp.panel_pct, cp_panel_tint_track.hover, cp.mint, ink, cp.track)
+            text number(panel_bg_tint, 0, "%") { at: 736, cp.tint_y0 + 125; anchor: left center; size: 17; weight: 600; color: ink; family: "Space Grotesk" }
+            zone box cp_panel_tint_track { from: 510, cp.tint_y0 + 110; size: 240, 30; cursor: pointer; label: "Panel tint depth" }
             on press cp_panel_tint_track { panel_bg_tint = clamp((pointer.x - cp.sx - 520) / 200 * 100, 0, 100) }
             on drag cp_panel_tint_track { panel_bg_tint = clamp((pointer.x - cp.sx - 520) / 200 * 100, 0, 100) }
         }

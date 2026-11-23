@@ -130,6 +130,9 @@ function M.start(layout)
         music_frame_cols = 12,
         notch_clock_h = 56,
         notch_clock_w = 168,
+        bar_show_date = true,
+        bar_show_lunar = true,
+        bar_show_weekday = true,
         lock_blur = 36,
         lock_12h = true,
         lock_ampm = true,
@@ -264,7 +267,10 @@ function M.start(layout)
         cfg.music_frame_blend = math.floor(clamp(number(saved.music_frame_blend, cfg.music_frame_blend), 0, 100))
         cfg.music_frame_cols = math.floor(clamp(number(saved.music_frame_cols, cfg.music_frame_cols), 6, 48))
         cfg.notch_clock_h = math.floor(clamp(number(saved.notch_clock_h, cfg.notch_clock_h), 10, 96))
-        cfg.notch_clock_w = math.floor(clamp(number(saved.notch_clock_w, cfg.notch_clock_w), 120, 260))
+        cfg.notch_clock_w = math.floor(clamp(number(saved.notch_clock_w, cfg.notch_clock_w), 120, 480))
+        if type(saved.bar_show_date) == "boolean" then cfg.bar_show_date = saved.bar_show_date end
+        if type(saved.bar_show_lunar) == "boolean" then cfg.bar_show_lunar = saved.bar_show_lunar end
+        if type(saved.bar_show_weekday) == "boolean" then cfg.bar_show_weekday = saved.bar_show_weekday end
         cfg.lock_blur = clamp(number(saved.lock_blur, cfg.lock_blur), 0, 120)
         if type(saved.lock_12h) == "boolean" then cfg.lock_12h = saved.lock_12h end
         if type(saved.lock_ampm) == "boolean" then cfg.lock_ampm = saved.lock_ampm end
@@ -349,6 +355,10 @@ function M.start(layout)
         fact.music_frame_cols = cfg.music_frame_cols
         fact.notch_clock_h = cfg.notch_clock_h
         fact.notch_clock_w = cfg.notch_clock_w
+        fact.bar_show_date = cfg.bar_show_date
+        fact.bar_show_lunar = cfg.bar_show_lunar
+        fact.bar_show_weekday = cfg.bar_show_weekday
+        center.refresh_bar_date()
         fact.lock_blur = cfg.lock_blur
         fact.lock_12h = cfg.lock_12h
         fact.lock_ampm = cfg.lock_ampm
@@ -428,6 +438,9 @@ function M.start(layout)
             music_frame_cols = number(fact.music_frame_cols, 12),
             notch_clock_h = number(fact.notch_clock_h, 56),
             notch_clock_w = number(fact.notch_clock_w, 168),
+            bar_show_date = truthy(fact.bar_show_date),
+            bar_show_lunar = truthy(fact.bar_show_lunar),
+            bar_show_weekday = truthy(fact.bar_show_weekday),
             lock_blur = number(fact.lock_blur, 36),
             lock_12h = truthy(fact.lock_12h),
             lock_ampm = truthy(fact.lock_ampm),
@@ -1774,6 +1787,9 @@ function M.start(layout)
     on("fact:music_frame_cols",   function() save() end)
     on("fact:notch_clock_h",      function() save() end)
     on("fact:notch_clock_w",      function() save() end)
+    on("fact:bar_show_date",      function() center.refresh_bar_date(); save() end)
+    on("fact:bar_show_lunar",     function() center.refresh_bar_date(); save() end)
+    on("fact:bar_show_weekday",   function() center.refresh_bar_date(); save() end)
     on("fact:lock_blur", function() save() end)
     on("fact:lock_12h", function() save() end)
     on("fact:lock_ampm", function() save() end)

@@ -270,6 +270,36 @@ end
 local WEEKDAYS = { [1] = "星期日", [2] = "星期一", [3] = "星期二", [4] = "星期三",
     [5] = "星期四", [6] = "星期五", [7] = "星期六" }
 
+local bar_today_date = ""
+local bar_today_lunar = ""
+local bar_today_weekday = ""
+local bar_last_ymd = ""
+
+local function refresh_bar_date()
+    local today = os.date("*t")
+    if bar_today_date == "" then
+        bar_today_date = string.format("%02d-%02d", today.month, today.day)
+    end
+    if bar_today_weekday == "" then
+        bar_today_weekday = WEEKDAYS[today.wday] or ""
+    end
+    local show_date = truthy(fact.bar_show_date)
+    local show_lunar = truthy(fact.bar_show_lunar)
+    local show_weekday = truthy(fact.bar_show_weekday)
+
+    local date_txt = (show_date and bar_today_date ~= "") and bar_today_date or ""
+    local lunar_txt = (show_lunar and bar_today_lunar ~= "") and bar_today_lunar or ""
+    local weekday_txt = (show_weekday and bar_today_weekday ~= "") and bar_today_weekday or ""
+
+    text.bar_date_txt = date_txt
+    text.bar_lunar_txt = lunar_txt
+    text.bar_weekday_txt = weekday_txt
+    fact.bar_has_date = date_txt ~= ""
+    fact.bar_has_lunar = lunar_txt ~= ""
+    fact.bar_has_weekday = weekday_txt ~= ""
+    fact.bar_date_any = date_txt ~= "" or lunar_txt ~= "" or weekday_txt ~= ""
+end
+
 --  Fraction of the current month still ahead, today included.  The ring
 --  around today's number uses this: full on the first, nearly gone at the
 --  end of the month.
@@ -326,6 +356,14 @@ local function calendar_fallback(ft, today)
     text.ct_today_month = string.format("%d月", today.month)
     text.ct_today_year = tostring(today.year)
     text.ct_weeknum = string.format("第 %d 周", iso_week(os.time()))
+    local ymd = string.format("%04d-%02d-%02d", today.year, today.month, today.day)
+    if ymd ~= bar_last_ymd then
+        bar_last_ymd = ymd
+        bar_today_lunar = ""
+    end
+    bar_today_date = string.format("%02d-%02d", today.month, today.day)
+    bar_today_weekday = WEEKDAYS[today.wday] or ""
+    refresh_bar_date()
 end
 
 local function apply_calendar(d)
@@ -373,6 +411,12 @@ local function apply_calendar(d)
     text.ct_today_year = tostring(td.year or "")
     text.ct_weekday = tostring(td.weekday or "")
     text.ct_weeknum = tostring(td.week or "")
+    local now_t = os.date("*t")
+    bar_last_ymd = string.format("%04d-%02d-%02d", now_t.year, now_t.month, now_t.day)
+    bar_today_date = tostring(td.date or string.format("%02d-%02d", now_t.month, now_t.day))
+    bar_today_lunar = tostring(td.lunar or "")
+    bar_today_weekday = tostring(td.weekday or WEEKDAYS[now_t.wday] or "")
+    refresh_bar_date()
     local progress = tonumber(td.month_progress)
     if progress == nil then
         local now = os.date("*t")
@@ -870,10 +914,27 @@ function M.start(root_getter)
     every(900000, function()
         if truthy(fact.center_open) then refresh_weather() end
     end)
+    every(30000, function()
+        local ymd = os.date("%Y-%m-%d")
+        if ymd ~= bar_last_ymd then
+            bar_last_ymd = ymd
+            bar_today_date = ""
+            bar_today_lunar = ""
+            bar_today_weekday = ""
+            refresh_bar_date()
+            calendar()
+        end
+    end)
+    bar_last_ymd = os.date("%Y-%m-%d")
+    refresh_bar_date()
     calendar()
     refresh_audio_outputs()
     refresh_sys()
     start_keys()
+end
+
+function M.refresh_bar_date()
+    refresh_bar_date()
 end
 
 function M.refresh_root()

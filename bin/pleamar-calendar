@@ -340,6 +340,8 @@ def build(year, month):
             "day": f"{today.day:02d}",
             "month": f"{today.month}月",
             "year": str(today.year),
+            "date": f"{today.month:02d}-{today.day:02d}",
+            "lunar": f"农历{lunar_today}" if lunar_today else "",
             "weekday": weekday,
             "week": f"第 {today.isocalendar()[1]} 周",
             "month_progress": month_progress,

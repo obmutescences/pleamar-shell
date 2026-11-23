@@ -2,6 +2,29 @@ part NotchFrame {
     shader frame_wave = file "frame_wave.wgsl"
     prop nf_sec_ones = 1 ~quick
     prop nf_sec_tens = 1 ~quick
+    measure nf_clk_m
+    measure nf_date_m
+    measure nf_lunar_m
+    measure nf_week_m
+    measure nf_dot_m
+    let nf_stacked = bar_date_any and notch_clock_h >= 52
+    let nf_inline = bar_date_any and notch_clock_h < 52
+    let nf_clk_w = max(nf_clk_m.width, 54) + 20
+    let nf_dot_w = max(nf_dot_m.width, 4)
+    let nf_d_w = if(bar_has_date, nf_date_m.width, 0)
+    let nf_l_w = if(bar_has_lunar, nf_lunar_m.width, 0)
+    let nf_w_w = if(bar_has_weekday, nf_week_m.width, 0)
+    let nf_sep1 = bar_has_date and bar_has_lunar
+    let nf_sep2 = (bar_has_date or bar_has_lunar) and bar_has_weekday
+    let nf_before_week_w = nf_d_w + if(nf_sep1, 10 + nf_dot_w, 0) + nf_l_w
+    let nf_date_w = nf_before_week_w + if(nf_sep2, 10 + nf_dot_w, 0) + nf_w_w
+    let nf_need_w = if(nf_inline,
+        nf_clk_w + 16 + nf_date_w + 40,
+        if(nf_stacked,
+            max(nf_clk_w, nf_date_w) + 40,
+            0))
+    prop nf_clock_w = 168 ~quick
+    follow nf_clock_w = max(notch_clock_w, nf_need_w)
 
     surface notch_frame {
         size: full, full
@@ -15,13 +38,19 @@ part NotchFrame {
         let nf.w = notch_frame.width
         let nf.h = notch_frame.height
         let nf.cx = nf.w / 2
-        let nf.clock_w = notch_clock_w
+        let nf.clock_w = nf_clock_w
         let nf.clock_h = notch_clock_h
         let nf.settings_h = notch_clock_h + 820
         let nf.center_h = notch_clock_h + 720
         //  anchor:center places the row's top edge at y in plm.
         //  To visually centre 19px text, shift up by ~half the text height.
-        let nf.clock_y = nf.clock_h / 2 - 12
+        let nf.inline_w = nf_clk_w + 16 + nf_date_w
+        let nf.inline_x = nf.cx - nf.inline_w / 2
+        let nf.clock_x = if(nf_inline, nf.inline_x + nf_clk_w / 2, nf.cx)
+        let nf.clock_y = if(nf_stacked, nf.clock_h / 2 - 22, nf.clock_h / 2 - 12)
+        let nf.clk_sep_x = nf.inline_x + nf_clk_w + 8
+        let nf.date_x = if(nf_inline, nf.inline_x + nf_clk_w + 16, nf.cx - nf_date_w / 2)
+        let nf.date_y = if(nf_stacked, nf.clock_h / 2 + 12, nf.clock_h / 2)
         let nf.rail = 8
         let nf.inner_r = 23
         let nf.over = 50
@@ -1211,9 +1240,13 @@ part NotchFrame {
         }
         }
 
+        //  Reference glyph measurements for stable inline/stacked width.
+        text "00:00" { at: nf.cx, nf.clock_h / 2; anchor: center; size: 19; weight: 600; color: aqua; opacity: 0%; family: "Space Grotesk"; measure: nf_clk_m }
+        text "·" { at: nf.cx, nf.clock_h / 2; anchor: center; size: 12.5; color: azure; opacity: 0%; family: "Noto Sans CJK SC"; measure: nf_dot_m }
+
         //  Clock text vertically centred in the notch.
         row {
-            at: nf.cx, nf.clock_y
+            at: nf.clock_x, nf.clock_y
             anchor: center
             gap: 0
             align: end
@@ -1226,6 +1259,14 @@ part NotchFrame {
             text "{floor(tick.second / 10)}" { size: 11; weight: 600; color: azure; family: "Space Grotesk"; letter_move: 0, -3 + (1 - nf_sec_tens) * 4; letter_scale: 0.88 + 0.12 * nf_sec_tens }
             text "{mod(tick.second, 10)}" { size: 11; weight: 600; color: azure; family: "Space Grotesk"; letter_move: 0, -3 + (1 - nf_sec_ones) * 4; letter_scale: 0.88 + 0.12 * nf_sec_ones }
         }
+        //  Inline divider between time and date when the notch is compact.
+        text "·" { at: nf.clk_sep_x, nf.date_y; anchor: center; size: 13; color: azure; opacity: 45%; family: "Noto Sans CJK SC"; show: nf_inline }
+        //  Date (same font & size as hour/minute), lunar date and weekday.
+        text bar_date_txt { at: nf.date_x, nf.date_y; anchor: left center; size: 19; weight: 600; color: aqua; family: "Space Grotesk"; measure: nf_date_m; show: bar_has_date }
+        text "·" { at: nf.date_x + nf_d_w + 5, nf.date_y; anchor: left center; size: 12.5; color: azure; opacity: 55%; family: "Noto Sans CJK SC"; show: nf_sep1 }
+        text bar_lunar_txt { at: nf.date_x + nf_d_w + if(nf_sep1, 10 + nf_dot_w, 0), nf.date_y; anchor: left center; size: 12.5; weight: 600; color: aqua; family: "Noto Sans CJK SC"; measure: nf_lunar_m; show: bar_has_lunar }
+        text "·" { at: nf.date_x + nf_before_week_w + 5, nf.date_y; anchor: left center; size: 12.5; color: azure; opacity: 55%; family: "Noto Sans CJK SC"; show: nf_sep2 }
+        text bar_weekday_txt { at: nf.date_x + nf_before_week_w + if(nf_sep2, 10 + nf_dot_w, 0), nf.date_y; anchor: left center; size: 12.5; weight: 500; color: azure; family: "Noto Sans CJK SC"; measure: nf_week_m; show: bar_has_weekday }
         on change tick.second {
             nf_sec_ones: 0 ~10ms
             nf_sec_ones: 1 ~190ms after 10ms

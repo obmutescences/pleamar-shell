@@ -183,6 +183,17 @@ part Common {
     //  Clock notch height in the frame bar (px), configurable from settings.
     fact notch_clock_h: number = 56
     fact notch_clock_w: number = 168
+    //  Bar date, lunar date and weekday toggles (Settings › Bar).
+    fact bar_show_date = true
+    fact bar_show_lunar = true
+    fact bar_show_weekday = true
+    fact bar_has_date = false
+    fact bar_has_lunar = false
+    fact bar_has_weekday = false
+    fact bar_date_any = false
+    text bar_date_txt = ""
+    text bar_lunar_txt = ""
+    text bar_weekday_txt = ""
 
     //  Lock screen settings.  The lock scene is a separate process, so these
     //  live in the shell config and are pushed to it when it opens.
@@ -325,6 +336,12 @@ part Common {
     follow wall_knob = wall_auto
     prop snd_knob = 0 ~quick
     follow snd_knob = snd_on
+    prop bar_date_knob = 0 ~quick
+    follow bar_date_knob = bar_show_date
+    prop bar_lunar_knob = 0 ~quick
+    follow bar_lunar_knob = bar_show_lunar
+    prop bar_weekday_knob = 0 ~quick
+    follow bar_weekday_knob = bar_show_weekday
     prop nt_snd_knob = 0 ~quick
     follow nt_snd_knob = nt_snd_on
     prop nt_drift_knob = 0 ~quick
