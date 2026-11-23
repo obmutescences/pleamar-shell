@@ -26,67 +26,6 @@ part CenterPanel {
     shader ct_water = file "../water/card.wgsl"
     shader ct_netfx = file "../water/netfx.wgsl"
 
-    fact center_open = false
-    fact center_tab: number = 0
-    fact center_sys_scroll: number = 0
-    fact center_cal_off: number = 0
-    fact center_cal_progress: number = 1
-    fact center_power_confirm: number = -1
-
-    //  The system monitor, filled by bin/pleamar-sysmon through the logic.
-    fact sys_ready = false
-    fact sys_hist_count: number = 0
-    fact sys_cpu: number = 0
-    fact sys_mem: number = 0
-    fact sys_cache: number = 0
-    fact sys_swap: number = 0
-    fact sys_gpu: number = 0
-    fact sys_vram: number = 0
-    fact sys_pw: number = 0
-    fact sys_gpu_on = false
-    fact sys_net_up = false
-    text sys_host = "This machine"
-    text sys_cpu_name = ""
-    text sys_kernel = ""
-    text sys_uptime = ""
-    text sys_load = ""
-    text sys_cpu_txt = "—"
-    text sys_cpu_meta = ""
-    text sys_threads = ""
-    text sys_mem_pct = "—"
-    text sys_mem_total = ""
-    text sys_mem_used = ""
-    text sys_mem_cache = ""
-    text sys_mem_free = ""
-    text sys_swap_txt = ""
-    text sys_gpu_name = ""
-    text sys_gpu_txt = "—"
-    text sys_gpu_vram = ""
-    text sys_gpu_power = "—"
-    text sys_gpu_temp = "—"
-    text sys_gpu_fan = "—"
-    text sys_gpu_clock = "—"
-    text sys_iface = ""
-    text sys_ip = ""
-    text sys_rx_txt = ""
-    text sys_tx_txt = ""
-    text sys_rx_total = ""
-    text sys_tx_total = ""
-    text sys_rx_spark = ""
-    text sys_tx_spark = ""
-    text sys_rx_hist = ""
-    text sys_tx_hist = ""
-    text sys_gpu_hist = ""
-    text sys_cpu_hist = ""
-    text sys_dr_txt = ""
-    text sys_dw_speed = ""
-    text sys_fans = ""
-    model sys_cores max 24 { pct: number }
-    model sys_hist max 60 { cpu: number; mem: number; gpu: number; rx: number; tx: number; dr: number; dw: number }
-    model sys_mounts max 4 { name: text; info: text; pct: number }
-    model sys_temps max 8 { label: text; f: number; heat: number; txt: text }
-    model sys_procs max 6 { name: text; cpu: number; cpu_txt: text; mem: number; mem_txt: text }
-
     //  Reference slider: a calm double-outline pill, the level pencilled in
     //  tight columns, and a clean ring knob.  x0/y is the left end and the
     //  centre line; the caller keeps ownership of the hit zone.
@@ -154,114 +93,65 @@ part CenterPanel {
             text r.name { at: 44, cy; anchor: left center; size: 12; weight: 600; color: ink; width: 174; lines: 1; family: "Space Grotesk" }
             text r.sub { at: 44, ty + 33; anchor: left center; size: 9; color: faint; width: 174; lines: 1; show: r.has_sub; family: "Space Grotesk" }
             text r.status { at: 264, cy; anchor: right center; size: 8; weight: 700; color: faint; family: "Space Grotesk" }
-            zone box tray_hit { from: 0, ty; size: 268, 48; corner: 12; cursor: pointer; label: r.name }
+            zone box tray_hit { from: 0, ty; size: 268, 48; corner: 12; cursor: pointer; role: item; selected: open > 0.5 and sel == r.index; label: r.name }
             on press tray_hit { emit ui_sound; emit activate(r.index) }
             on hover tray_hit for 140ms { emit menu(r.index) }
             on press right tray_hit { emit ui_sound; emit menu(r.index) }
         }
     }
 
-    text ct_media_len = ""
-    fact ct_has_track = false
-
-    //  Bluetooth: the radio and how many devices are connected.
-    fact bt_present = false
-    fact bt_on = false
-    fact bt_count: number = 0
-    text bt_sub = "No adapter"
-
-    //  Audio outputs: the list is watched from the service; the picker swaps
-    //  the default sink by id without touching the volume controls.
-    fact audio_pick_open = false
-    text audio_out_name = "Default sink"
-    model audio_outputs max 8 { name: text; current: bool }
-
-    //  StatusNotifier items, as the tray reports them.
-    fact tray_count: number = 0
-    model tray_items max 32 { icon: image 24, 24; has_icon: bool; name: text; sub: text; status: text; has_sub: bool }
-    fact tray_menu_open = false
-    fact tray_menu_row: number = -1
-    fact tray_menu_sel: number = -1
-    fact tray_menu_count: number = 0
-    model tray_menu max 12 { label: text; enabled: bool; separator: bool; checked: bool; sub: bool }
-    fact tray_submenu_open = false
-    fact tray_submenu_count: number = 0
-    model tray_submenu max 12 { label: text; enabled: bool; separator: bool; checked: bool; sub: bool }
-
-    //  The calendar grid is rebuilt by the logic when the month or the day
-    //  changes; 42 cells cover every month.
-    text ct_header_date = ""
-    text ct_month = ""
-    text ct_month_sub = ""
-    text ct_weekday = ""
-    text ct_weeknum = ""
-    text ct_today_day = ""
-    text ct_today_month = ""
-    text ct_today_year = ""
-    text ct_countdown_title = "本月倒计时"
-    fact center_cal_hover = -1
-    model ct_days max 42 { day: number; cur: bool; today: bool; label: text; lunar: text; hover: text; term: text; festival: text; holiday: text; off: bool; work: bool; anniv: text; anniv_count: number }
-    model ct_countdown max 2 { title: text; date: text; when: text; days: number }
-
-    //  Weather for the Overview card; the city lives in settings.
-    fact wx_ready = false
-    fact wx_configured = false
-    text wx_city = ""
-    text wx_desc = ""
-    text wx_icon = "·"
-    text wx_temp = "--"
-    text wx_feels = ""
-    text wx_hi = ""
-    text wx_lo = ""
-    text wx_humidity = ""
-    text wx_wind = ""
-    text wx_updated = ""
-    text wx_status = ""
-    model wx_hourly max 6 { label: text; temp: text; icon: text; night: bool }
-    model wx_daily max 4 { day: text; icon: text; hi: text; lo: text }
-
-    event center_toggle ->
-    event center_close ->
-    event center_scroll ->
-    event center_audio_set ->
-    event center_audio_mute ->
-    event center_audio_default ->
-    event center_input_set ->
-    event center_input_mute ->
-    event center_media ->
-    event center_quick ->
-    event center_cal_step ->
-    event center_cal_today ->
-    event center_key_digit ->
-    event center_key_tab ->
-    event center_key_escape ->
-    event center_key_blur ->
-    event center_tray_activate ->
-    event center_tray_menu ->
-    event center_tray_menu_hover ->
-    event center_tray_menu_click ->
-    event center_tray_submenu_click ->
-    event center_tray_menu_close ->
-    event center_power_ask ->
-    event center_power_cancel ->
-    event center_power_do ->
-    event ipc_open_center ->
-
-    prop ct_np = 0 ~notch_drop
-    prop ct_sag = 0 ~notch_hang
-    prop ct_wobble = 0 ~notch_splash
-    follow ct_np = center_open
-    on change ct_np > 0.97 while ct_np > 0.97 and not motion.reduced {
-        impulse ct_sag 220
-        impulse ct_wobble -260
+    component CtTrayMenuRow(r: record, sel: number, hover_ev: event, click_ev: event) {
+        group {
+            size: 388, 30
+            box {
+                from: 0, 0; size: 388, 30; corner: 8
+                color: if(sel == r.index, ct.primary, ink)
+                opacity: if(sel == r.index, 11%, 2.5%) + 5% * hit.hover
+                show: not r.separator
+            }
+            line { from: 16, 15; to: 368, 15; width: 1; color: ink; opacity: 10%; show: r.separator }
+            text r.label { at: 18 + 18 * if(r.checked, 1, 0), 15; anchor: left center; size: 12; weight: 600; color: if(r.enabled, ink, faint); width: 300; lines: 1; show: not r.separator; family: "Space Grotesk" }
+            text "✓" { at: 10, 15; anchor: center; size: 10; color: ct.primary; show: r.checked and not r.separator; family: "Space Grotesk" }
+            text "›" { at: 374, 15; anchor: center; size: 13; color: ct.secondary; show: r.sub and not r.separator; family: "Space Grotesk" }
+            zone box hit { from: 0, 0; size: 388, 30; corner: 8; cursor: pointer; role: item; selected: sel == r.index; label: r.label; active: r.enabled and not r.separator }
+            on enter hit { emit hover_ev(r.index) }
+            on press hit { emit ui_sound; emit click_ev(r.index) }
+        }
     }
+
+    component CtTraySubmenuRow(r: record, click_ev: event) {
+        group {
+            size: 264, 30
+            box {
+                from: 0, 0; size: 264, 30; corner: 8
+                color: ink; opacity: 2.5% + 6% * hit.hover
+                show: not r.separator
+            }
+            line { from: 16, 15; to: 248, 15; width: 1; color: ink; opacity: 10%; show: r.separator }
+            text r.label { at: 18 + 16 * if(r.checked, 1, 0), 15; anchor: left center; size: 11.5; weight: 600; color: if(r.enabled, ink, faint); width: 208; lines: 1; show: not r.separator; family: "Space Grotesk" }
+            text "✓" { at: 8, 15; anchor: center; size: 10; color: ct.primary; show: r.checked and not r.separator; family: "Space Grotesk" }
+            zone box hit { from: 0, 0; size: 264, 30; corner: 8; cursor: pointer; role: item; label: r.label; active: r.enabled and not r.separator }
+            on press hit { emit ui_sound; emit click_ev(r.index) }
+        }
+    }
+
     prop ct_tab = 0 ~quick
     follow ct_tab = center_tab
     prop ct_page = 1 ~quick
-    prop ct_scroll = 0 ~quick
-    follow ct_scroll = center_sys_scroll
+    prop ct_modal_p = 0 ~180ms
+    follow ct_modal_p = center_power_confirm >= 0 or (audio_pick_open and center_tab == 4)
+    prop ct_power_p = 0 ~180ms
+    follow ct_power_p = center_power_confirm >= 0
+    prop ct_q_knob.0 = 0 ~quick
+    follow ct_q_knob.0 = music_frame_on
+    prop ct_q_knob.1 = 0 ~quick
+    follow ct_q_knob.1 = glass_on
+    prop ct_q_knob.2 = 0 ~quick
+    follow ct_q_knob.2 = bt_on
+    prop ct_q_knob.3 = 0 ~quick
+    follow ct_q_knob.3 = wall_auto
     prop ct_time = 0
-    spin ct_time by if(center_open, 1, 0)
+    spin ct_time by if(center_open and not motion.reduced and ((med.playing and (center_tab == 0 or center_tab == 3)) or (music_on and center_tab == 4)), 1, 0)
     on change center_tab {
         ct_page: 0 ~10ms
         ct_page: 1 ~260ms after 10ms
@@ -271,42 +161,10 @@ part CenterPanel {
         ct_page: 1 ~260ms after 10ms
     }
 
-    component CenterPanelContent() {
-        zone box ct_shield { from: 0, 0; size: 1120, 720; active: center_open; label: "Centre panel" }
-        on press ct_shield { center_open = center_open }
-            //  The body's lens samples the backdrop as one rectangle.  Without
-            //  this rounded clip that sample leaks into the four corners and
-            //  shows as a square dark backing under the 30 px border.
-            clip inset 0 box { from: 0, 0; size: 1120, 720; corner: 30 }
-            PanelBackdrop(0, 0, 1120, 720, 30)
-            body {
-                show: not notch_mode
-                color: panel_bg
-                glass: if(glass_on, 100%, 0%)
-                opacity: 1% * max(glass_tint, 84)
-                //  The centre panel follows the shell's glass switches.  It is
-                //  the largest panel, so it is also the one to turn Glass off
-                //  for if composition cost matters more than the refraction.
-                lens: glass_on and glass_bend
-                frost: glass_frost / 100
-                refraction: glass_refr
-                dispersion: glass_disp
-                dome: glass_dome
-                milk: glass_milk
-                smoke: glass_smoke
-                vivid: glass_vivid
-                mirror: glass_mirror
-                highlight: glass_highlight
-                ripple: glass_ripple
-                border: 1.5 * glass_border / 100, ink
-                shine: pointer
-                shadow: 0, 10, 40, 32%, glass_shadow
-                box { from: 0, 0; size: 1120, 720; corner: 30 }
-            }
-            //  Side and bottom edge only — top merges with the frame.
-            line { from: 28, 720; to: 1092, 720; width: 1; color: ink; opacity: 9%; show: not notch_mode }
-            line { from: 0, 30; to: 0, 720; width: 1; color: ink; opacity: 9%; show: not notch_mode }
-            line { from: 1120, 30; to: 1120, 720; width: 1; color: ink; opacity: 9%; show: not notch_mode }
+    zone box ct_shield { from: 0, 0; size: 1120, 720; active: center_open; label: "Centre panel" }
+    on press ct_shield { center_open = center_open }
+    clip inset 0 box { from: 0, 0; size: 1120, 720; corner: 30 }
+    PanelBackdrop(0, 0, 1120, 720, 30)
 
             //  ── header ────────────────────────────────────────────────────
             row ct_clock {
@@ -336,7 +194,7 @@ part CenterPanel {
             text "/ 07" { at: 1020, 37; anchor: left center; size: 10; color: faint; opacity: 60%; family: "Space Grotesk" }
             line { from: 1070, 28; to: 1082, 40; width: 1.5; color: ink; opacity: 60% + 40% * ct_close.hover }
             line { from: 1082, 28; to: 1070, 40; width: 1.5; color: ink; opacity: 60% + 40% * ct_close.hover }
-            zone box ct_close { from: 1062, 20; size: 30, 30; corner: 15; cursor: pointer; label: "Close centre panel" }
+            zone box ct_close { from: 1062, 20; size: 30, 30; corner: 15; cursor: pointer; role: button; label: "Close centre panel" }
             on press ct_close { emit ui_sound; emit center_close }
 
             //  The active tab is one moving pill; its x follows ct_tab.
@@ -346,8 +204,8 @@ part CenterPanel {
             repeat t in 0..7 {
                 text pick(t, "OVERVIEW", "SYSTEM", "TRAY", "MEDIA", "AUDIO", "CALENDAR", "ACTIONS") { at: ct.tab_x + t * ct.tab_w + ct.tab_w / 2, 46; anchor: center; size: 10.5; weight: 700; color: if(center_tab == t, ct.primary, faint); family: "Space Grotesk" }
                 text number(t + 1, 0, "") { at: ct.tab_x + t * ct.tab_w + ct.tab_w - 7, 29; anchor: right top; size: 9; weight: 700; color: ct.primary; opacity: if(center_tab == t, 95%, 65%); family: "Space Grotesk" }
-                zone box ct_tab_hit.$t { from: ct.tab_x + t * ct.tab_w, 26; size: ct.tab_w, 38; corner: 19; cursor: pointer; label: pick(t, "Overview", "System", "Tray", "Media", "Audio", "Calendar", "Actions") }
-                on press ct_tab_hit.$t { emit ui_sound; tray_menu_open = false; audio_pick_open = false; center_power_confirm = -1; center_tab = t; center_sys_scroll = 0 }
+                zone box ct_tab_hit.$t { from: ct.tab_x + t * ct.tab_w, 26; size: ct.tab_w, 38; corner: 19; cursor: pointer; role: tab; selected: center_tab == t; label: pick(t, "Overview", "System", "Tray", "Media", "Audio", "Calendar", "Actions") }
+                on press ct_tab_hit.$t { ripple ct_tab_hit.$t; emit ui_sound; tray_menu_open = false; audio_pick_open = false; center_power_confirm = -1; center_tab = t; center_sys_scroll = 0 }
             }
             line { from: 28, 94; to: 1092, 94; width: 1; color: ink; opacity: 10% }
 
@@ -355,9 +213,9 @@ part CenterPanel {
             group {
                 opacity: ct_page
                 move: 0, 8 * (1 - ct_page)
-                //  0.8 group effect: the page falls out of focus while a
+                //  0.8 group effect: the page falls out of focus smoothly while a
                 //  modal dialog is up; at 0 it costs no layer.
-                blur: if(center_power_confirm >= 0 or audio_pick_open, 3, 0)
+                blur: 3 * ct_modal_p
 
                 //  ── 01 OVERVIEW ─────────────────────────────────────────────
                 group {
@@ -378,7 +236,7 @@ part CenterPanel {
                         shader ct_water {
                             at: qx, 140
                             size: 250, 122
-                            values: lv, q * 0.19, ct_ov_stat.$q.hover, 0, 0, 0, 0, 0
+                            values: lv, q * 0.19, ct_ov_stat.$q.hover, if(motion.reduced, 0, 1), 0, 0, 0, 0
                             colors: fluid, fluid
                         }
                         box { from: qx, 140; size: 250, 122; corner: 16; stroke: 1; color: ink; opacity: 7% + 6% * ct_ov_stat.$q.hover }
@@ -468,7 +326,7 @@ part CenterPanel {
                     shader ct_netfx {
                         at: 872, 312
                         size: 182, 80
-                        values: if(sys_net_up, 1, 0), 0, 0, 0, 0, 0, 0, 0
+                        values: if(sys_net_up, 1, 0), if(motion.reduced, 0, 1), 0, 0, 0, 0, 0, 0
                         colors: ct.primary, ct.secondary
                     }
                     repeat g in 0..3 {
@@ -571,200 +429,195 @@ part CenterPanel {
                     ellipse { at: 988, 119; radius: 3; color: if(sys_ready, ct.primary, faint); opacity: 85% }
                     text pick(sys_ready, "WAITING FOR SAMPLER", "LIVE · 1 S") { at: 998, 119; anchor: left center; size: 10; weight: 700; color: faint; family: "Space Grotesk" }
 
-                    clip box { from: 36, 152; size: 1040, 518 }
-                    zone box ct_sys_wheel { from: 36, 152; size: 1040, 518; active: center_open; label: "System monitor" }
-                    on scroll ct_sys_wheel { emit center_scroll(wheel * 44) }
-
-                    group {
-                        move: 0, -center_sys_scroll
-
-                        //  ── host strip ─────────────────────────────────────
-                        box { from: 36, 152; size: 508, 90; corner: 14; color: ink; opacity: 4% }
-                        box { from: 36, 152; size: 508, 90; corner: 14; stroke: 1; color: ink; opacity: 7% }
-                        text "HOST" { at: 52, 170; anchor: left center; size: 9; weight: 700; color: ct.secondary; family: "Space Grotesk" }
-                        text sys_host { at: 52, 190; anchor: left center; size: 18; weight: 700; color: ink; width: 480; lines: 1; family: "Space Grotesk"; selectable: true }
-                        text "UPTIME" { at: 52, 220; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
-                        text sys_uptime { at: 100, 220; anchor: left center; size: 12; weight: 600; color: ink; family: "Space Grotesk" }
-                        text "LOAD" { at: 190, 220; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
-                        text sys_load { at: 228, 220; anchor: left center; size: 12; weight: 600; color: ink; family: "Space Grotesk" }
-                        text "KERNEL" { at: 350, 220; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
-                        text sys_kernel { at: 400, 220; anchor: left center; size: 12; weight: 600; color: ink; width: 128; lines: 1; family: "Space Grotesk"; selectable: true }
-
-                        //  ── processor ──────────────────────────────────────
-                        box { from: 36, 254; size: 508, 278; corner: 14; color: ink; opacity: 4% }
-                        box { from: 36, 254; size: 508, 278; corner: 14; stroke: 1; color: ink; opacity: 7% }
-                        text "PROCESSOR" { at: 52, 274; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
-                        text sys_cpu_meta { at: 528, 274; anchor: right center; size: 11; color: faint; width: 260; lines: 1; family: "Space Grotesk" }
-                        arc { at: 110, 340; radius: 42; span: 360deg; width: 8; color: ink; opacity: 9% }
-                        CtGlowArc(110, 340, 42, 360 * max(0.004, sys_cpu) * 1deg, 180 * sys_cpu * 1deg, 8, mix(ct.primary, alert, clamp((sys_cpu - 0.8) / 0.2, 0, 1)))
-                        text sys_cpu_txt { at: 110, 334; anchor: center; size: 27; weight: 700; color: ink; family: "Space Grotesk" }
-                        text "CPU" { at: 110, 354; anchor: center; size: 10; weight: 700; color: faint; family: "Space Grotesk" }
-                        text sys_threads { at: 110, 404; anchor: center; size: 10; color: faint; family: "Space Grotesk" }
-                        text sys_cpu_hist { at: 164, 372; anchor: left center; size: 10; color: mix(ct.primary, alert, clamp((sys_cpu - 0.8) / 0.2, 0, 1)); opacity: 90%; family: "Noto Sans Mono" }
-                        text "LAST MINUTE" { at: 166, 414; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
-                        text "60s" { at: 524, 414; anchor: right center; size: 9; color: faint; opacity: 70%; family: "Space Grotesk" }
-                        text "CORES" { at: 166, 430; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
-                        repeat c in 0..16 {
-                            let cc = mod(c, 8)
-                            let cr = floor(c / 8)
-                            let cxx = 166 + cc * 46
-                            let cyy = 452 + cr * 34
-                            let ch = max(2, 24 * clamp(sys_cores.$c.pct, 0, 1))
-                            box { from: cxx - 19, cyy - 12; size: 38, 24; corner: 6; color: ink; opacity: 6%; show: c < sys_cores.count }
-                            box { from: cxx - 19, cyy + 12 - ch; size: 38, ch; corner: 6; color: mix(ct.secondary, alert, clamp((sys_cores.$c.pct - 0.75) / 0.25, 0, 1)); opacity: 74%; show: c < sys_cores.count }
-                            text number(sys_cores.$c.pct * 100, 0, "") { at: cxx, cyy; anchor: center; size: 8; weight: 600; color: ink; opacity: 88%; show: c < sys_cores.count; family: "Space Grotesk" }
-                        }
-
-                        //  ── memory ─────────────────────────────────────────
-                        box { from: 36, 544; size: 508, 214; corner: 14; color: ink; opacity: 4% }
-                        box { from: 36, 544; size: 508, 214; corner: 14; stroke: 1; color: ink; opacity: 7% }
-                        text "MEMORY" { at: 52, 564; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
-                        text sys_mem_total { at: 528, 564; anchor: right center; size: 11; color: faint; family: "Space Grotesk" }
-                        arc { at: 110, 632; radius: 38; span: 360deg; width: 9; color: ink; opacity: 9% }
-                        CtGlowArc(110, 632, 38, 360 * max(0.004, sys_mem) * 1deg, -90deg, 9, mix(ct.primary, alert, clamp((sys_mem - 0.85) / 0.15, 0, 1)))
-                        text sys_mem_pct { at: 110, 626; anchor: center; size: 25; weight: 700; color: ink; family: "Space Grotesk" }
-                        text "IN USE" { at: 110, 646; anchor: center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
-                        ellipse { at: 172, 584; radius: 3; color: ct.primary }
-                        text "Used" { at: 184, 584; anchor: left center; size: 12; color: ink; family: "Space Grotesk" }
-                        text sys_mem_used { at: 528, 584; anchor: right center; size: 12; weight: 600; color: ink; family: "Space Grotesk" }
-                        ellipse { at: 172, 606; radius: 3; color: ct.primary; opacity: 42% }
-                        text "Cache" { at: 184, 606; anchor: left center; size: 12; color: ink; family: "Space Grotesk" }
-                        text sys_mem_cache { at: 528, 606; anchor: right center; size: 12; weight: 600; color: ink; family: "Space Grotesk" }
-                        ellipse { at: 172, 628; radius: 3; color: ink; opacity: 22% }
-                        text "Free" { at: 184, 628; anchor: left center; size: 12; color: ink; family: "Space Grotesk" }
-                        text sys_mem_free { at: 528, 628; anchor: right center; size: 12; weight: 600; color: ink; family: "Space Grotesk" }
-                        text "SWAP" { at: 172, 654; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
-                        text sys_swap_txt { at: 528, 654; anchor: right center; size: 11; color: faint; family: "Space Grotesk" }
-                        box { from: 172, 666; size: 356, 5; corner: 2.5; color: ink; opacity: 8% }
-                        box { from: 172, 666; size: max(3, 356 * sys_swap), 5; corner: 2.5; color: ct.primary; opacity: 80% }
-                        repeat i in 0..60 {
-                            let hv = clamp(pick(i, sys_hist.$i.mem, 0), 0, 1)
-                            box { at: 172 + i * 5.9, 738 - 24 * hv; size: 3.4, 24 * hv; corner: 1.2; color: ct.primary; opacity: 58%; show: i < sys_hist_count }
-                        }
-                        text "1 MIN" { at: 172, 748; anchor: left center; size: 8; color: faint; family: "Space Grotesk" }
-
-                        //  ── temperatures ────────────────────────────────────
-                        box { from: 36, 770; size: 508, 180; corner: 14; color: ink; opacity: 4% }
-                        box { from: 36, 770; size: 508, 180; corner: 14; stroke: 1; color: ink; opacity: 7% }
-                        text "TEMPERATURES" { at: 52, 790; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
-                        repeat t in 0..6 {
-                            let ty = 814 + t * 22
-                            text sys_temps.$t.label { at: 52, ty; anchor: left center; size: 11; weight: 600; color: ink; width: 170; lines: 1; show: t < sys_temps.count; family: "Space Grotesk" }
-                            box { from: 126, ty - 2.5; size: 220, 5; corner: 2.5; color: ink; opacity: 8%; show: t < sys_temps.count }
-                            box { from: 126, ty - 2.5; size: max(5, 220 * sys_temps.$t.f), 5; corner: 2.5; color: mix(ct.primary, alert, sys_temps.$t.heat); show: t < sys_temps.count }
-                            text sys_temps.$t.txt { at: 520, ty; anchor: right center; size: 10; weight: 700; color: ink; show: t < sys_temps.count; family: "Space Grotesk" }
-                        }
-                        text "No temperature sensors." { at: 52, 840; anchor: left center; size: 11; color: faint; show: sys_temps.count < 1; family: "Space Grotesk" }
-                        text sys_fans { at: 52, 932; anchor: left center; size: 9; color: faint; width: 480; lines: 1; family: "Space Grotesk" }
-
-                        //  ── graphics ────────────────────────────────────────
-                        box { from: 556, 152; size: 524, 228; corner: 14; color: ink; opacity: 4% }
-                        box { from: 556, 152; size: 524, 228; corner: 14; stroke: 1; color: ink; opacity: 7% }
-                        text "GRAPHICS" { at: 572, 172; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
-                        text sys_gpu_name { at: 1064, 172; anchor: right center; size: 10; color: faint; width: 300; lines: 1; family: "Space Grotesk"; selectable: true }
+                    column ct_sys_scroll_col {
+                        at: 36, 152
+                        view: 1044, 518
+                        step: 56
+                        content: 1012
                         group {
-                            show: sys_gpu_on
-                            arc { at: 628, 248; radius: 40; span: 360deg; width: 7; color: ink; opacity: 9% }
-                            CtGlowArc(628, 248, 40, 360 * max(0.004, sys_gpu) * 1deg, 180 * sys_gpu * 1deg, 7, mix(ct.primary, alert, clamp((sys_gpu - 0.8) / 0.2, 0, 1)))
-                            arc { at: 628, 248; radius: 27; span: 360deg; width: 5; color: ink; opacity: 8% }
-                            CtGlowArc(628, 248, 27, 360 * max(0.004, sys_vram) * 1deg, 180 * sys_vram * 1deg, 5, ct.secondary)
-                            text sys_gpu_txt { at: 628, 244; anchor: center; size: 22; weight: 700; color: ink; family: "Space Grotesk" }
-                            text "GPU" { at: 628, 260; anchor: center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
+                            size: 1044, 1012
+                            move: -36, -152
+
+                            //  ── host strip ─────────────────────────────────────
+                            box { from: 36, 152; size: 508, 90; corner: 14; color: ink; opacity: 4% }
+                            box { from: 36, 152; size: 508, 90; corner: 14; stroke: 1; color: ink; opacity: 7% }
+                            text "HOST" { at: 52, 170; anchor: left center; size: 9; weight: 700; color: ct.secondary; family: "Space Grotesk" }
+                            text sys_host { at: 52, 190; anchor: left center; size: 18; weight: 700; color: ink; width: 480; lines: 1; family: "Space Grotesk"; selectable: true }
+                            text "UPTIME" { at: 52, 220; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
+                            text sys_uptime { at: 100, 220; anchor: left center; size: 12; weight: 600; color: ink; family: "Space Grotesk" }
+                            text "LOAD" { at: 190, 220; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
+                            text sys_load { at: 228, 220; anchor: left center; size: 12; weight: 600; color: ink; family: "Space Grotesk" }
+                            text "KERNEL" { at: 350, 220; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
+                            text sys_kernel { at: 400, 220; anchor: left center; size: 12; weight: 600; color: ink; width: 128; lines: 1; family: "Space Grotesk"; selectable: true }
+
+                            //  ── processor ──────────────────────────────────────
+                            box { from: 36, 254; size: 508, 278; corner: 14; color: ink; opacity: 4% }
+                            box { from: 36, 254; size: 508, 278; corner: 14; stroke: 1; color: ink; opacity: 7% }
+                            text "PROCESSOR" { at: 52, 274; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
+                            text sys_cpu_meta { at: 528, 274; anchor: right center; size: 11; color: faint; width: 260; lines: 1; family: "Space Grotesk" }
+                            arc { at: 110, 340; radius: 42; span: 360deg; width: 8; color: ink; opacity: 9% }
+                            CtGlowArc(110, 340, 42, 360 * max(0.004, sys_cpu) * 1deg, 180 * sys_cpu * 1deg, 8, mix(ct.primary, alert, clamp((sys_cpu - 0.8) / 0.2, 0, 1)))
+                            text sys_cpu_txt { at: 110, 334; anchor: center; size: 27; weight: 700; color: ink; family: "Space Grotesk" }
+                            text "CPU" { at: 110, 354; anchor: center; size: 10; weight: 700; color: faint; family: "Space Grotesk" }
+                            text sys_threads { at: 110, 404; anchor: center; size: 10; color: faint; family: "Space Grotesk" }
+                            text sys_cpu_hist { at: 164, 372; anchor: left center; size: 10; color: mix(ct.primary, alert, clamp((sys_cpu - 0.8) / 0.2, 0, 1)); opacity: 90%; family: "Noto Sans Mono" }
+                            text "LAST MINUTE" { at: 166, 414; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
+                            text "60s" { at: 524, 414; anchor: right center; size: 9; color: faint; opacity: 70%; family: "Space Grotesk" }
+                            text "CORES" { at: 166, 430; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
+                            let ct.core_3row = sys_cores.count > 16
+                            let ct.core_rh = if(ct.core_3row, 26, 34)
+                            let ct.core_bh = if(ct.core_3row, 20, 24)
+                            let ct.core_y0 = if(ct.core_3row, 448, 454)
+                            repeat c in 0..24 {
+                                let cc = mod(c, 8)
+                                let cr = floor(c / 8)
+                                let cxx = 185 + cc * 44
+                                let cyy = ct.core_y0 + cr * ct.core_rh
+                                let ch = max(2, ct.core_bh * clamp(sys_cores.$c.pct, 0, 1))
+                                box { from: cxx - 18, cyy - ct.core_bh / 2; size: 36, ct.core_bh; corner: 5; color: ink; opacity: 6%; show: c < sys_cores.count }
+                                box { from: cxx - 18, cyy + ct.core_bh / 2 - ch; size: 36, ch; corner: 5; color: mix(ct.secondary, alert, clamp((sys_cores.$c.pct - 0.75) / 0.25, 0, 1)); opacity: 74%; show: c < sys_cores.count }
+                                text number(sys_cores.$c.pct * 100, 0, "") { at: cxx, cyy; anchor: center; size: 8; weight: 600; color: ink; opacity: 88%; show: c < sys_cores.count; family: "Space Grotesk" }
+                            }
+
+                            //  ── memory ─────────────────────────────────────────
+                            box { from: 36, 544; size: 508, 214; corner: 14; color: ink; opacity: 4% }
+                            box { from: 36, 544; size: 508, 214; corner: 14; stroke: 1; color: ink; opacity: 7% }
+                            text "MEMORY" { at: 52, 564; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
+                            text sys_mem_total { at: 528, 564; anchor: right center; size: 11; color: faint; family: "Space Grotesk" }
+                            arc { at: 110, 632; radius: 38; span: 360deg; width: 9; color: ink; opacity: 9% }
+                            CtGlowArc(110, 632, 38, 360 * max(0.004, sys_mem) * 1deg, 180 * max(0.004, sys_mem) * 1deg, 9, mix(ct.primary, alert, clamp((sys_mem - 0.85) / 0.15, 0, 1)))
+                            text sys_mem_pct { at: 110, 626; anchor: center; size: 25; weight: 700; color: ink; family: "Space Grotesk" }
+                            text "IN USE" { at: 110, 646; anchor: center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
+                            ellipse { at: 172, 584; radius: 3; color: ct.primary }
+                            text "Used" { at: 184, 584; anchor: left center; size: 12; color: ink; family: "Space Grotesk" }
+                            text sys_mem_used { at: 528, 584; anchor: right center; size: 12; weight: 600; color: ink; family: "Space Grotesk" }
+                            ellipse { at: 172, 606; radius: 3; color: ct.primary; opacity: 42% }
+                            text "Cache" { at: 184, 606; anchor: left center; size: 12; color: ink; family: "Space Grotesk" }
+                            text sys_mem_cache { at: 528, 606; anchor: right center; size: 12; weight: 600; color: ink; family: "Space Grotesk" }
+                            ellipse { at: 172, 628; radius: 3; color: ink; opacity: 22% }
+                            text "Free" { at: 184, 628; anchor: left center; size: 12; color: ink; family: "Space Grotesk" }
+                            text sys_mem_free { at: 528, 628; anchor: right center; size: 12; weight: 600; color: ink; family: "Space Grotesk" }
+                            text "SWAP" { at: 172, 654; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
+                            text sys_swap_txt { at: 528, 654; anchor: right center; size: 11; color: faint; family: "Space Grotesk" }
+                            box { from: 172, 666; size: 356, 5; corner: 2.5; color: ink; opacity: 8% }
+                            box { from: 172, 666; size: max(3, 356 * sys_swap), 5; corner: 2.5; color: ct.primary; opacity: 80% }
+                            text "LAST MINUTE" { at: 172, 696; anchor: left center; size: 8.5; weight: 700; color: faint; family: "Space Grotesk" }
+                            text "60s" { at: 528, 696; anchor: right center; size: 8.5; color: faint; opacity: 70%; family: "Space Grotesk" }
+                            text sys_mem_hist { at: 172, 722; anchor: left center; size: 10; color: mix(ct.primary, alert, clamp((sys_mem - 0.85) / 0.15, 0, 1)); opacity: 88%; family: "Noto Sans Mono" }
+
+                            //  ── temperatures ────────────────────────────────────
+                            box { from: 36, 770; size: 508, 180; corner: 14; color: ink; opacity: 4% }
+                            box { from: 36, 770; size: 508, 180; corner: 14; stroke: 1; color: ink; opacity: 7% }
+                            text "TEMPERATURES" { at: 52, 790; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
+                            repeat t in 0..6 {
+                                let ty = 814 + t * 22
+                                text sys_temps.$t.label { at: 52, ty; anchor: left center; size: 11; weight: 600; color: ink; width: 138; lines: 1; show: t < sys_temps.count; family: "Space Grotesk" }
+                                box { from: 202, ty - 2.5; size: 266, 5; corner: 2.5; color: ink; opacity: 8%; show: t < sys_temps.count }
+                                box { from: 202, ty - 2.5; size: max(5, 266 * sys_temps.$t.f), 5; corner: 2.5; color: mix(ct.primary, alert, sys_temps.$t.heat); show: t < sys_temps.count }
+                                text sys_temps.$t.txt { at: 524, ty; anchor: right center; size: 10; weight: 700; color: ink; show: t < sys_temps.count; family: "Space Grotesk" }
+                            }
+                            text "No temperature sensors." { at: 52, 840; anchor: left center; size: 11; color: faint; show: sys_temps.count < 1; family: "Space Grotesk" }
+                            text sys_fans { at: 52, 932; anchor: left center; size: 9; color: faint; width: 480; lines: 1; family: "Space Grotesk" }
+
+                            //  ── graphics ────────────────────────────────────────
+                            box { from: 556, 152; size: 524, 228; corner: 14; color: ink; opacity: 4% }
+                            box { from: 556, 152; size: 524, 228; corner: 14; stroke: 1; color: ink; opacity: 7% }
+                            text "GRAPHICS" { at: 572, 172; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
+                            text sys_gpu_name { at: 1064, 172; anchor: right center; size: 10; color: faint; width: 300; lines: 1; family: "Space Grotesk"; selectable: true }
+                            group {
+                                show: sys_gpu_on
+                                arc { at: 628, 248; radius: 40; span: 360deg; width: 7; color: ink; opacity: 9% }
+                                CtGlowArc(628, 248, 40, 360 * max(0.004, sys_gpu) * 1deg, 180 * sys_gpu * 1deg, 7, mix(ct.primary, alert, clamp((sys_gpu - 0.8) / 0.2, 0, 1)))
+                                arc { at: 628, 248; radius: 27; span: 360deg; width: 5; color: ink; opacity: 8% }
+                                CtGlowArc(628, 248, 27, 360 * max(0.004, sys_vram) * 1deg, 180 * sys_vram * 1deg, 5, ct.secondary)
+                                text sys_gpu_txt { at: 628, 244; anchor: center; size: 22; weight: 700; color: ink; family: "Space Grotesk" }
+                                text "GPU" { at: 628, 260; anchor: center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
+                            }
+                            text "No GPU sensors found" { at: 628, 248; anchor: center; size: 12; color: faint; show: not sys_gpu_on; family: "Space Grotesk" }
+                            text "VRAM" { at: 700, 194; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
+                            text sys_gpu_vram { at: 1064, 194; anchor: right center; size: 12; weight: 600; color: ink; family: "Space Grotesk" }
+                            text "POWER" { at: 700, 230; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
+                            text sys_gpu_power { at: 1064, 230; anchor: right center; size: 12; weight: 600; color: ink; family: "Space Grotesk" }
+                            text "TEMP" { at: 700, 266; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
+                            text sys_gpu_temp { at: 770, 266; anchor: left center; size: 13; weight: 700; color: ink; family: "Space Grotesk" }
+                            text "FAN" { at: 850, 266; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
+                            text sys_gpu_fan { at: 892, 266; anchor: left center; size: 13; weight: 700; color: ink; family: "Space Grotesk" }
+                            text "CLOCK" { at: 960, 266; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
+                            text sys_gpu_clock { at: 1006, 266; anchor: left center; size: 11; weight: 700; color: ink; family: "Space Grotesk" }
+                            text "LAST MINUTE" { at: 700, 312; anchor: left center; size: 8.5; weight: 700; color: faint; family: "Space Grotesk" }
+                            text "60s" { at: 1064, 312; anchor: right center; size: 8.5; color: faint; opacity: 70%; family: "Space Grotesk" }
+                            text sys_gpu_hist { at: 700, 336; anchor: left center; size: 10; color: mix(ct.primary, alert, clamp((sys_gpu - 0.8) / 0.2, 0, 1)); opacity: 88%; family: "Noto Sans Mono" }
+
+                            //  ── network ─────────────────────────────────────────
+                            box { from: 556, 390; size: 524, 204; corner: 14; color: ink; opacity: 4% }
+                            box { from: 556, 390; size: 524, 204; corner: 14; stroke: 1; color: ink; opacity: 7% }
+                            text "NETWORK" { at: 572, 410; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
+                            text sys_iface { at: 1064, 410; anchor: right center; size: 10; color: faint; family: "Space Grotesk" }
+                            text pick(sys_net_up, "Offline", net.name) { at: 572, 436; anchor: left center; size: 17; weight: 700; color: ink; width: 240; lines: 1; family: "Space Grotesk" }
+                            text sys_ip { at: 572, 456; anchor: left center; size: 10; color: faint; family: "Space Grotesk"; selectable: true }
+                            text "DOWNLOAD" { at: 820, 432; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
+                            text sys_rx_txt { at: 820, 450; anchor: left center; size: 18; weight: 700; color: ct.primary; family: "Space Grotesk" }
+                            text sys_rx_total { at: 820, 466; anchor: left center; size: 9; color: faint; family: "Space Grotesk" }
+                            text "UPLOAD" { at: 970, 432; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
+                            text sys_tx_txt { at: 970, 450; anchor: left center; size: 18; weight: 700; color: ct.secondary; family: "Space Grotesk" }
+                            text sys_tx_total { at: 970, 466; anchor: left center; size: 9; color: faint; family: "Space Grotesk" }
+                            text "LAST MINUTE" { at: 572, 486; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
+                            text "60s" { at: 1024, 486; anchor: right center; size: 9; color: faint; opacity: 70%; family: "Space Grotesk" }
+                            line { from: 572, 497; to: 1024, 497; width: 0.8; color: ink; opacity: 9% }
+                            text "RX" { at: 572, 512; anchor: left center; size: 9; weight: 700; color: ct.primary; opacity: 78%; family: "Space Grotesk" }
+                            text sys_rx_hist { at: 592, 512; anchor: left center; size: 12; color: ct.primary; opacity: 92%; family: "Noto Sans Mono" }
+                            text "TX" { at: 572, 552; anchor: left center; size: 9; weight: 700; color: ct.secondary; opacity: 74%; family: "Space Grotesk" }
+                            text sys_tx_hist { at: 592, 552; anchor: left center; size: 12; color: ct.secondary; opacity: 84%; family: "Noto Sans Mono" }
+
+                            //  ── storage ─────────────────────────────────────────
+                            box { from: 556, 606; size: 524, 190; corner: 14; color: ink; opacity: 4% }
+                            box { from: 556, 606; size: 524, 190; corner: 14; stroke: 1; color: ink; opacity: 7% }
+                            text "STORAGE" { at: 572, 626; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
+                            text sys_dr_txt .. " read" { at: 1064, 626; anchor: right center; size: 9; color: faint; family: "Space Grotesk" }
+                            repeat m in 0..4 {
+                                let my = 652 + m * 32
+                                text sys_mounts.$m.name { at: 572, my; anchor: left center; size: 12; weight: 600; color: ink; width: 108; lines: 1; show: m < sys_mounts.count; family: "Space Grotesk" }
+                                text sys_mounts.$m.info { at: 1064, my; anchor: right center; size: 10; color: faint; width: 152; lines: 1; show: m < sys_mounts.count; family: "Space Grotesk" }
+                                box { from: 692, my - 3; size: 210, 6; corner: 3; color: ink; opacity: 8%; show: m < sys_mounts.count }
+                                box { from: 692, my - 3; size: max(6, 210 * sys_mounts.$m.pct), 6; corner: 3; color: mix(ct.primary, alert, clamp((sys_mounts.$m.pct - 0.8) / 0.2, 0, 1)); show: m < sys_mounts.count }
+                            }
+                            text "No mounted filesystems." { at: 572, 690; anchor: left center; size: 11; color: faint; show: sys_mounts.count < 1; family: "Space Grotesk" }
+
+                            //  ── current disk write ───────────────────────────────
+                            box { from: 556, 806; size: 524, 70; corner: 14; color: ink; opacity: 4% }
+                            box { from: 556, 806; size: 524, 70; corner: 14; stroke: 1; color: ink; opacity: 7% }
+                            box { from: 572, 824; size: 36, 36; corner: 10; color: ct.primary; opacity: 11% }
+                            text "↓" { at: 590, 842; anchor: center; size: 19; weight: 700; color: ct.primary; family: "Noto Sans CJK SC" }
+                            text "DISK WRITE" { at: 620, 827; anchor: left center; size: 9; weight: 700; color: ct.secondary; family: "Space Grotesk" }
+                            text "Current write throughput" { at: 620, 845; anchor: left center; size: 12; color: faint; family: "Space Grotesk" }
+                            text sys_dw_speed { at: 1064, 842; anchor: right center; size: 24; weight: 700; color: ct.primary; family: "Space Grotesk" }
+
+                            //  ── busiest programs ────────────────────────────────
+                            box { from: 36, 966; size: 1044, 186; corner: 14; color: ink; opacity: 4% }
+                            box { from: 36, 966; size: 1044, 186; corner: 14; stroke: 1; color: ink; opacity: 7% }
+                            text "BUSIEST PROGRAMS" { at: 52, 986; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
+                            text "CPU" { at: 360, 986; anchor: left center; size: 9; weight: 700; color: ct.primary; opacity: 72%; family: "Space Grotesk" }
+                            text "MEMORY" { at: 730, 986; anchor: left center; size: 9; weight: 700; color: ct.secondary; opacity: 66%; family: "Space Grotesk" }
+                            repeat p in 0..6 {
+                                let py = 1008 + p * 24
+                                box { from: 52, py; size: 1000, 20; corner: 6; color: ink; opacity: 3%; show: p < sys_procs.count }
+                                text sys_procs.$p.name { at: 62, py + 10; anchor: left center; size: 11; weight: 600; color: ink; width: 280; lines: 1; show: p < sys_procs.count; family: "Space Grotesk" }
+                                box { from: 360, py + 7.5; size: 290, 5; corner: 2.5; color: ink; opacity: 8%; show: p < sys_procs.count }
+                                box { from: 360, py + 7.5; size: 290 * sys_procs.$p.cpu, 5; corner: 2.5; color: mix(ct.primary, alert, clamp((sys_procs.$p.cpu - 0.75) / 0.25, 0, 1)); opacity: 82%; show: p < sys_procs.count }
+                                box { from: 730, py + 7.5; size: 280, 5; corner: 2.5; color: ink; opacity: 8%; show: p < sys_procs.count }
+                                box { from: 730, py + 7.5; size: 280 * sys_procs.$p.mem, 5; corner: 2.5; color: ct.secondary; opacity: 58%; show: p < sys_procs.count }
+                                text sys_procs.$p.cpu_txt { at: 700, py + 10; anchor: right center; size: 10; weight: 700; color: ink; show: p < sys_procs.count; family: "Space Grotesk" }
+                                text sys_procs.$p.mem_txt { at: 1050, py + 10; anchor: right center; size: 10; color: faint; show: p < sys_procs.count; family: "Space Grotesk" }
+                            }
+                            text "Waiting for programs…" { at: 52, 1010; anchor: left center; size: 11; color: faint; show: sys_procs.count < 1; family: "Space Grotesk" }
                         }
-                        text "No GPU sensors found" { at: 628, 248; anchor: center; size: 12; color: faint; show: not sys_gpu_on; family: "Space Grotesk" }
-                        text "VRAM" { at: 700, 194; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
-                        text sys_gpu_vram { at: 1064, 194; anchor: right center; size: 12; weight: 600; color: ink; family: "Space Grotesk" }
-                        text "POWER" { at: 700, 230; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
-                        text sys_gpu_power { at: 1064, 230; anchor: right center; size: 12; weight: 600; color: ink; family: "Space Grotesk" }
-                        text "TEMP" { at: 700, 266; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
-                        text sys_gpu_temp { at: 770, 266; anchor: left center; size: 13; weight: 700; color: ink; family: "Space Grotesk" }
-                        text "FAN" { at: 850, 266; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
-                        text sys_gpu_fan { at: 892, 266; anchor: left center; size: 13; weight: 700; color: ink; family: "Space Grotesk" }
-                        text "CLOCK" { at: 960, 266; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
-                        text sys_gpu_clock { at: 1006, 266; anchor: left center; size: 11; weight: 700; color: ink; family: "Space Grotesk" }
-                        //  60 columns, one per second, from the text state.
-                        //  The old model bars collapsed to a single mark once
-                        //  the 60-row window was full.
-                        text "LAST MINUTE" { at: 700, 312; anchor: left center; size: 8.5; weight: 700; color: faint; family: "Space Grotesk" }
-                        text "60s" { at: 1064, 312; anchor: right center; size: 8.5; color: faint; opacity: 70%; family: "Space Grotesk" }
-                        text sys_gpu_hist { at: 700, 336; anchor: left center; size: 10; color: mix(ct.primary, alert, clamp((sys_gpu - 0.8) / 0.2, 0, 1)); opacity: 88%; family: "Noto Sans Mono" }
-
-                        //  ── network ─────────────────────────────────────────
-                        box { from: 556, 390; size: 524, 204; corner: 14; color: ink; opacity: 4% }
-                        box { from: 556, 390; size: 524, 204; corner: 14; stroke: 1; color: ink; opacity: 7% }
-                        text "NETWORK" { at: 572, 410; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
-                        text sys_iface { at: 1064, 410; anchor: right center; size: 10; color: faint; family: "Space Grotesk" }
-                        text pick(sys_net_up, "Offline", net.name) { at: 572, 436; anchor: left center; size: 17; weight: 700; color: ink; width: 240; lines: 1; family: "Space Grotesk" }
-                        text sys_ip { at: 572, 456; anchor: left center; size: 10; color: faint; family: "Space Grotesk"; selectable: true }
-                        text "DOWNLOAD" { at: 820, 432; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
-                        text sys_rx_txt { at: 820, 450; anchor: left center; size: 18; weight: 700; color: ct.primary; family: "Space Grotesk" }
-                        text sys_rx_total { at: 820, 466; anchor: left center; size: 9; color: faint; family: "Space Grotesk" }
-                        text "UPLOAD" { at: 970, 432; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
-                        text sys_tx_txt { at: 970, 450; anchor: left center; size: 18; weight: 700; color: ct.secondary; family: "Space Grotesk" }
-                        text sys_tx_total { at: 970, 466; anchor: left center; size: 9; color: faint; family: "Space Grotesk" }
-                        //  The model bar loop was unreadable here: sysmon
-                        //  normalises against 50 kB/s, so a quiet 2 KB/s
-                        //  sample is only ~1 px tall.  A 60-column text
-                        //  sparkline keeps every sample visible and, unlike
-                        //  the model at its 60-row cap, retains the minute.
-                        text "LAST MINUTE" { at: 572, 486; anchor: left center; size: 9; weight: 700; color: faint; family: "Space Grotesk" }
-                        text "60s" { at: 1024, 486; anchor: right center; size: 9; color: faint; opacity: 70%; family: "Space Grotesk" }
-                        line { from: 572, 497; to: 1024, 497; width: 0.8; color: ink; opacity: 9% }
-                        text "RX" { at: 572, 512; anchor: left center; size: 9; weight: 700; color: ct.primary; opacity: 78%; family: "Space Grotesk" }
-                        text sys_rx_hist { at: 592, 512; anchor: left center; size: 12; color: ct.primary; opacity: 92%; family: "Noto Sans Mono" }
-                        text "TX" { at: 572, 552; anchor: left center; size: 9; weight: 700; color: ct.secondary; opacity: 74%; family: "Space Grotesk" }
-                        text sys_tx_hist { at: 592, 552; anchor: left center; size: 12; color: ct.secondary; opacity: 84%; family: "Noto Sans Mono" }
-
-                        //  ── storage ─────────────────────────────────────────
-                        box { from: 556, 606; size: 524, 190; corner: 14; color: ink; opacity: 4% }
-                        box { from: 556, 606; size: 524, 190; corner: 14; stroke: 1; color: ink; opacity: 7% }
-                        text "STORAGE" { at: 572, 626; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
-                        text sys_dr_txt .. " read" { at: 1064, 626; anchor: right center; size: 9; color: faint; family: "Space Grotesk" }
-                        repeat m in 0..4 {
-                            let my = 652 + m * 32
-                            text sys_mounts.$m.name { at: 572, my; anchor: left center; size: 12; weight: 600; color: ink; width: 180; lines: 1; show: m < sys_mounts.count; family: "Space Grotesk" }
-                            text sys_mounts.$m.info { at: 1064, my; anchor: right center; size: 10; color: faint; show: m < sys_mounts.count; family: "Space Grotesk" }
-                            box { from: 610, my - 3; size: 300, 6; corner: 3; color: ink; opacity: 8%; show: m < sys_mounts.count }
-                            box { from: 610, my - 3; size: max(6, 300 * sys_mounts.$m.pct), 6; corner: 3; color: mix(ct.primary, alert, clamp((sys_mounts.$m.pct - 0.8) / 0.2, 0, 1)); show: m < sys_mounts.count }
-                        }
-                        text "No mounted filesystems." { at: 572, 690; anchor: left center; size: 11; color: faint; show: sys_mounts.count < 1; family: "Space Grotesk" }
-
-                        //  ── current disk write ───────────────────────────────
-                        box { from: 556, 806; size: 524, 70; corner: 14; color: ink; opacity: 4% }
-                        box { from: 556, 806; size: 524, 70; corner: 14; stroke: 1; color: ink; opacity: 7% }
-                        box { from: 572, 824; size: 36, 36; corner: 10; color: ct.primary; opacity: 11% }
-                        text "↓" { at: 590, 842; anchor: center; size: 19; weight: 700; color: ct.primary; family: "Noto Sans CJK SC" }
-                        text "DISK WRITE" { at: 620, 827; anchor: left center; size: 9; weight: 700; color: ct.secondary; family: "Space Grotesk" }
-                        text "Current write throughput" { at: 620, 845; anchor: left center; size: 12; color: faint; family: "Space Grotesk" }
-                        text sys_dw_speed { at: 1064, 842; anchor: right center; size: 24; weight: 700; color: ct.primary; family: "Space Grotesk" }
-
-                        //  ── busiest programs ────────────────────────────────
-                        box { from: 36, 966; size: 1044, 186; corner: 14; color: ink; opacity: 4% }
-                        box { from: 36, 966; size: 1044, 186; corner: 14; stroke: 1; color: ink; opacity: 7% }
-                        text "BUSIEST PROGRAMS" { at: 52, 986; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
-                        text "CPU" { at: 360, 986; anchor: left center; size: 9; weight: 700; color: ct.primary; opacity: 72%; family: "Space Grotesk" }
-                        text "MEMORY" { at: 730, 986; anchor: left center; size: 9; weight: 700; color: ct.secondary; opacity: 66%; family: "Space Grotesk" }
-                        repeat p in 0..6 {
-                            let py = 1008 + p * 24
-                            box { from: 52, py; size: 1000, 20; corner: 6; color: ink; opacity: 3%; show: p < sys_procs.count }
-                            text sys_procs.$p.name { at: 62, py + 10; anchor: left center; size: 11; weight: 600; color: ink; width: 280; lines: 1; show: p < sys_procs.count; family: "Space Grotesk" }
-                            //  Two unambiguous columns: CPU on the primary rail,
-                            //  memory on the secondary one.  Both tracks start
-                            //  at the same x as their fill.
-                            box { from: 360, py + 7.5; size: 290, 5; corner: 2.5; color: ink; opacity: 8%; show: p < sys_procs.count }
-                            box { from: 360, py + 7.5; size: 290 * sys_procs.$p.cpu, 5; corner: 2.5; color: mix(ct.primary, alert, clamp((sys_procs.$p.cpu - 0.75) / 0.25, 0, 1)); opacity: 82%; show: p < sys_procs.count }
-                            box { from: 730, py + 7.5; size: 280, 5; corner: 2.5; color: ink; opacity: 8%; show: p < sys_procs.count }
-                            box { from: 730, py + 7.5; size: 280 * sys_procs.$p.mem, 5; corner: 2.5; color: ct.secondary; opacity: 58%; show: p < sys_procs.count }
-                            text sys_procs.$p.cpu_txt { at: 700, py + 10; anchor: right center; size: 10; weight: 700; color: ink; show: p < sys_procs.count; family: "Space Grotesk" }
-                            text sys_procs.$p.mem_txt { at: 1050, py + 10; anchor: right center; size: 10; color: faint; show: p < sys_procs.count; family: "Space Grotesk" }
-                        }
-                        text "Waiting for programs…" { at: 52, 1010; anchor: left center; size: 11; color: faint; show: sys_procs.count < 1; family: "Space Grotesk" }
                     }
 
-                    //  Scrollbar: a track and a thumb, only when there is more
-                    //  than the viewport.  The wheel above moves the content.
-                    box { from: 1082, 152; size: 3, 518; corner: 1.5; color: ink; opacity: 6% }
-                    box { from: 1082, 152 + (518 - 252) * clamp(ct_scroll / 500, 0, 1); size: 3, 252; corner: 1.5; color: ct.primary; opacity: 55% }
+                    //  Dynamic scrollbar driven by the native scroll column.
+                    let sys.max_s = max(1, ct_sys_scroll_col.content - ct_sys_scroll_col.height)
+                    let sys.thumb_h = max(48, 518 * min(1, ct_sys_scroll_col.height / max(1, ct_sys_scroll_col.content)))
+                    box { from: 1086, 152; size: 3, 518; corner: 1.5; color: ink; opacity: 6%; show: ct_sys_scroll_col.content > ct_sys_scroll_col.height }
+                    box { from: 1086, 152 + (518 - sys.thumb_h) * clamp(ct_sys_scroll_col.scroll / sys.max_s, 0, 1); size: 3, sys.thumb_h; corner: 1.5; color: ct.primary; opacity: 55%; show: ct_sys_scroll_col.content > ct_sys_scroll_col.height }
                 }
 
                 //  ── 05 AUDIO ────────────────────────────────────────────────
@@ -786,7 +639,7 @@ part CenterPanel {
                     //  A big instrument ring: the primary arc is the volume,
                     //  the inner ring a quiet tick per step.
                     arc { at: 246, 386; radius: 142; span: 360deg; width: 12; color: ink; opacity: 8% }
-                    arc { at: 246, 386; radius: 142; span: 360 * clamp(aud.volume, 0.004, 1) * 1deg; width: 12; color: if(aud.muted, alert, ct.primary); opacity: 90%; rotate: -90deg }
+                    arc { at: 246, 386; radius: 142; span: 360 * clamp(aud.volume, 0.004, 1) * 1deg; width: 12; color: if(aud.muted, alert, ct.primary); opacity: 90%; rotate: 180 * clamp(aud.volume, 0.004, 1) * 1deg }
                     arc { at: 246, 386; radius: 120; span: 360deg; width: 1; color: ink; opacity: 10% }
                     repeat s in 0..36 {
                         let sa = s * 10
@@ -1051,22 +904,15 @@ part CenterPanel {
                     zone box ct_tray_menu_close { from: 728, 168; size: 28, 28; corner: 14; cursor: pointer; label: "Close tray menu"; active: tray_menu_open }
                     on press ct_tray_menu_close { emit center_tray_menu_close }
 
-                    repeat m in 0..12 {
-                        let my = 220 + m * 34
-                        group {
-                            show: tray_menu_open and m < tray_menu_count
-                            box {
-                                from: 368, my; size: 388, 30; corner: 8
-                                color: if(tray_menu_sel == m, ct.primary, ink)
-                                opacity: if(tray_menu_sel == m, 11%, 2.5%) + 5% * ct_tray_menu_item.$m.hover
-                            }
-                            line { from: 384, my + 15; to: 736, my + 15; width: 1; color: ink; opacity: 8%; show: tray_menu.$m.separator }
-                            text tray_menu.$m.label { at: 386 + 18 * (if(tray_menu.$m.checked, 1, 0)), my + 15; anchor: left center; size: 12; weight: 600; color: if(tray_menu.$m.enabled, #ffffff, faint); width: 300; lines: 1; show: not tray_menu.$m.separator; family: "Space Grotesk" }
-                            text "✓" { at: 378, my + 15; anchor: center; size: 10; color: ct.primary; show: tray_menu.$m.checked and not tray_menu.$m.separator; family: "Space Grotesk" }
-                            text "›" { at: 742, my + 15; anchor: center; size: 13; color: ct.secondary; show: tray_menu.$m.sub and not tray_menu.$m.separator; family: "Space Grotesk" }
-                            zone box ct_tray_menu_item.$m { from: 368, my; size: 388, 30; corner: 8; cursor: pointer; label: tray_menu.$m.label; active: tray_menu.$m.enabled and not tray_menu.$m.separator }
-                            on enter ct_tray_menu_item.$m { emit center_tray_menu_hover(m) }
-                            on press ct_tray_menu_item.$m { emit ui_sound; emit center_tray_menu_click(m) }
+                    column ct_tray_menu_list {
+                        at: 368, 220
+                        view: 388, 412
+                        step: 34
+                        gap: 4
+                        content: tray_menu_count * 34
+                        show: tray_menu_open and tray_menu_count > 0
+                        for r in tray_menu {
+                            CtTrayMenuRow(r, sel: tray_menu_sel, hover_ev: center_tray_menu_hover, click_ev: center_tray_menu_click)
                         }
                     }
                     text "Hover an app to open its actions." { at: 562, 360; anchor: center; size: 11; color: faint; show: not tray_menu_open; family: "Space Grotesk" }
@@ -1085,19 +931,15 @@ part CenterPanel {
                     box { from: 788, 160; size: 296, 488; corner: 20; stroke: 1; color: ink; opacity: 12% }
                     text "SUBMENU" { at: 808, 182; anchor: left center; size: 9; weight: 700; color: ct.secondary; family: "Space Grotesk" }
 
-                    repeat n in 0..12 {
-                        let ny = 220 + n * 34
-                        group {
-                            show: tray_menu_open and n < tray_submenu_count
-                            box {
-                                from: 804, ny; size: 264, 30; corner: 8
-                                color: ink; opacity: 2.5% + 6% * ct_tray_submenu_item.$n.hover
-                            }
-                            line { from: 820, ny + 15; to: 1052, ny + 15; width: 1; color: ink; opacity: 8%; show: tray_submenu.$n.separator }
-                            text tray_submenu.$n.label { at: 822 + 16 * (if(tray_submenu.$n.checked, 1, 0)), ny + 15; anchor: left center; size: 11.5; weight: 600; color: if(tray_submenu.$n.enabled, #ffffff, faint); width: 208; lines: 1; show: not tray_submenu.$n.separator; family: "Space Grotesk" }
-                            text "✓" { at: 812, ny + 15; anchor: center; size: 10; color: ct.primary; show: tray_submenu.$n.checked and not tray_submenu.$n.separator; family: "Space Grotesk" }
-                            zone box ct_tray_submenu_item.$n { from: 804, ny; size: 264, 30; corner: 8; cursor: pointer; label: tray_submenu.$n.label; active: tray_submenu.$n.enabled and not tray_submenu.$n.separator }
-                            on press ct_tray_submenu_item.$n { emit ui_sound; emit center_tray_submenu_click(n) }
+                    column ct_tray_sub_list {
+                        at: 804, 220
+                        view: 264, 412
+                        step: 34
+                        gap: 4
+                        content: tray_submenu_count * 34
+                        show: tray_menu_open and tray_submenu_open and tray_submenu_count > 0
+                        for r in tray_submenu {
+                            CtTraySubmenuRow(r, click_ev: center_tray_submenu_click)
                         }
                     }
                     text "Hover an action marked ›." { at: 936, 360; anchor: center; size: 10; color: faint; show: not (tray_menu_open and tray_submenu_open); family: "Space Grotesk" }
@@ -1159,14 +1001,15 @@ part CenterPanel {
                         let qx = 36 + q * 254
                         let qy = 320
                         let q_on = pick(q, music_frame_on, glass_on, bt_on, wall_auto)
-                        box { from: qx, qy; size: 244, 92; corner: 14; color: ink; opacity: if(q_on, 6%, 3%) }
-                        box { from: qx, qy; size: 244, 92; corner: 14; stroke: 1; color: if(q_on, pick(q, ct.primary, ct.secondary, ct.primary, ct.secondary), ink); opacity: if(q_on, 28%, 7%) }
+                        let q_k = pick(q, ct_q_knob.0, ct_q_knob.1, ct_q_knob.2, ct_q_knob.3)
+                        box { from: qx, qy; size: 244, 92; corner: 14; color: ink; opacity: if(q_on, 6%, 3%) + 4% * ct_action_quick.$q.hover }
+                        box { from: qx, qy; size: 244, 92; corner: 14; stroke: 1; color: if(q_on, pick(q, ct.primary, ct.secondary, ct.primary, ct.secondary), ink); opacity: if(q_on, 28%, 7%) + 8% * ct_action_quick.$q.hover }
                         ellipse { at: qx + 22, qy + 27; radius: 6; color: pick(q, ct.primary, ct.secondary, ct.primary, ct.secondary); opacity: if(q_on, 85%, 25%) }
                         text pick(q, "Frame music", "Glass", "Bluetooth", "Wallpaper") { at: qx + 38, qy + 27; anchor: left center; size: 13; weight: 600; color: ink; family: "Space Grotesk" }
                         text pick(q, "Notch frame bars", "Lens and refraction", bt_sub, "Rotate every few minutes") { at: qx + 18, qy + 50; anchor: left center; size: 9; color: faint; width: 190; lines: 1; family: "Space Grotesk" }
-                        box { from: qx + 202, qy + 64; size: 26, 14; corner: 7; color: if(q_on, pick(q, ct.primary, ct.secondary, ct.primary, ct.secondary), ink); opacity: if(q_on, 85%, 18%) }
-                        ellipse { at: qx + 208.5 + 12 * (if(q_on, 1, 0)), qy + 71; radius: 4.5; color: if(q_on, ct.card, faint) }
-                        zone box ct_action_quick.$q { from: qx, qy; size: 244, 92; corner: 14; cursor: pointer; label: pick(q, "Frame music", "Glass", "Bluetooth", "Wallpaper rotation") }
+                        box { from: qx + 202, qy + 64; size: 26, 14; corner: 7; color: mix(ink, pick(q, ct.primary, ct.secondary, ct.primary, ct.secondary), q_k); opacity: 18% + 67% * q_k }
+                        ellipse { at: qx + 208.5 + 12 * q_k, qy + 71; radius: 4.5; color: mix(faint, ct.card, q_k) }
+                        zone box ct_action_quick.$q { from: qx, qy; size: 244, 92; corner: 14; cursor: pointer; role: toggle; checked: q_on; label: pick(q, "Frame music", "Glass", "Bluetooth", "Wallpaper rotation") }
                         on press ct_action_quick.$q { emit ui_sound; emit center_quick(q) }
                     }
 
@@ -1210,90 +1053,26 @@ part CenterPanel {
 
             //  Keyboard help, subtle, bottom left.
             text "1–7  TABS   ·   TAB  NEXT   ·   ESC  CLOSE" { at: 36, 697; anchor: left center; size: 9; weight: 700; color: faint; opacity: 45%; family: "Space Grotesk" }
-        CenterDialogs()
-        on key Escape while center_open { emit center_key_escape }
-    }
+    on key Escape while center_open { emit center_key_escape }
 
-    surface center_panel {
-        size: full, 900
-        anchor: top_left
-        reserve: 0
-        level: overlay
-        open: not notch_mode and (center_open or ct_np > 0.01)
-        rate: 120, 30 while quiet and not center_open and ct_np < 0.01
-        keyboard: none
+    group {
+        show: center_open and (center_power_confirm >= 0 or ct_power_p > 0.01)
+        opacity: ct_power_p
+        box { from: 0, 0; size: 1120, 720; corner: 30; color: #00000075 }
+        zone box ct_power_shield { from: 0, 0; size: 1120, 720; active: center_power_confirm >= 0; label: "Dismiss session confirmation" }
+        on press ct_power_shield { emit center_power_cancel }
         group {
-            NotchDrawerRipples(ct_np)
-            NotchDrawerContent(ct_np, 1120, 720, 5) { CenterPanelContent() }
-        }
-    }
-
-    component CenterDialogs() {
-        group {
-            show: center_open and center_power_confirm >= 0
-            box { from: 0, 0; size: 1120, 720; corner: 30; color: #00000075 }
-            zone box ct_power_shield { from: 0, 0; size: 1120, 720; label: "Dismiss session confirmation" }
-            on press ct_power_shield { emit center_power_cancel }
-            group {
-                move: 260, 215
-                zone box ct_power_body { from: 40, 40; size: 520, 210; corner: 22; active: center_power_confirm >= 0; label: "Cancel power action" }
-                on press ct_power_body { center_power_confirm = center_power_confirm }
-                body {
-                    color: mix(ct.card2, ct.primary, 0.45)
-                    opacity: 1% * max(glass_tint, 84)
-                    glass: if(glass_on, 100%, 0%)
-                    lens: glass_on and glass_bend
-                    frost: glass_frost / 100
-                    refraction: glass_refr
-                    dispersion: glass_disp
-                    dome: glass_dome
-                    milk: glass_milk
-                    smoke: glass_smoke
-                    vivid: glass_vivid
-                    mirror: glass_mirror
-                    highlight: glass_highlight
-                    ripple: glass_ripple
-                    border: 1.5 * glass_border / 100, ink
-                    shine: pointer
-                    shadow: 0, 10, 28, 24%, glass_shadow
-                    box { from: 40, 40; size: 520, 210; corner: 22 }
-                }
-                box { from: 40, 40; size: 520, 210; corner: 22; stroke: 1.5; color: alert; opacity: 34% }
-                text "SESSION ACTION" { at: 68, 66; anchor: left center; size: 9; weight: 700; color: ct.secondary; family: "Space Grotesk" }
-                text pick(center_power_confirm, "Log out?", "Restart?", "Shut down?") { at: 68, 108; anchor: left center; size: 28; weight: 700; color: ink; family: "Space Grotesk" }
-                text pick(center_power_confirm, "End this niri session and return to the greeter.", "Reboot the machine. Open work will be interrupted.", "Power off the machine. Open work will be interrupted.") { at: 68, 138; anchor: left top; size: 12; color: faint; width: 464; lines: 2; line_height: 1.3; family: "Space Grotesk" }
-                box { from: 68, 194; size: 130, 34; corner: 17; color: ink; opacity: 6% + 8% * ct_power_cancel.hover }
-                text "Cancel" { at: 133, 211; anchor: center; size: 12; weight: 700; color: ink; family: "Space Grotesk" }
-                zone box ct_power_cancel { from: 68, 194; size: 130, 34; corner: 17; cursor: pointer; label: "Cancel power action" }
-                on press ct_power_cancel { emit ui_sound; emit center_power_cancel }
-                box { from: 402, 194; size: 130, 34; corner: 17; color: alert; opacity: 76% + 24% * ct_power_confirm.hover }
-                text "Confirm" { at: 467, 211; anchor: center; size: 12; weight: 700; color: ct.card; family: "Space Grotesk" }
-                zone box ct_power_confirm { from: 402, 194; size: 130, 34; corner: 17; cursor: pointer; agent: no; label: "Confirm power action" }
-                on press ct_power_confirm { emit ui_sound; emit center_power_do }
-            }
-        }
-        group {
-            show: center_open and audio_pick_open and center_tab == 4
-            box { from: 0, 0; size: 1120, 720; corner: 30; color: #00000075 }
-            zone box ap_shield { from: 0, 0; size: 1120, 720; label: "Close output picker" }
-            on press ap_shield { audio_pick_open = false }
-        }
-    }
-
-    //  0.8 popup: its own child surface, with keyboard and a glass that can
-    //  frost the centre panel underneath instead of being merged into it.
-    popup audio_picker {
-            at: 1070, 140
-            size: 420, 500
-            open: audio_pick_open
-            keyboard: true
-
-            zone box ap_body { from: 0, 0; size: 420, 500; corner: 18; label: "Output devices" }
-            on press ap_body { audio_pick_open = audio_pick_open }
+            move: 260, 215
+            pivot: 300, 145
+            scale: 0.94 + 0.06 * ct_power_p
+            zone box ct_power_body { from: 40, 40; size: 520, 210; corner: 22; active: center_power_confirm >= 0; label: "Cancel power action" }
+            on press ct_power_body { center_power_confirm = center_power_confirm }
             body {
+                show: not glass_frost_auto
                 color: mix(ct.card2, ct.primary, 0.45)
                 opacity: 1% * max(glass_tint, 84)
-                glass: if(glass_on, 100%, 0%)
+                tint: glass_color_tint / 100
+                glass: if(glass_on, 1% * glass_mix, 0%)
                 lens: glass_on and glass_bend
                 frost: glass_frost / 100
                 refraction: glass_refr
@@ -1306,28 +1085,50 @@ part CenterPanel {
                 highlight: glass_highlight
                 ripple: glass_ripple
                 border: 1.5 * glass_border / 100, ink
-                shine: pointer
-                shadow: 0, 10, 28, 24%, glass_shadow
-                box { from: 0, 0; size: 420, 500; corner: 18 }
+                shine: if(glass_shine, pointer.x, 0), if(glass_shine, pointer.y, 0)
+                shadow: 0, 10, 28, 1% * glass_shadow_amt, glass_shadow
+                box { from: 40, 40; size: 520, 210; corner: 22 }
             }
-            box { from: 0, 0; size: 420, 500; corner: 18; stroke: 1.5; color: ct.primary; opacity: 34% }
-            text "OUTPUT DEVICE" { at: 22, 26; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
-            line { from: 22, 44; to: 398, 44; width: 1; color: ink; opacity: 10% }
-            repeat o in 0..8 {
-                let oy = 56 + o * 46
-                group {
-                    show: o < audio_outputs.count
-                    box { from: 16, oy; size: 388, 38; corner: 9; color: if(audio_outputs.$o.current, ct.primary, ink); opacity: if(audio_outputs.$o.current, 12%, 3%) }
-                    ellipse { at: 34, oy + 19; radius: 4; color: if(audio_outputs.$o.current, ct.primary, faint); opacity: 80% }
-                    text audio_outputs.$o.name { at: 48, oy + 19; anchor: left center; size: 12; weight: if(audio_outputs.$o.current, 700, 500); color: if(audio_outputs.$o.current, ct.primary, ink); width: 330; lines: 1; family: "Space Grotesk" }
-                    zone box ct_audio_out.$o { from: 16, oy; size: 388, 38; corner: 9; cursor: pointer; label: audio_outputs.$o.name }
-                    on press ct_audio_out.$o { emit ui_sound; emit center_audio_default(o) }
-                }
+            body {
+                show: glass_frost_auto
+                color: mix(ct.card2, ct.primary, 0.45)
+                opacity: 1% * max(glass_tint, 84)
+                tint: glass_color_tint / 100
+                glass: if(glass_on, 1% * glass_mix, 0%)
+                lens: glass_on and glass_bend
+                frost: auto
+                refraction: glass_refr
+                dispersion: glass_disp
+                dome: glass_dome
+                milk: glass_milk
+                smoke: glass_smoke
+                vivid: glass_vivid
+                mirror: glass_mirror
+                highlight: glass_highlight
+                ripple: glass_ripple
+                border: 1.5 * glass_border / 100, ink
+                shine: if(glass_shine, pointer.x, 0), if(glass_shine, pointer.y, 0)
+                shadow: 0, 10, 28, 1% * glass_shadow_amt, glass_shadow
+                box { from: 40, 40; size: 520, 210; corner: 22 }
             }
-            text "No output devices." { at: 22, 70; anchor: left center; size: 12; color: faint; show: audio_outputs.count < 1; family: "Space Grotesk" }
-            line { from: 22, 432; to: 398, 432; width: 1; color: ink; opacity: 10% }
-            text "Cancel" { at: 210, 456; anchor: center; size: 11; weight: 700; color: faint; family: "Space Grotesk" }
-            zone box ct_audio_pick_close { from: 114, 438; size: 192, 36; corner: 18; cursor: pointer; label: "Close output picker" }
-            on press ct_audio_pick_close { audio_pick_open = false }
+            box { from: 40, 40; size: 520, 210; corner: 22; stroke: 1.5; color: alert; opacity: 34% }
+            text "SESSION ACTION" { at: 68, 66; anchor: left center; size: 9; weight: 700; color: ct.secondary; family: "Space Grotesk" }
+            text pick(center_power_confirm, "Log out?", "Restart?", "Shut down?") { at: 68, 108; anchor: left center; size: 28; weight: 700; color: ink; family: "Space Grotesk" }
+            text pick(center_power_confirm, "End this niri session and return to the greeter.", "Reboot the machine. Open work will be interrupted.", "Power off the machine. Open work will be interrupted.") { at: 68, 138; anchor: left top; size: 12; color: faint; width: 464; lines: 2; line_height: 1.3; family: "Space Grotesk" }
+            box { from: 68, 194; size: 130, 34; corner: 17; color: ink; opacity: 6% + 8% * ct_power_cancel.hover }
+            text "Cancel" { at: 133, 211; anchor: center; size: 12; weight: 700; color: ink; family: "Space Grotesk" }
+            zone box ct_power_cancel { from: 68, 194; size: 130, 34; corner: 17; cursor: pointer; role: button; label: "Cancel power action" }
+            on press ct_power_cancel { emit ui_sound; emit center_power_cancel }
+            box { from: 402, 194; size: 130, 34; corner: 17; color: alert; opacity: 76% + 24% * ct_power_confirm.hover }
+            text "Confirm" { at: 467, 211; anchor: center; size: 12; weight: 700; color: ct.card; family: "Space Grotesk" }
+            zone box ct_power_confirm { from: 402, 194; size: 130, 34; corner: 17; cursor: pointer; role: button; agent: no; label: "Confirm power action" }
+            on press ct_power_confirm { emit ui_sound; emit center_power_do }
         }
+    }
+    group {
+        show: center_open and audio_pick_open and center_tab == 4
+        box { from: 0, 0; size: 1120, 720; corner: 30; color: #00000075 }
+        zone box ap_shield { from: 0, 0; size: 1120, 720; label: "Close output picker" }
+        on press ap_shield { audio_pick_open = false }
+    }
 }

@@ -54,7 +54,12 @@ part Common {
     //  The six facts are filled by the logic at cava's pace; the springs smooth
     //  them to the renderer's pace so the shader never steps.
     fact glass_on = true
+    fact glass_mix: number = 100
     fact glass_bend = true
+    fact glass_shine = true
+    fact glass_frost_auto = false
+    fact glass_color_tint: number = 22
+    fact glass_shadow_amt: number = 24
     fact glass_refr: number = 1
     fact glass_disp: number = 1
     fact glass_dome: number = 0
@@ -83,33 +88,37 @@ part Common {
     //  and depth are layered over it, so depth 0 is still the old look.
     let bar_bg = mix(tint, pick(panel_bg_role, primary, secondary), panel_bg_tint / 100)
 
-    //  P0 panel backdrop.  One component for every large panel: a wallpaper-
-    //  derived gradient behind the glass, plus an optional soft top light.
-    //  Both are behind the existing glass body, so the card's lens still does
-    //  its job; neither adds a surface or a capture.
+    //  Panel backdrop inside every Notches drawer: optional role tint,
+    //  wallpaper-derived gradient, and soft top inner light.  All three render
+    //  inside the drawer's rounded clip over the unified frame glass.
     component PanelBackdrop(x: number, y: number, w: number, h: number, corner: number) {
+        let pb.role = pick(panel_bg_role, primary, secondary)
         let pb.a = mix(panel_bg, primary, 0.55)
         let pb.b = mix(panel_bg, secondary, 0.38)
         let pb.c = mix(panel_bg, deep, 0.22)
         body {
-            show: not notch_mode and panel_gradient == 1 and panel_gradient_strength > 0
+            show: panel_bg_tint > 0.5
+            color: pb.role
+            opacity: clamp(panel_bg_tint / 100, 0, 1) * 0.28
+            box { from: x, y; size: w, h; corner: corner }
+        }
+        body {
+            show: panel_gradient == 1 and panel_gradient_strength > 0.5
             gradient: x, y to x + w, y + h, pb.a, pb.b 55%, pb.c
-            opacity: panel_gradient_strength / 100
+            opacity: clamp(panel_gradient_strength / 100, 0, 1) * 0.48
             box { from: x, y; size: w, h; corner: corner }
         }
         body {
-            show: not notch_mode and panel_gradient == 2 and panel_gradient_strength > 0
+            show: panel_gradient == 2 and panel_gradient_strength > 0.5
             gradient: radial x + w / 2, y + h / 2 radius max(w, h) / 2, pb.a, pb.b 55%, pb.c
-            opacity: panel_gradient_strength / 100
+            opacity: clamp(panel_gradient_strength / 100, 0, 1) * 0.48
             box { from: x, y; size: w, h; corner: corner }
         }
         body {
-            show: not notch_mode and glass_light > 0
-            //  `light`'s amount is read once by the engine, so the slider is
-            //  the opacity of this subtle top sheet rather than a rebuild.
-            gradient: x, y to x, y + h, mix(panel_bg, ink, 0.20), mix(panel_bg, ink, 0.04) 38%, panel_bg
+            show: glass_light > 0.01
+            gradient: x, y to x, y + h, mix(panel_bg, ink, 0.24), mix(panel_bg, ink, 0.05) 38%, panel_bg
             light: 3%, y, 140
-            opacity: glass_light * 0.55
+            opacity: clamp(glass_light, 0, 1) * 0.42
             box { from: x, y; size: w, h; corner: corner }
         }
     }
@@ -133,15 +142,6 @@ part Common {
             children
         }
     }
-
-    component NotchDrawerRipples(p: number) {
-        //  Ripple ellipses are no longer drawn: the frame glass silhouette
-        //  provides the visual connection.  Component kept for call-site compat.
-    }
-
-    //  Legacy panels draw their own neck.  Notches reuses only the content
-    //  pose and shares the glass silhouette with the full-screen frame.
-    //  Note: NotchDrawer is not used in notch_mode; the frame handles everything.
 
     fact settings_page: number = 1
     //  Notification motion settings (0 fade, 1 spin, 2 unfold, 3 drop,
@@ -183,10 +183,11 @@ part Common {
     //  Clock notch height in the frame bar (px), configurable from settings.
     fact notch_clock_h: number = 56
     fact notch_clock_w: number = 168
-    //  Bar date, lunar date and weekday toggles (Settings › Bar).
+    //  Bar date, lunar date, weekday and seconds toggles (Settings › Bar).
     fact bar_show_date = true
     fact bar_show_lunar = true
     fact bar_show_weekday = true
+    fact bar_show_secs = true
     fact bar_has_date = false
     fact bar_has_lunar = false
     fact bar_has_weekday = false
@@ -320,10 +321,35 @@ part Common {
     follow spec.s.23 = spec.23
 
     //  Drawer motion: the drop overshoots, then sag/wobble settle it like a
-    //  drop landing.  Notifications keep their own springs.
+    //  drop landing.  Kept in Common so NotchFrame drives the unified glass
+    //  silhouette while each drawer's UI sleeps via `include … while`.
     spring notch_drop = 170, 18
     spring notch_hang = 260, 32
     spring notch_splash = 420, 13
+    prop cp_np = 0 ~notch_drop
+    prop cp_sag = 0 ~notch_hang
+    prop cp_wobble = 0 ~notch_splash
+    follow cp_np = panel_open
+    on change cp_np > 0.97 while cp_np > 0.97 and not motion.reduced {
+        impulse cp_sag 220
+        impulse cp_wobble -260
+    }
+    prop ct_np = 0 ~notch_drop
+    prop ct_sag = 0 ~notch_hang
+    prop ct_wobble = 0 ~notch_splash
+    follow ct_np = center_open
+    on change ct_np > 0.97 while ct_np > 0.97 and not motion.reduced {
+        impulse ct_sag 220
+        impulse ct_wobble -260
+    }
+    prop la_p = 0 ~notch_drop
+    prop la_sag = 0 ~notch_hang
+    prop la_wobble = 0 ~notch_splash
+    follow la_p = launch_open
+    on change la_p > 0.97 while la_p > 0.97 and not motion.reduced {
+        impulse la_sag 220
+        impulse la_wobble -260
+    }
     prop music_frame_knob = 0 ~quick
     follow music_frame_knob = music_frame_on
     prop notch_tint_knob = 0 ~quick
@@ -332,6 +358,8 @@ part Common {
     follow glass_knob = glass_on
     prop bend_knob = 0 ~quick
     follow bend_knob = glass_bend
+    prop shine_knob = 1 ~quick
+    follow shine_knob = glass_shine
     prop wall_knob = 0 ~quick
     follow wall_knob = wall_auto
     prop snd_knob = 0 ~quick
@@ -342,6 +370,8 @@ part Common {
     follow bar_lunar_knob = bar_show_lunar
     prop bar_weekday_knob = 0 ~quick
     follow bar_weekday_knob = bar_show_weekday
+    prop bar_sec_knob = 0 ~quick
+    follow bar_sec_knob = bar_show_secs
     prop nt_snd_knob = 0 ~quick
     follow nt_snd_knob = nt_snd_on
     prop nt_drift_knob = 0 ~quick
@@ -446,7 +476,7 @@ part Common {
     event wall_refresh ->
     //  The launcher is a search, not an app list: rows carry what they need
     //  to be drawn and what the logic runs when one is picked.
-    model la_apps max 10 { name: text; sub: text; exec: text; icon: image 22, 22; glyph: text; has_glyph: bool; kind: text }
+    model la_apps max 10 { name: text; sub: text; exec: text; icon: image 48, 32; glyph: text; has_glyph: bool; is_thumb: bool; kind: text }
     fact la_sel: number = 0
     text la_mode = "APPS"
     text la_hint = "Search apps…"
@@ -465,5 +495,138 @@ part Common {
     event ipc_open_settings ->
     event ipc_open_notifications ->
 
-
+    //  ── centre panel boundary state ─────────────────────────────────────
+    //  Declared at scene boundary so NotchFrame, audio_picker and center.luau
+    //  can read/write them while CenterPanel sleeps via `include … while`.
+    fact center_open = false
+    fact center_tab: number = 0
+    fact center_sys_scroll: number = 0
+    fact center_cal_off: number = 0
+    fact center_cal_progress: number = 1
+    fact center_power_confirm: number = -1
+    fact sys_ready = false
+    fact sys_hist_count: number = 0
+    fact sys_cpu: number = 0
+    fact sys_mem: number = 0
+    fact sys_cache: number = 0
+    fact sys_swap: number = 0
+    fact sys_gpu: number = 0
+    fact sys_vram: number = 0
+    fact sys_pw: number = 0
+    fact sys_gpu_on = false
+    fact sys_net_up = false
+    text sys_host = "This machine"
+    text sys_cpu_name = ""
+    text sys_kernel = ""
+    text sys_uptime = ""
+    text sys_load = ""
+    text sys_cpu_txt = "—"
+    text sys_cpu_meta = ""
+    text sys_threads = ""
+    text sys_mem_pct = "—"
+    text sys_mem_total = ""
+    text sys_mem_used = ""
+    text sys_mem_cache = ""
+    text sys_mem_free = ""
+    text sys_swap_txt = ""
+    text sys_gpu_name = ""
+    text sys_gpu_txt = "—"
+    text sys_gpu_vram = ""
+    text sys_gpu_power = "—"
+    text sys_gpu_temp = "—"
+    text sys_gpu_fan = "—"
+    text sys_gpu_clock = "—"
+    text sys_iface = ""
+    text sys_ip = ""
+    text sys_rx_txt = ""
+    text sys_tx_txt = ""
+    text sys_rx_total = ""
+    text sys_tx_total = ""
+    text sys_rx_spark = ""
+    text sys_tx_spark = ""
+    text sys_rx_hist = ""
+    text sys_tx_hist = ""
+    text sys_gpu_hist = ""
+    text sys_cpu_hist = ""
+    text sys_mem_hist = ""
+    text sys_dr_txt = ""
+    text sys_dw_speed = ""
+    text sys_fans = ""
+    model sys_cores max 24 { pct: number }
+    model sys_hist max 60 { cpu: number; mem: number; gpu: number; rx: number; tx: number; dr: number; dw: number }
+    model sys_mounts max 4 { name: text; info: text; pct: number }
+    model sys_temps max 8 { label: text; f: number; heat: number; txt: text }
+    model sys_procs max 6 { name: text; cpu: number; cpu_txt: text; mem: number; mem_txt: text }
+    text ct_media_len = ""
+    fact ct_has_track = false
+    fact bt_present = false
+    fact bt_on = false
+    fact bt_count: number = 0
+    text bt_sub = "No adapter"
+    fact audio_pick_open = false
+    text audio_out_name = "Default sink"
+    model audio_outputs max 8 { name: text; current: bool }
+    fact tray_count: number = 0
+    model tray_items max 32 { icon: image 24, 24; has_icon: bool; name: text; sub: text; status: text; has_sub: bool }
+    fact tray_menu_open = false
+    fact tray_menu_row: number = -1
+    fact tray_menu_sel: number = -1
+    fact tray_menu_count: number = 0
+    model tray_menu max 32 { label: text; enabled: bool; separator: bool; checked: bool; sub: bool }
+    fact tray_submenu_open = false
+    fact tray_submenu_count: number = 0
+    model tray_submenu max 32 { label: text; enabled: bool; separator: bool; checked: bool; sub: bool }
+    text ct_header_date = ""
+    text ct_month = ""
+    text ct_month_sub = ""
+    text ct_weekday = ""
+    text ct_weeknum = ""
+    text ct_today_day = ""
+    text ct_today_month = ""
+    text ct_today_year = ""
+    text ct_countdown_title = "本月倒计时"
+    fact center_cal_hover = -1
+    model ct_days max 42 { day: number; cur: bool; today: bool; label: text; lunar: text; hover: text; term: text; festival: text; holiday: text; off: bool; work: bool; anniv: text; anniv_count: number }
+    model ct_countdown max 2 { title: text; date: text; when: text; days: number }
+    fact wx_ready = false
+    fact wx_configured = false
+    text wx_city = ""
+    text wx_desc = ""
+    text wx_icon = "·"
+    text wx_temp = "--"
+    text wx_feels = ""
+    text wx_hi = ""
+    text wx_lo = ""
+    text wx_humidity = ""
+    text wx_wind = ""
+    text wx_updated = ""
+    text wx_status = ""
+    model wx_hourly max 6 { label: text; temp: text; icon: text; night: bool }
+    model wx_daily max 4 { day: text; icon: text; hi: text; lo: text }
+    event center_toggle ->
+    event center_close ->
+    event center_scroll ->
+    event center_audio_set ->
+    event center_audio_mute ->
+    event center_audio_default ->
+    event center_input_set ->
+    event center_input_mute ->
+    event center_media ->
+    event center_quick ->
+    event center_cal_step ->
+    event center_cal_today ->
+    event center_key_digit ->
+    event center_key_tab ->
+    event center_key_escape ->
+    event center_key_blur ->
+    event center_tray_activate ->
+    event center_tray_menu ->
+    event center_tray_menu_hover ->
+    event center_tray_menu_click ->
+    event center_tray_submenu_click ->
+    event center_tray_menu_close ->
+    event center_power_ask ->
+    event center_power_cancel ->
+    event center_power_do ->
+    event ipc_open_center ->
 }

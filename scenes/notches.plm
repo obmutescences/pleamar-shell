@@ -1,9 +1,9 @@
-language 0.4
+language 0.9
 import "../modules/common/motion.plm"
 scene Pleamar {
     permissions {
         run: "cava", "sh"
-        services: "clock", "clock.seconds", "battery", "media", "media.*", "audio", "audio.*", "network", "bluetooth", "bluetooth.*", "tray", "tray.*", "say:*", "files", "files.write", "apps", "apps.*", "notifications", "notification_history"
+        services: "clock", "clock.seconds", "battery", "media", "media.*", "audio", "audio.*", "network", "bluetooth", "bluetooth.*", "tray", "tray.*", "say:*", "files", "files.write", "apps", "apps.*", "notifications", "notification_history", "clipboard", "clipboard.set", "session.*", "env", "sound"
     }
     service clock as now { time: text; date: text }
     service clock.seconds as tick { hour: number; minute: number; second: number }
@@ -13,9 +13,6 @@ scene Pleamar {
     service network as net { online: bool; wifi: bool; name: text; strength: number }
 
     include "../modules/common/common.plm"
-    include "../modules/settings/panel.plm"
-    include "../modules/launcher/launcher.plm"
     include "../modules/notifications/notifications.plm"
-    include "../modules/center/panel.plm"
     include "../modules/notches/frame.plm"
 }

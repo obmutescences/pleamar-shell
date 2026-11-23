@@ -1,4 +1,4 @@
-language 0.1
+language 0.9
 import "palette.plm"
 import "pencil-glyphs.plm"
 import "clockface.plm"
@@ -15,7 +15,7 @@ scene Lockscreen {
     surface lockscreen_bg { size: 1, 1; anchor: top_left; level: background; rate: 1 }
 
     permissions {
-        services: "clock", "clock.seconds", "battery", "media", "media.*", "auth", "files", "files.write", "session.*"
+        services: "clock", "clock.seconds", "battery", "media", "media.*", "auth", "files", "files.write", "session.*", "env"
         run: "cat", "magick", "getent", "mkdir", "rm", "ls", "cp", "printenv", "niri"
     }
 
@@ -64,6 +64,7 @@ scene Lockscreen {
     fact show_ampm = true          // the AM/PM pill beside the clock (settings: a 12 hour clock, and show_am_pm)
     fact has_avatar = false
     fact has_wall = false
+    fact has_lunar = false
     fact pw_len = 0
     fact t0 = 0                    // `time` when the lock closed
     //  Our own clock, in seconds, which runs only while the screen is locked. The built-in `time` keeps a scene painting for as
@@ -86,6 +87,7 @@ scene Lockscreen {
     text clock_secs = "00"
     text clock_ampm = "AM"
     text clock_date = ""
+    text clock_lunar = ""
     text clock_h = "12"
     text clock_m = "00"
     model shapes max 40 { idx: number; rot: number; outline: bool; ci: number; sym: text; life: number; last: bool }   // `life`: 1 while it is there, down to 0 as it is taken back (see lockscreen.luau)
@@ -97,7 +99,7 @@ scene Lockscreen {
     event palette_sync ->
 
     image avatar = from avatar_path, 200, 200
-    image wall_sharp = from wp_sharp, 1280, 720
+    image wall_sharp = from wp_sharp, 0, 0
     image wall_blur = from wp_blur, 960, 540
     figure shp = file "shapes.svg"
     shader lockwave = file "lockwave.wgsl"
@@ -186,7 +188,7 @@ scene Lockscreen {
         let dock_y = cy + 265
         let bar_y = dock_y + 5
         let profile_y = dock_y - 120
-        let media_y = dock_y + 145
+        let media_y = min(dock_y + 112, oy + h - 136)
         let dock_w = 720
         let dock_h = 420
         let panel_x = cx - dock_w / 2
@@ -206,8 +208,8 @@ scene Lockscreen {
                 scale: 1.06 - 0.06 * ease_w
                 group {
                     shader: lockwave, e, 0.035, 2.2, 0.42
-                    image wall_sharp { at: ox, oy; size: w, h; opacity: 1 - clamp(spr_b, 0, 1) }
-                    image wall_blur { at: ox, oy; size: w, h; opacity: clamp(spr_b, 0, 1) }
+                    image wall_sharp { at: ox, oy; size: w, h; fit: cover; opacity: 1 - clamp(spr_b, 0, 1) }
+                    image wall_blur { at: ox, oy; size: w, h; fit: cover; opacity: clamp(spr_b, 0, 1) }
                     box { from: ox, oy; size: w, h; color: deep; opacity: 1 - has_wall }
                     shader glow { at: ox, oy; size: w, h; colors: acc }
                 }
@@ -228,6 +230,7 @@ scene Lockscreen {
                 let sec_x = floor(cx + 3.4 * clock_px / 2 + 18 + 0.5)
                 text clock_secs { at: sec_x, ckc + 4; anchor: left center; size: 17; weight: 500; color: mint; family: "Space Grotesk"; show: cfg_secs }
                 text clock_date { at: cx, date_y; anchor: center; size: 21; weight: 500; color: mint; family: "Space Grotesk"; letter_scale: 1 + 0.6 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.012) / 0.3, 0, 1), 3))); letter_move: 0, 16 * (1 - (1 - pow(1 - clamp((e - 0.35 - letter * 0.012) / 0.3, 0, 1), 3))); letter_opacity: (1 - pow(1 - clamp((e - 0.35 - letter * 0.012) / 0.3, 0, 1), 3)) }
+                text clock_lunar { at: cx, date_y + 30; anchor: center; size: 14.5; weight: 500; color: faint; opacity: 88% * ease_c; family: "Noto Sans CJK SC"; show: has_lunar }
 
                 //  No plate below: the profile, password and media sit flat on
                 //  the wallpaper.
@@ -348,6 +351,38 @@ scene Lockscreen {
                     zone box go_z { at: cx + 230, bar_y; size: 40, 40; corner: 20; cursor: pointer; active: pw_len > 0 and not authing }
                     follow clr_hot = if(clr_z.hover > 0.5, 1, 0)
                     follow go_hot = if(go_z.hover > 0.5, 1, 0)
+                }
+
+                //  5. THE MEDIA CONTROL PILL: shown when an MPRIS player is active and cfg_media is enabled.
+                group {
+                    show: has_media or media_in > 0.01
+                    opacity: media_in * ease_c
+                    move: 0, 14 * (1 - media_in)
+                    box { at: cx, media_y; size: 460, 62; corner: 31; color: panel; opacity: 58% }
+                    box { at: cx, media_y; size: 460, 62; corner: 31; stroke: 1; color: acc; opacity: 24% }
+                    ellipse { at: cx - 196, media_y; radius: 18; color: acc; opacity: 14% }
+                    GNote(cx - 196, media_y, 18 / 24, acc, 0.92, if(med.playing and not motion.reduced, lkf, 0))
+                    text med.title { at: cx - 166, media_y - 9; anchor: left center; size: 13.5; weight: 600; color: ink; width: 244; lines: 1; family: "Noto Sans CJK SC" }
+                    text med.artist { at: cx - 166, media_y + 11; anchor: left center; size: 11; color: faint; width: 244; lines: 1; family: "Noto Sans CJK SC" }
+
+                    ellipse { at: cx + 112, media_y; radius: 16; color: #ffffff; opacity: 14% * prev_hot }
+                    GSkip(cx + 112, media_y, 1, 16 / 24, mix(faint, ink, prev_hot), 0.9, if(prev_hot > 0.5, lkf, 0))
+                    zone box media_prev_z { at: cx + 112, media_y; size: 32, 32; corner: 16; cursor: pointer; role: button; label: "Previous track"; active: has_media }
+                    follow prev_hot = if(media_prev_z.hover > 0.5, 1, 0)
+                    on press media_prev_z { emit media_prev }
+
+                    ellipse { at: cx + 154, media_y; radius: 18; color: acc; opacity: 22% + 14% * play_hot }
+                    group { show: med.playing; GPause(cx + 154, media_y, 17 / 24, acc, 0.95, if(play_hot > 0.5, lkf, 0)) }
+                    group { show: not med.playing; GPlay(cx + 154, media_y, 17 / 24, acc, 0.95, if(play_hot > 0.5, lkf, 0)) }
+                    zone box media_play_z { at: cx + 154, media_y; size: 36, 36; corner: 18; cursor: pointer; role: button; label: "Play or pause"; active: has_media }
+                    follow play_hot = if(media_play_z.hover > 0.5, 1, 0)
+                    on press media_play_z { emit media_play }
+
+                    ellipse { at: cx + 196, media_y; radius: 16; color: #ffffff; opacity: 14% * next_hot }
+                    GSkip(cx + 196, media_y, -1, 16 / 24, mix(faint, ink, next_hot), 0.9, if(next_hot > 0.5, lkf, 0))
+                    zone box media_next_z { at: cx + 196, media_y; size: 32, 32; corner: 16; cursor: pointer; role: button; label: "Next track"; active: has_media }
+                    follow next_hot = if(media_next_z.hover > 0.5, 1, 0)
+                    on press media_next_z { emit media_next }
                 }
 
                 //  The bar is the one big target: a click anywhere else asks for the keyboard again.

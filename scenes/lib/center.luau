@@ -9,7 +9,7 @@ local root_of = nil
 local cal_off = 0
 local last_iface = nil
 local audio_out_ids = {}
-local key_helper = nil
+local audio_watched = false
 local tray_keys = {}
 local tray_menu_key = nil
 local tray_menu_ids = {}
@@ -231,6 +231,7 @@ local function on_sys_line(line)
     text.sys_tx_hist = sparkline("tx", 60, 1)
     text.sys_gpu_hist = sparkline("gpu", 60, 1)
     text.sys_cpu_hist = sparkline("cpu", 60, 1)
+    text.sys_mem_hist = sparkline("mem", 60, 1)
 end
 
 local function stop_sys()
@@ -517,11 +518,10 @@ local function refresh_weather()
 end
 
 local function refresh_audio_outputs()
-    --  Pleamar's audio watch in this version does not carry the sink list, so
-    --  read wpctl's status: the starred sink is the default, and its numeric
-    --  id is what `wpctl set-default` wants.
+    if audio_watched then return end
+    --  Fallback when the native audio watch has not provided outputs.
     run("sh", { "-c", "wpctl status 2>/dev/null" }, function(out)
-        if not out or out == "" then return end
+        if audio_watched or not out or out == "" then return end
         local section, rows, ids, current = "", {}, {}, "Default sink"
         for line in out:gmatch("[^\n]+") do
             if line:find("Sinks:", 1, true) then
@@ -547,36 +547,10 @@ local function refresh_audio_outputs()
     end)
 end
 
-local function stop_keys()
-    if key_helper then
-        kill(key_helper, "term")
-        key_helper = nil
-    end
-end
-
-local function start_keys()
-    if key_helper or not truthy(fact.center_open) then return end
-    local root = root_of and root_of() or ""
-    if root == "" then return end
-    local parent = string.lower(tostring(text.layout or "notches"))
-    local cmd = "PLEAMAR_CENTER_PARENT=" .. shq(parent) .. " exec " .. shq(root .. "/bin/pleamar-centerkeys")
-    local mine
-    local ok, id = pcall(spawn, "sh", { "-c", cmd }, function() end, function()
-        if key_helper == mine then key_helper = nil end
-    end)
-    if ok then
-        key_helper = id
-        mine = id
-    else
-        log("centre key helper could not start: " .. tostring(id))
-    end
-end
-
 local function close()
     fact.center_open = false
     fact.center_power_confirm = -1
     fact.audio_pick_open = false
-    stop_keys()
     fact.tray_menu_open = false
     fact.tray_submenu_open = false
     stop_sys()
@@ -611,7 +585,6 @@ local function open(tab)
     calendar()
     refresh_weather()
     refresh_audio_outputs()
-    start_keys()
     refresh_sys()
 end
 
@@ -622,13 +595,10 @@ function M.start(root_getter)
         if truthy(v) then
             refresh_sys()
         else
-            --  The cross and Escape used to clear the fact directly.  Releasing
-            --  the exclusive keyboard here avoids waiting for the helper's
-            --  watchdog (about two seconds) before the focused window gets keys.
             fact.center_power_confirm = -1
             fact.audio_pick_open = false
-            stop_keys()
             fact.tray_menu_open = false
+            fact.tray_submenu_open = false
             stop_sys()
         end
     end)
@@ -652,6 +622,9 @@ function M.start(root_getter)
         fact.center_power_confirm = -1
         if v < 0 or v > 2 then return end
         close()
+        local svc = v == 0 and "session.logout" or (v == 1 and "session.reboot" or "session.poweroff")
+        local ok = pcall(sys.call, svc)
+        if ok then return end
         local cmd = v == 0 and "niri msg action quit --skip-confirmation"
             or v == 1 and "systemctl reboot --no-block"
             or "systemctl poweroff --no-block"
@@ -688,13 +661,11 @@ function M.start(root_getter)
     on("key_down", function(name)
         if not truthy(fact.center_open) then return end
         name = tostring(name or "")
-        if name == "Escape" then
-            dismiss_top()
-            return
-        end
-        if modal_open() then return end
+        --  Escape is handled declaratively via `on key Escape` in CenterPanel
+        --  so pressing Escape with a modal open never dismisses twice.
+        if name == "Escape" or modal_open() then return end
         if name == "Tab" or name == "ISO_Left_Tab" or name == "Backtab" then
-            local d = (held("Shift") or held("ISO_Left_Tab")) and -1 or 1
+            local d = (held("Shift") or name == "ISO_Left_Tab" or name == "Backtab") and -1 or 1
             fact.center_tab = (math.floor(number(fact.center_tab, 0)) + d + 7) % 7
             fact.center_sys_scroll = 0
             fact.tray_menu_open = false
@@ -726,16 +697,26 @@ function M.start(root_getter)
         end)
     end
     on("center_audio_set", function(v)
-        wpcall(string.format("set-volume @DEFAULT_AUDIO_SINK@ %.0f%%", clamp(number(v, 0), 0, 1) * 100 + 0.5))
+        local vol = clamp(number(v, 0), 0, 1)
+        if not pcall(sys.call, "audio.volume", vol) then
+            wpcall(string.format("set-volume @DEFAULT_AUDIO_SINK@ %.0f%%", vol * 100 + 0.5))
+        end
     end)
     on("center_audio_mute", function()
-        wpcall("set-mute @DEFAULT_AUDIO_SINK@ toggle")
+        if not pcall(sys.call, "audio.mute") then
+            wpcall("set-mute @DEFAULT_AUDIO_SINK@ toggle")
+        end
     end)
     on("center_input_set", function(v)
-        wpcall(string.format("set-volume @DEFAULT_AUDIO_SOURCE@ %.0f%%", clamp(number(v, 0), 0, 1) * 100 + 0.5))
+        local vol = clamp(number(v, 0), 0, 1)
+        if not pcall(sys.call, "audio.input", vol) then
+            wpcall(string.format("set-volume @DEFAULT_AUDIO_SOURCE@ %.0f%%", vol * 100 + 0.5))
+        end
     end)
     on("center_input_mute", function()
-        wpcall("set-mute @DEFAULT_AUDIO_SOURCE@ toggle")
+        if not pcall(sys.call, "audio.input_mute") then
+            wpcall("set-mute @DEFAULT_AUDIO_SOURCE@ toggle")
+        end
     end)
     on("center_media", function(action)
         local call = ({ [0] = "media.previous", [1] = "media.toggle", [2] = "media.next" })[math.floor(number(action, 1))]
@@ -764,12 +745,33 @@ function M.start(root_getter)
     on("center_audio_default", function(i)
         local id = audio_out_ids[math.floor(number(i, 0)) + 1]
         if id ~= nil then
-            run("sh", { "-c", "wpctl set-default " .. tostring(id) }, function(_, code)
-                if code ~= 0 then log("wpctl set-default failed") end
-            end)
+            if not pcall(sys.call, "audio.default", id) then
+                run("sh", { "-c", "wpctl set-default " .. tostring(id) }, function(_, code)
+                    if code ~= 0 then log("wpctl set-default failed") end
+                end)
+            end
         end
         fact.audio_pick_open = false
-        after(350, refresh_audio_outputs)
+        if not audio_watched then after(350, refresh_audio_outputs) end
+    end)
+
+    sys.watch("audio", function(a)
+        if type(a) ~= "table" or type(a.outputs) ~= "table" then return end
+        local rows, ids, current = {}, {}, "Default sink"
+        for i, o in ipairs(a.outputs) do
+            if i > 8 then break end
+            local name = tostring(o.name or "Output")
+            local cur = truthy(o.default)
+            rows[#rows + 1] = { name = name, current = cur }
+            ids[#ids + 1] = o.id
+            if cur then current = name end
+        end
+        if #rows > 0 then
+            audio_watched = true
+            audio_out_ids = ids
+            model.audio_outputs = rows
+            text.audio_out_name = current
+        end
     end)
 
     sys.watch("media", function(m)
@@ -841,7 +843,7 @@ function M.start(root_getter)
         local rows = {}
         tray_submenu_ids = {}
         for n, it in ipairs(kids) do
-            if n > 12 then break end
+            if n > 32 then break end
             tray_submenu_ids[n] = it.id
             rows[n] = menu_row(it)
         end
@@ -863,7 +865,7 @@ function M.start(root_getter)
         tray_menu_key, tray_menu_ids, tray_menu_children = key, {}, {}
         local rows = {}
         for j, it in ipairs(menu) do
-            if j > 12 then break end
+            if j > 32 then break end
             tray_menu_ids[j] = it.id
             tray_menu_children[j] = type(it.children) == "table" and it.children or {}
             rows[j] = menu_row(it)
@@ -906,11 +908,6 @@ function M.start(root_getter)
         clear_submenu()
     end)
 
-    every(700, function()
-        if truthy(fact.center_open) and key_helper then
-            pcall(sys.call, "say", "centerkeys", "emit key_ping")
-        end
-    end)
     every(900000, function()
         if truthy(fact.center_open) then refresh_weather() end
     end)
@@ -930,7 +927,6 @@ function M.start(root_getter)
     calendar()
     refresh_audio_outputs()
     refresh_sys()
-    start_keys()
 end
 
 function M.refresh_bar_date()
@@ -943,7 +939,6 @@ function M.refresh_root()
     calendar()
     if truthy(fact.center_open) then
         refresh_sys()
-        start_keys()
     end
 end
 

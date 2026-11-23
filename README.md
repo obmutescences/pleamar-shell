@@ -70,9 +70,10 @@ The module installs `pleamar-shell` and `pleamar-ipc` and runs the shell as a sy
 
 ```sh
 pleamar-ipc search
-pleamar-ipc settings        # optionally: settings 0..11
+pleamar-ipc settings        # optionally: settings 0..10
+pleamar-ipc center          # optionally: center toggle | 0..6
 pleamar-ipc notifications
-pleamar-ipc windows         # windows toggle for toggle
+pleamar-ipc picker
 pleamar-ipc lock
 pleamar-ipc wallpaper /path/to/image
 ```

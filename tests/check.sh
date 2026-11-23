@@ -3,6 +3,9 @@ set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 p="${PLEAMAR:-}"
 if [[ -z "$p" || ! -x "$p" ]]; then
+    p="$("$root/bin/pleamar-shell" --path 2>/dev/null || true)"
+fi
+if [[ -z "$p" || ! -x "$p" ]]; then
     p="$(ls -d /nix/store/*-pleamar-*/bin/pleamar 2>/dev/null | sort -V | tail -1)"
 fi
 [[ -n "$p" && -x "$p" ]] || { echo "pleamar not found; set PLEAMAR" >&2; exit 1; }
@@ -12,6 +15,13 @@ fi
 "$p" --check "$root/scenes/settingskeys.plm"
 "$p" --check "$root/experiments/wrap.plm"
 "$p" --check "$root/experiments/probe.plm"
+
+#  Headless layout QA check (introduced in pleamar 0.8-exp).
+"$p" --layout "$root/scenes/notches.plm" | tail -n 1 | python3 -c '
+import json, sys
+report = json.load(sys.stdin)
+assert isinstance(report, dict), report
+'
 
 #  The lock and keyboard helpers run this discovery from a systemd unit whose
 #  PATH has no nix-store.  It used to exit 127 there, which made every button

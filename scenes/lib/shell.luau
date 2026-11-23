@@ -102,7 +102,12 @@ function M.start(layout)
         panel_bg_role = 0,
         panel_bg_tint = 0,
         glass_on = true,
+        glass_mix = 100,
         glass_bend = true,
+        glass_shine = true,
+        glass_frost_auto = false,
+        glass_color_tint = 22,
+        glass_shadow_amt = 24,
         glass_refr = 1,
         glass_disp = 1,
         glass_dome = 0,
@@ -133,6 +138,7 @@ function M.start(layout)
         bar_show_date = true,
         bar_show_lunar = true,
         bar_show_weekday = true,
+        bar_show_secs = true,
         lock_blur = 36,
         lock_12h = true,
         lock_ampm = true,
@@ -240,10 +246,15 @@ function M.start(layout)
         cfg.panel_bg_role = math.floor(clamp(number(saved.panel_bg_role, cfg.panel_bg_role), 0, 1))
         cfg.panel_bg_tint = clamp(number(saved.panel_bg_tint, cfg.panel_bg_tint), 0, 100)
         if type(saved.glass_on) == "boolean" then cfg.glass_on = saved.glass_on end
+        cfg.glass_mix = math.floor(clamp(number(saved.glass_mix, cfg.glass_mix), 0, 100))
         if type(saved.glass_bend) == "boolean" then cfg.glass_bend = saved.glass_bend end
+        if type(saved.glass_shine) == "boolean" then cfg.glass_shine = saved.glass_shine end
+        if type(saved.glass_frost_auto) == "boolean" then cfg.glass_frost_auto = saved.glass_frost_auto end
+        cfg.glass_color_tint = math.floor(clamp(number(saved.glass_color_tint, cfg.glass_color_tint), 0, 100))
+        cfg.glass_shadow_amt = math.floor(clamp(number(saved.glass_shadow_amt, cfg.glass_shadow_amt), 0, 60))
         cfg.glass_refr = clamp(number(saved.glass_refr, cfg.glass_refr), 0, 2)
         cfg.glass_disp = clamp(number(saved.glass_disp, cfg.glass_disp), 0, 2)
-        cfg.glass_dome = clamp(number(saved.glass_dome, cfg.glass_dome), 0, 1.5)
+        cfg.glass_dome = clamp(number(saved.glass_dome, cfg.glass_dome), -1, 1)
         cfg.glass_milk = clamp(number(saved.glass_milk, cfg.glass_milk), 0, 1)
         cfg.glass_smoke = clamp(number(saved.glass_smoke, cfg.glass_smoke), 0, 1)
         cfg.glass_vivid = clamp(number(saved.glass_vivid, cfg.glass_vivid), 0, 2)
@@ -271,6 +282,7 @@ function M.start(layout)
         if type(saved.bar_show_date) == "boolean" then cfg.bar_show_date = saved.bar_show_date end
         if type(saved.bar_show_lunar) == "boolean" then cfg.bar_show_lunar = saved.bar_show_lunar end
         if type(saved.bar_show_weekday) == "boolean" then cfg.bar_show_weekday = saved.bar_show_weekday end
+        if type(saved.bar_show_secs) == "boolean" then cfg.bar_show_secs = saved.bar_show_secs end
         cfg.lock_blur = clamp(number(saved.lock_blur, cfg.lock_blur), 0, 120)
         if type(saved.lock_12h) == "boolean" then cfg.lock_12h = saved.lock_12h end
         if type(saved.lock_ampm) == "boolean" then cfg.lock_ampm = saved.lock_ampm end
@@ -327,7 +339,12 @@ function M.start(layout)
         fact.panel_bg_role = cfg.panel_bg_role
         fact.panel_bg_tint = cfg.panel_bg_tint
         fact.glass_on = cfg.glass_on
+        fact.glass_mix = cfg.glass_mix
         fact.glass_bend = cfg.glass_bend
+        fact.glass_shine = cfg.glass_shine
+        fact.glass_frost_auto = cfg.glass_frost_auto
+        fact.glass_color_tint = cfg.glass_color_tint
+        fact.glass_shadow_amt = cfg.glass_shadow_amt
         fact.glass_refr = cfg.glass_refr
         fact.glass_disp = cfg.glass_disp
         fact.glass_dome = cfg.glass_dome
@@ -358,6 +375,7 @@ function M.start(layout)
         fact.bar_show_date = cfg.bar_show_date
         fact.bar_show_lunar = cfg.bar_show_lunar
         fact.bar_show_weekday = cfg.bar_show_weekday
+        fact.bar_show_secs = cfg.bar_show_secs
         center.refresh_bar_date()
         fact.lock_blur = cfg.lock_blur
         fact.lock_12h = cfg.lock_12h
@@ -410,7 +428,12 @@ function M.start(layout)
             panel_bg_role = number(fact.panel_bg_role, 0),
             panel_bg_tint = number(fact.panel_bg_tint, 0),
             glass_on = truthy(fact.glass_on),
+            glass_mix = number(fact.glass_mix, 100),
             glass_bend = truthy(fact.glass_bend),
+            glass_shine = truthy(fact.glass_shine),
+            glass_frost_auto = truthy(fact.glass_frost_auto),
+            glass_color_tint = number(fact.glass_color_tint, 22),
+            glass_shadow_amt = number(fact.glass_shadow_amt, 24),
             glass_refr = number(fact.glass_refr, 1),
             glass_disp = number(fact.glass_disp, 1),
             glass_dome = number(fact.glass_dome, 0),
@@ -441,6 +464,7 @@ function M.start(layout)
             bar_show_date = truthy(fact.bar_show_date),
             bar_show_lunar = truthy(fact.bar_show_lunar),
             bar_show_weekday = truthy(fact.bar_show_weekday),
+            bar_show_secs = truthy(fact.bar_show_secs),
             lock_blur = number(fact.lock_blur, 36),
             lock_12h = truthy(fact.lock_12h),
             lock_ampm = truthy(fact.lock_ampm),
@@ -533,7 +557,7 @@ function M.start(layout)
 
     apply(cfg)
     sync_fx()
-    run("sh", { "-c", READ }, function(out, code)
+    pcall(run, "sh", { "-c", READ }, function(out, code)
         if code == 0 and out and out ~= "" then
             local ok, saved = pcall(json.decode, out)
             if ok and type(saved) == "table" then
@@ -546,107 +570,50 @@ function M.start(layout)
         save()
     end)
 
-    --  Where this checkout lives, for the settings key helper and the lock
-    --  scene.  The launcher exports it; a hand-started scene simply has none.
+    --  Where this checkout lives, for helpers and the lock scene.
+    --  Read natively via Pleamar's `env` service, falling back to `sh` only if unavailable.
     local shell_root = ""
-    local start_settingskeys, start_searchkeys
+    do
+        local ok, v = pcall(sys.ask, "env", "PLEAMAR_SHELL_ROOT")
+        if ok and type(v) == "string" and v ~= "" then
+            shell_root = v:gsub("%s+$", "")
+        end
+    end
     center.start(function() return shell_root end)
-    run("sh", { "-c", 'printf %s "${PLEAMAR_SHELL_ROOT:-}"' }, function(out)
-        if out then shell_root = tostring(out):gsub("%s+$", "") end
-        center.refresh_root()
-        start_settingskeys()
-        start_searchkeys()
-    end)
-
-    --  Settings has two text fields (font search and weather city) but the
-    --  main scene's layer surfaces do not receive layer keyboard focus.  A
-    --  separate single-surface process owns the keyboard and relays the text.
-    local settings_key_helper = nil
-    local settings_key_field = nil
-    local function stop_settingskeys()
-        if settings_key_helper then
-            kill(settings_key_helper, "term")
-            settings_key_helper = nil
-        end
-        settings_key_field = nil
-    end
-    start_settingskeys = function()
-        if not truthy(fact.panel_open) or shell_root == "" then
-            stop_settingskeys()
-            return
-        end
-        local page = math.floor(number(fact.settings_page, 0))
-        local field, value
-        if page == 9 then
-            field, value = "weather_city", tostring(text.weather_city or "")
-        elseif page == 3 then
-            field, value = "font_query", tostring(text.font_query or "")
-        else
-            stop_settingskeys()
-            return
-        end
-        if settings_key_helper and settings_key_field == field then return end
-        stop_settingskeys()
-        local parent = string.lower(tostring(text.layout or "notches"))
-        local cmd = "PLEAMAR_SETTINGS_PARENT=" .. sq(parent)
-            .. " PLEAMAR_SETTINGS_FIELD=" .. sq(field)
-            .. " PLEAMAR_SETTINGS_TEXT=" .. sq(value)
-            .. " exec " .. sq(shell_root .. "/bin/pleamar-settingskeys")
-        local mine
-        local ok, id = pcall(spawn, "sh", { "-c", cmd }, function() end, function()
-            if settings_key_helper == mine then
-                settings_key_helper = nil
-                settings_key_field = nil
-            end
+    if shell_root == "" then
+        run("sh", { "-c", 'printf %s "${PLEAMAR_SHELL_ROOT:-}"' }, function(out)
+            if out then shell_root = tostring(out):gsub("%s+$", "") end
+            center.refresh_root()
         end)
-        if ok then
-            settings_key_helper = id
-            settings_key_field = field
-            mine = id
-        else
-            log("settings key helper could not start: " .. tostring(id))
-        end
     end
 
-    local search_key_helper = nil
-    local function stop_searchkeys()
-        if search_key_helper then
-            kill(search_key_helper, "term")
-            search_key_helper = nil
-        end
+    --  Zero-latency native audio via Pleamar's built-in 48-voice mixer
+    --  (`services: "sound"`).  Preloads panel.wav and plays directly with subtle
+    --  pitch/pan variation; falls back to a synthesized water-droplet tone or
+    --  pw-play only if the native mixer or asset is unavailable.
+    if type(sound) == "table" and sound.load then
+        pcall(sound.load, "sfx/panel.wav")
     end
-    start_searchkeys = function()
-        if not truthy(fact.launch_open) or not truthy(fact.notch_mode) or shell_root == "" then
-            stop_searchkeys()
-            return
-        end
-        if search_key_helper then return end
-        local parent = string.lower(tostring(text.layout or "notches"))
-        local cmd = "PLEAMAR_SETTINGS_PARENT=" .. sq(parent)
-            .. " PLEAMAR_SETTINGS_FIELD=query"
-            .. " PLEAMAR_SETTINGS_TEXT=" .. sq(tostring(text.query or ""))
-            .. " PLEAMAR_SETTINGS_CLOSE_EVENT=launch_close"
-            .. " exec " .. sq(shell_root .. "/bin/pleamar-settingskeys")
-        local mine
-        local ok, id = pcall(spawn, "sh", { "-c", cmd }, function() end, function()
-            if search_key_helper == mine then search_key_helper = nil end
-        end)
-        if ok then
-            search_key_helper = id
-            mine = id
-        else
-            log("search key helper could not start: " .. tostring(id))
-        end
-    end
-
-    --  The panel click is Vitreus's own `assets/panel.wav`; one at a time even
-    --  when a click changes several things.
     local last_snd = 0
     local function play_panel_sound()
-        if not truthy(fact.snd_on) or shell_root == "" then return end
+        if not truthy(fact.snd_on) then return end
         local now = os.clock()
-        if now - last_snd < 0.25 then return end
+        if now - last_snd < 0.045 then return end
         last_snd = now
+        local pan = 0
+        if type(mouse) == "table" and type(mouse.x) == "number" then
+            pan = clamp((mouse.x - 960) / 960 * 0.25, -0.25, 0.25)
+        end
+        local pitch = 0.97 + math.random() * 0.06
+        if type(sound) == "table" then
+            if sound.play and pcall(sound.play, "sfx/panel.wav", { volume = 0.28, pitch = pitch, pan = pan }) then
+                return
+            end
+            if sound.tone and pcall(sound.tone, { wave = "sine", freq = 720 * pitch, to = 1040 * pitch, ms = 34, attack = 3, release = 28, volume = 0.14, pan = pan }) then
+                return
+            end
+        end
+        if shell_root == "" then return end
         run("sh", { "-c", "pw-play --volume 0.25 " .. sq(shell_root .. "/assets/panel.wav") .. " >/dev/null 2>&1" }, function(_, code)
             if code ~= 0 then log("panel sound could not play") end
         end)
@@ -693,6 +660,7 @@ function M.start(layout)
     end
 
     local wall_files = {}
+    local wall_thumbs = {}
     local wall_token, thumb_token, color_token = 0, 0, 0
     local wall_sync_running, wall_sync_hold_until = false, 0
     local show_wall_page, refresh_wallpapers, set_wallpaper, recolor
@@ -759,7 +727,10 @@ function M.start(layout)
             local thumbs = {}
             for line in string.gmatch(out, "[^\n]+") do
                 local t, p = line:match("^([^\t]+)\t(.+)$")
-                if t and p then thumbs[p] = t end
+                if t and p then
+                    thumbs[p] = t
+                    wall_thumbs[p] = t
+                end
             end
             local rows = {}
             for _, p in ipairs(picked) do
@@ -994,8 +965,14 @@ function M.start(layout)
         nt_save_hist()
     end
     local function nt_sound(idx)
-        if not truthy(fact.nt_snd_on) or shell_root == "" then return end
+        if not truthy(fact.nt_snd_on) then return end
         local s = NT_SOUNDS[math.floor(number(idx, 1))] or NT_SOUNDS[1]
+        if type(sound) == "table" and sound.play then
+            if pcall(sound.play, "sfx/sounds/" .. s[1] .. ".oga", { volume = 0.72 }) then
+                return
+            end
+        end
+        if shell_root == "" then return end
         run("sh", { "-c", "pw-play --volume 0.7 " .. sq(shell_root .. "/assets/sounds/" .. s[1] .. ".oga") .. " >/dev/null 2>&1" }, function(_, code)
             if code ~= 0 then log("notification sound could not play") end
         end)
@@ -1303,6 +1280,11 @@ function M.start(layout)
     local function shell(cmd, cb)
         run("sh", { "-c", cmd }, cb or function() end)
     end
+    local function copy_text(str)
+        if not pcall(sys.call, "clipboard.set", tostring(str or "")) then
+            shell("printf %s " .. shq(str) .. " | wl-copy")
+        end
+    end
     local function open_url(url)
         shell("xdg-open " .. shq(url) .. " >/dev/null 2>&1")
     end
@@ -1319,7 +1301,8 @@ function M.start(layout)
         for i = 1, math.min(#results, 10) do
             local r = results[i]
             rows[i] = { name = r.name, sub = r.sub, exec = r.exec, icon = r.icon,
-                        glyph = r.glyph, has_glyph = r.has_glyph, kind = r.kind }
+                        glyph = r.glyph, has_glyph = r.has_glyph,
+                        is_thumb = (r.kind == "WALLPAPER" and not r.has_glyph), kind = r.kind }
         end
         model.la_apps = rows
         fact.la_sel = 0
@@ -1333,15 +1316,45 @@ function M.start(layout)
         if truthy(fact.launch_open) then fact.launch_open = false end
     end
 
-    -- ── apps ──
+    -- ── apps (with frecency ranking persisted via native files service) ──
+    local app_frecency = {}
+    do
+        local ok, saved = pcall(sys.ask, "files.read", "launcher_frecency.json", "json")
+        if ok and type(saved) == "table" then app_frecency = saved end
+    end
+    local function app_key(a)
+        local k = tostring(a.id or "")
+        if k == "" then k = tostring(a.exec or a.name or "") end
+        return k
+    end
+    local function frecency_score(key)
+        local e = key ~= "" and app_frecency[key] or nil
+        if type(e) ~= "table" then return 0 end
+        local cnt = number(e.count, 0)
+        if cnt <= 0 then return 0 end
+        local age = math.max(0, os.time() - number(e.last, 0))
+        local w = age < 14400 and 4.0 or (age < 86400 and 2.0 or (age < 604800 and 1.2 or 0.6))
+        return cnt * w
+    end
+    local function record_app_launch(key)
+        if key == "" then return end
+        local e = app_frecency[key]
+        if type(e) ~= "table" then e = { count = 0, last = 0 } end
+        e.count = number(e.count, 0) + 1
+        e.last = os.time()
+        app_frecency[key] = e
+        pcall(sys.call, "files.write", "launcher_frecency.json", app_frecency)
+    end
     local function app_row(a)
         local name = tostring(a.name or a.local_name or a.id or "?")
         local desc = tostring(a.comment or a.generic_name or "")
         local icon = tostring(a.icon or "")
         local glyph = icon == "" and name:sub(1, 1):upper() or ""
+        local key = app_key(a)
         return row(name, desc, "APP", glyph, function()
             local exec = tostring(a.exec or "")
             if exec ~= "" then
+                record_app_launch(key)
                 local ok, err = pcall(sys.call, "apps.launch", exec)
                 if not ok then log("app launch failed: " .. tostring(err)) end
             end
@@ -1351,10 +1364,15 @@ function M.start(layout)
         local ql = q:lower()
         local out = {}
         if ql == "" then
-            for i, a in ipairs(all_apps) do
-                out[#out + 1] = app_row(a)
-                if #out >= 8 then break end
+            local ranked = {}
+            for _, a in ipairs(all_apps) do
+                ranked[#ranked + 1] = { a = a, fr = frecency_score(app_key(a)) }
             end
+            table.sort(ranked, function(x, y)
+                if x.fr ~= y.fr then return x.fr > y.fr end
+                return tostring(x.a.name or ""):lower() < tostring(y.a.name or ""):lower()
+            end)
+            for i = 1, math.min(#ranked, 8) do out[i] = app_row(ranked[i].a) end
             return out
         end
         local scored = {}
@@ -1368,7 +1386,10 @@ function M.start(layout)
             elseif name:sub(1, #ql) == ql then sc = 80
             elseif name:find(ql, 1, true) then sc = 60
             elseif fields:lower():find(ql, 1, true) then sc = 30 end
-            if sc > 0 then scored[#scored + 1] = { a = a, sc = sc } end
+            if sc > 0 then
+                sc = sc + math.min(25, frecency_score(app_key(a)) * 3)
+                scored[#scored + 1] = { a = a, sc = sc }
+            end
         end
         table.sort(scored, function(x, y)
             if x.sc ~= y.sc then return x.sc > y.sc end
@@ -1440,7 +1461,7 @@ function M.start(layout)
         if not ok or type(v) ~= "number" or v ~= v or v == math.huge or v == -math.huge then return nil end
         local str = string.format("%.10g", v)
         return row("= " .. str, q .. "  ·  Enter copies", "CALC", "=", function()
-            shell("printf %s " .. shq(str) .. " | wl-copy")
+            copy_text(str)
         end)
     end
     local U = {
@@ -1460,7 +1481,7 @@ function M.start(layout)
         if p and tonumber(p) and tonumber(of) then
             local str = string.format("%.6g", tonumber(p) * tonumber(of) / 100)
             return row("= " .. str, p .. "% of " .. of .. "  ·  Enter copies", "CALC", "%", function()
-                shell("printf %s " .. shq(str) .. " | wl-copy")
+                copy_text(str)
             end)
         end
         local n, a, b = s:match("^(%-?[%d%.]+)%s*([%a/%d]+)%s+to%s+([%a/%d]+)$")
@@ -1480,7 +1501,7 @@ function M.start(layout)
         end
         local str = string.format("%.6g", out)
         return row("= " .. str .. " " .. b, n .. " " .. a .. " → " .. b .. "  ·  Enter copies", "CALC", "=", function()
-            shell("printf %s " .. shq(str) .. " | wl-copy")
+            copy_text(str)
         end)
     end
 
@@ -1491,11 +1512,15 @@ function M.start(layout)
     local COMMANDS = {
         { "Settings: Wallpaper", "open", open_page(4), "background picture image colors palette" },
         { "Settings: Glass", "open", open_page(1), "blur transparency frosted glass look" },
-        { "Settings: Bar", "open", open_page(2), "notch height sound panel" },
+        { "Settings: Theme", "open", open_page(10), "theme material preset gradient light border smoke vivid" },
+        { "Settings: Bar", "open", open_page(2), "notch height width date lunar weekday seconds sound panel" },
+        { "Settings: Frame music", "open", open_page(0), "wave water amplitude sensitivity columns" },
         { "Settings: Font", "open", open_page(3), "typeface text" },
-        { "Settings: Frame music", "open", open_page(0), "wave water amplitude sensitivity" },
+        { "Settings: Motion", "open", open_page(6), "drawer animation wave neck pop bounce" },
+        { "Settings: Notifications", "open", open_page(5), "toast dnd sound countdown position" },
         { "Settings: Lock screen", "open", open_page(7), "lock password blur clock date mask" },
         { "Settings: Idle", "open", open_page(8), "idle lock screen off timeout seconds swayidle" },
+        { "Settings: Weather", "open", open_page(9), "weather city forecast open-meteo" },
         { "Panel sound: toggle", "action", function() fact.snd_on = not truthy(fact.snd_on) end, "click audio mute" },
         { "Frame music: toggle", "action", function() fact.music_frame_on = not truthy(fact.music_frame_on) end, "notch frame audio" },
         { "Wallpaper: next", "action", function() next_wallpaper() end, "background picture next rotate" },
@@ -1525,7 +1550,7 @@ function M.start(layout)
                 if ql == "" or name:lower():find(ql, 1, true) or keys:lower():find(ql, 1, true) or tostring(e.c or "") == q then
                     local char = tostring(e.c or "")
                     out[#out + 1] = row(char, name, "EMOJI", char, function()
-                        shell("printf %s " .. shq(char) .. " | wl-copy")
+                        copy_text(char)
                     end)
                     if #out >= 8 then break end
                 end
@@ -1594,16 +1619,43 @@ function M.start(layout)
             done(rows, "No window matches")
         end)
     end
-    local function search_wallpapers(q)
-        local rows, ql = {}, q:lower()
+    local function search_wallpapers(q, done)
+        local matched, missing, ql = {}, {}, q:lower()
         for _, path in ipairs(wall_files) do
             local name = path:match("([^/]+)$") or path
             if ql == "" or name:lower():find(ql, 1, true) then
-                rows[#rows + 1] = row(name, path, "WALLPAPER", "W", function() set_wallpaper(path, true) end)
-                if #rows >= 8 then break end
+                matched[#matched + 1] = { name = name, path = path }
+                if not wall_thumbs[path] then missing[#missing + 1] = path end
+                if #matched >= 8 then break end
             end
         end
-        return rows
+        local function build_rows()
+            local rows = {}
+            for _, m in ipairs(matched) do
+                local thumb = wall_thumbs[m.path] or ""
+                rows[#rows + 1] = row(m.name, m.path, "WALLPAPER", thumb == "" and "W" or "", function()
+                    set_wallpaper(m.path, true)
+                end, thumb)
+            end
+            return rows
+        end
+        done(build_rows(), HINT)
+        if #missing > 0 then
+            local args = { "-c", THUMB_SCRIPT, "pleamar-la-thumbs" }
+            for _, p in ipairs(missing) do args[#args + 1] = p end
+            pcall(run, "sh", args, function(out, code)
+                if code ~= 0 or not out then return end
+                local any = false
+                for line in string.gmatch(out, "[^\n]+") do
+                    local t, p = line:match("^([^\t]+)\t(.+)$")
+                    if t and p then
+                        wall_thumbs[p] = t
+                        any = true
+                    end
+                end
+                if any then done(build_rows(), HINT) end
+            end)
+        end
     end
     local BANGS = {
         { "ddg", "DuckDuckGo", "https://duckduckgo.com/?q=%s" },
@@ -1660,7 +1712,7 @@ function M.start(layout)
         elseif mode == "commands" then return done(search_commands(q), HINT)
         elseif mode == "emoji" then return search_emoji(q, done)
         elseif mode == "clipboard" then return search_clip(q, done)
-        elseif mode == "wallpapers" then return done(search_wallpapers(q), HINT)
+        elseif mode == "wallpapers" then return search_wallpapers(q, done)
         elseif mode == "windows" then return search_windows(q, done)
         elseif mode == "web" then return search_web(raw, done)
         elseif mode == "calc" then
@@ -1728,7 +1780,12 @@ function M.start(layout)
     on("fact:panel_bg_role", function() save() end)
     on("fact:panel_bg_tint", function() save() end)
     on("fact:glass_on", function() save() end)
+    on("fact:glass_mix", function() save() end)
     on("fact:glass_bend", function() save() end)
+    on("fact:glass_shine", function() save() end)
+    on("fact:glass_frost_auto", function() save() end)
+    on("fact:glass_color_tint", function() save() end)
+    on("fact:glass_shadow_amt", function() save() end)
     on("fact:glass_refr", function() save() end)
     on("fact:glass_disp", function() save() end)
     on("fact:glass_dome", function() save() end)
@@ -1746,16 +1803,20 @@ function M.start(layout)
     --  Material presets: one event sets the shared glass values.  The sliders
     --  remain authoritative afterwards; this is only a starting point.
     local GLASS_PRESETS = {
-        { frost = 1.00, refr = 1.00, disp = 1.00, dome = 0.00, milk = 0.00, smoke = 0.00, vivid = 1.18, mirror = 1.00, highlight = 1.00, ripple = 1.00, tint = 58, edge = 34, light = 0.00, border = 0 },
-        { frost = 0.00, refr = 1.60, disp = 1.80, dome = 0.00, milk = 0.00, smoke = 0.00, vivid = 1.20, mirror = 1.20, highlight = 1.10, ripple = 1.00, tint = 30, edge = 55, light = 0.20, border = 20 },
-        { frost = 0.40, refr = 1.00, disp = 1.10, dome = 0.00, milk = 0.00, smoke = 0.75, vivid = 1.10, mirror = 0.80, highlight = 0.80, ripple = 1.00, tint = 55, edge = 30, light = 0.00, border = 0 },
-        { frost = 0.70, refr = 1.00, disp = 1.00, dome = 0.00, milk = 0.80, smoke = 0.00, vivid = 1.00, mirror = 0.80, highlight = 0.80, ripple = 1.00, tint = 25, edge = 35, light = 0.25, border = 0 },
-        { frost = 0.35, refr = 1.30, disp = 1.50, dome = 0.00, milk = 0.10, smoke = 0.20, vivid = 1.25, mirror = 1.80, highlight = 1.60, ripple = 1.00, tint = 35, edge = 60, light = 0.30, border = 30 },
+        { frost = 1.00, frost_auto = false, mix = 100, color_tint = 22, shadow = 24, refr = 1.00, disp = 1.00, dome = 0.00, milk = 0.00, smoke = 0.00, vivid = 1.18, mirror = 1.00, highlight = 1.00, ripple = 1.00, tint = 58, edge = 34, light = 0.00, border = 0 },
+        { frost = 0.00, frost_auto = false, mix = 100, color_tint = 10, shadow = 20, refr = 1.60, disp = 1.80, dome = 0.00, milk = 0.00, smoke = 0.00, vivid = 1.20, mirror = 1.20, highlight = 1.10, ripple = 1.00, tint = 30, edge = 55, light = 0.20, border = 20 },
+        { frost = 0.40, frost_auto = false, mix = 100, color_tint = 32, shadow = 34, refr = 1.00, disp = 1.10, dome = 0.00, milk = 0.00, smoke = 0.75, vivid = 1.10, mirror = 0.80, highlight = 0.80, ripple = 1.00, tint = 55, edge = 30, light = 0.00, border = 0 },
+        { frost = 0.70, frost_auto = false, mix = 100, color_tint = 24, shadow = 18, refr = 1.00, disp = 1.00, dome = 0.00, milk = 0.80, smoke = 0.00, vivid = 1.00, mirror = 0.80, highlight = 0.80, ripple = 1.00, tint = 25, edge = 35, light = 0.25, border = 0 },
+        { frost = 0.35, frost_auto = true,  mix = 100, color_tint = 16, shadow = 28, refr = 1.30, disp = 1.50, dome = 0.00, milk = 0.10, smoke = 0.20, vivid = 1.25, mirror = 1.80, highlight = 1.60, ripple = 1.00, tint = 35, edge = 60, light = 0.30, border = 30 },
     }
     on("glass_preset", function(v)
         local i = math.floor(clamp(number(v, 0), 0, #GLASS_PRESETS - 1))
         local p = GLASS_PRESETS[i + 1]
+        fact.glass_mix = p.mix
+        fact.glass_frost_auto = p.frost_auto
         fact.glass_frost = p.frost * 100
+        fact.glass_color_tint = p.color_tint
+        fact.glass_shadow_amt = p.shadow
         fact.glass_refr = p.refr
         fact.glass_disp = p.disp
         fact.glass_dome = p.dome
@@ -1790,6 +1851,7 @@ function M.start(layout)
     on("fact:bar_show_date",      function() center.refresh_bar_date(); save() end)
     on("fact:bar_show_lunar",     function() center.refresh_bar_date(); save() end)
     on("fact:bar_show_weekday",   function() center.refresh_bar_date(); save() end)
+    on("fact:bar_show_secs",      function() save() end)
     on("fact:lock_blur", function() save() end)
     on("fact:lock_12h", function() save() end)
     on("fact:lock_ampm", function() save() end)
@@ -1817,34 +1879,22 @@ function M.start(layout)
     on("fact:panel_open", function()
         if truthy(fact.panel_open) then
             if truthy(fact.center_open) then center.close() end
-            start_settingskeys()
-        else
-            stop_settingskeys()
         end
         recompute_quiet()
     end)
-    on("fact:settings_page", function()
-        if truthy(fact.panel_open) then start_settingskeys() end
-    end)
     on("settings_close", function()
         fact.panel_open = false
-        stop_settingskeys()
     end)
     on("fact:launch_open", function()
         if truthy(fact.launch_open) then
-            stop_settingskeys()
             text.query = ""
             search_now()
-            start_searchkeys()
             if truthy(fact.center_open) then center.close() end
-        else
-            stop_searchkeys()
         end
         recompute_quiet()
     end)
     on("launch_close", function()
         fact.launch_open = false
-        stop_searchkeys()
     end)
     on("fact:anim_toast", function() config_changed("toast") end)
     on("fact:anim_center", function() config_changed("center") end)
@@ -2067,15 +2117,10 @@ function M.start(layout)
     on("ipc_open_search", function()
         center.close()
         fact.panel_open = false
-        stop_settingskeys()
         fact.nt_center = false
         fact.launch_open = true
         text.query = ""
         search_now()
-        --  A fact written by our own logic does not wake `fact:launch_open`
-        --  in 0.8-exp; start the keyboard helper here so the first keystroke
-        --  is not lost.
-        start_searchkeys()
     end)
     on("ipc_open_settings", function(page)
         center.close()
@@ -2086,18 +2131,10 @@ function M.start(layout)
         fact.launch_open = false
         fact.nt_center = false
         fact.panel_open = true
-        start_settingskeys()
-    end)
-    on("ipc_open_center", function()
-        stop_settingskeys()
-    end)
-    on("center_toggle", function()
-        stop_settingskeys()
     end)
     on("lock_now", function()
         center.close()
         fact.panel_open = false
-        stop_settingskeys()
         fact.launch_open = false
         save(function(code)
             if code ~= 0 or shell_root == "" then return end
@@ -2111,7 +2148,6 @@ function M.start(layout)
     on("lock_test", function()
         center.close()
         fact.panel_open = false
-        stop_settingskeys()
         fact.launch_open = false
         save(function(code)
             if code ~= 0 or shell_root == "" then return end
@@ -2125,23 +2161,17 @@ function M.start(layout)
     on("ipc_open_notifications", function()
         center.close()
         fact.panel_open = false
-        stop_settingskeys()
         fact.launch_open = false
         if not truthy(fact.nt_center) then set_fx("center") end
         fact.nt_center = true
         fact.nt_unread = 0
     end)
     --  ── the lock scene, kept alive ─────────────────────────────────────
-    --  Pleamar 0.4.x exits on an ext-session-lock protocol error when an output
-    --  comes back while the screen is locked (DPMS off/on hotplugs the
-    --  monitor).  niri then remains locked with no client and paints its red
-    --  overlay.  The lock scene is a separate process, so watch its socket:
-    --  `alive` costs one short-lived client and fails at once when the scene
-    --  is gone.  Re-lock only if the session is still locked; give the startup
-    --  `ensure` time to open the socket first.
+    --  pleamar-lock-keeper supervises the lock scene on its own; keep a light
+    --  15 s safety check here as a fallback without hammering the process table.
     local lock_watch_busy, lock_watch_ready = false, false
     after(5000, function() lock_watch_ready = true end)
-    every(2000, function()
+    every(15000, function()
         if shell_root == "" or not lock_watch_ready or lock_watch_busy then return end
         lock_watch_busy = true
         local helper = shq(shell_root .. "/bin/pleamar-lock")
@@ -2160,19 +2190,6 @@ function M.start(layout)
                 end)
             end)
         end)
-    end)
-    every(700, function()
-        if truthy(fact.launch_open) and truthy(fact.notch_mode) and shell_root ~= "" and not search_key_helper then
-            start_searchkeys()
-        elseif (not truthy(fact.launch_open) or not truthy(fact.notch_mode)) and search_key_helper then
-            stop_searchkeys()
-        end
-        if truthy(fact.panel_open) and settings_key_helper then
-            pcall(sys.call, "say", "settingskeys", "emit key_ping")
-        end
-        if truthy(fact.launch_open) and search_key_helper then
-            pcall(sys.call, "say", "settingskeys", "emit key_ping")
-        end
     end)
 end
 

@@ -3,7 +3,7 @@
 //  measured percentage, and the surface keeps moving so each sample reads as
 //  a level rather than a progress bar.
 //
-//  values: a.x = level 0..1, a.y = phase offset, a.z = hover 0..1.
+//  values: a.x = level 0..1, a.y = phase offset, a.z = hover 0..1, a.w = motion 0..1.
 //  The shader clips itself to the card's rounded rectangle, so the backing
 //  card, border and text can stay ordinary scene primitives.
 
@@ -30,7 +30,8 @@ fn shade(s: Shader) -> vec4<f32> {
     }
 
     let phase = s.a.y * 6.28318;
-    let t = s.time;
+    let motion = clamp(s.a.w, 0.0, 1.0);
+    let t = s.time * motion;
     let x = s.uv.x;
     let y = s.uv.y * s.size.y;
     let surface = (1.0 - level) * s.size.y;

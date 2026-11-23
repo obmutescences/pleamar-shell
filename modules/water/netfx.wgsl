@@ -3,7 +3,7 @@
 //  sweep and right-edge pulse that tell the eye the monitor is still running
 //  even when the link is almost idle.
 //
-//  values: a.x = online (0/1).  The graph itself supplies the real samples.
+//  values: a.x = online (0/1), a.y = motion (0/1).  The graph itself supplies the real samples.
 
 fn sd_round_box(p: vec2<f32>, half_size: vec2<f32>, radius: f32) -> f32 {
     let q = abs(p) - (half_size - vec2<f32>(radius, radius));
@@ -12,7 +12,7 @@ fn sd_round_box(p: vec2<f32>, half_size: vec2<f32>, radius: f32) -> f32 {
 }
 
 fn shade(s: Shader) -> vec4<f32> {
-    if (s.a.x < 0.5) {
+    if (s.a.x < 0.5 || s.a.y < 0.5) {
         return vec4<f32>(0.0, 0.0, 0.0, 0.0);
     }
 

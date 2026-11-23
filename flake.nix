@@ -36,10 +36,6 @@
         in base.overrideAttrs (old: {
           patches = (old.patches or []) ++ [
             ./nix/pleamar-layer-names.patch
-            #  A replaced backdrop capture dropped its wl_shm_pool proxy
-            #  without sending the pool's destructor, so niri kept the memfd
-            #  and its full-resolution mapping until the shell exited.
-            ./nix/pleamar-shm-pool.patch
           ];
         });
     in {

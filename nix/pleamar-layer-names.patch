@@ -1,7 +1,7 @@
 --- a/src/platform/wayland.rs
 +++ b/src/platform/wayland.rs
-@@ -1060,7 +1060,16 @@
-                 self.placed.push(Placed { id, which, role, output: output.clone(), viewport, _fractional_scale: fractional_scale, scale: 1.0, size: (0, 0), pending: Some((surface, name.clone(), mhz)), layer_placement: None, backdrop });
+@@ -1624,7 +1624,16 @@
+                 self.placed.push(Placed { id, which, role, output: output.clone(), viewport, _fractional_scale: fractional_scale, scale: 1.0, size: (0, 0), pending: Some((surface, name.clone(), mhz)), backdrop });
                  continue;
              }
 -            let layer = self.layers.create_layer_surface(qh, wl, level, Some("pleamar"), Some(output));

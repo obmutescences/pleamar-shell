@@ -61,6 +61,7 @@ on("text:cfg_monitor", function(t)
 end)
 -- ── The clock ────────────────────────────────────────────────────────────────────────────────────────
 local weekdays = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" }
+local zh_weekdays = { "星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六" }
 local months = { "January", "February", "March", "April", "May", "June", "July", "August", "September",
                  "October", "November", "December" }
 
@@ -92,6 +93,13 @@ local function show_clock(c)
     fact.clock_d3 = c.minute % 10
     text.clock_ampm = c.hour >= 12 and "PM" or "AM"
     text.clock_date = date_text(c)
+    if tostring(text.clock_lunar or "") == "" then
+        local zwd = zh_weekdays[c.weekday + 1] or ""
+        if zwd ~= "" then
+            text.clock_lunar = zwd
+            fact.has_lunar = true
+        end
+    end
 end
 sys.watch("clock", function(c)
     last_clock = c
@@ -187,38 +195,47 @@ on("palette_sync", push_palette)
 --  loading, so keep the name in scope here and assign it later.
 local prepare_wallpaper
 
-run("printenv", { "HOME" }, function(out)
-    home = (out or ""):gsub("%s+$", "")
+local function init_user(h, u)
+    home = (h or ""):gsub("%s+$", "")
+    user = (u or ""):gsub("%s+$", "")
     if prepare_wallpaper then prepare_wallpaper(true) end
-    run("printenv", { "USER" }, function(uout)
-        user = (uout or ""):gsub("%s+$", "")
-        -- the name shown is the real name if there is one, and the login name if not
-        if user ~= "" then text.realname = user end
-        -- The shell's palette is generated from the wallpaper.  These facts
-        -- are imported by palette.plm, so the lock matches the bar and panels.
-        push_palette()
+    if user ~= "" then text.realname = user end
+    push_palette()
+    if user ~= "" then
         run("getent", { "passwd", user }, function(line)
-            -- name:x:uid:gid:GECOS:home:shell, and the real name is the first of GECOS's comma-separated parts
             local gecos = (line or ""):match("^[^:]*:[^:]*:[^:]*:[^:]*:([^:]*):")
             local name = gecos and gecos:match("^[^,]*") or ""
             if name ~= "" then text.realname = name end
         end)
-        -- the avatar: ~/.face, ~/.face.icon or AccountsService's, whichever exists first
-        local candidates = { home .. "/.face", home .. "/.face.icon", "/var/lib/AccountsService/icons/" .. user }
-        local function try(i)
-            if i > #candidates then return end
-            run("ls", { candidates[i] }, function(_, code)
-                if code == 0 then
-                    text.avatar_path = candidates[i]
-                    fact.has_avatar = true
-                else
-                    try(i + 1)
-                end
+    end
+    local candidates = { home .. "/.face", home .. "/.face.icon", "/var/lib/AccountsService/icons/" .. user }
+    local function try(i)
+        if i > #candidates then return end
+        run("ls", { candidates[i] }, function(_, code)
+            if code == 0 then
+                text.avatar_path = candidates[i]
+                fact.has_avatar = true
+            else
+                try(i + 1)
+            end
+        end)
+    end
+    if home ~= "" then try(1) end
+end
+
+do
+    local ok_h, env_h = pcall(sys.ask, "env", "HOME")
+    local ok_u, env_u = pcall(sys.ask, "env", "USER")
+    if ok_h and type(env_h) == "string" and env_h ~= "" then
+        init_user(env_h, (ok_u and type(env_u) == "string") and env_u or "")
+    else
+        run("printenv", { "HOME" }, function(out)
+            run("printenv", { "USER" }, function(uout)
+                init_user(out, uout)
             end)
-        end
-        try(1)
-    end)
-end)
+        end)
+    end
+end
 
 -- ── What is playing ──────────────────────────────────────────────────────────────────────────────────
 local last_media = nil
@@ -270,22 +287,20 @@ end
 -- was gone.) The pictures made for each wallpaper are kept under their own names, one pair at a time.
 local publish_count = 0
 
-local function publish(s, b, done)
+local function publish(sharp_src, b, done)
     local dir = home .. "/.cache/pleamar-shell/lockscreen"
-    local fs, fb = dir .. "/sharp.jpg", dir .. "/blur.jpg"
-    run("cp", { "-f", s, fs }, function(_, c1)
-        run("cp", { "-f", b, fb }, function(_, c2)
-            if c1 == 0 and c2 == 0 then
-                publish_count = publish_count + 1
-                local version = "?" .. (os.time() * 100 + publish_count % 100)
-                text.wp_sharp = fs .. version
-                text.wp_blur = fb .. version
-                fact.has_wall = true
-            else
-                log("lock wallpaper: publish failed (" .. tostring(c1) .. ", " .. tostring(c2) .. ")")
-            end
-            if done then done() end
-        end)
+    local fb = dir .. "/blur.jpg"
+    run("cp", { "-f", b, fb }, function(_, c2)
+        if c2 == 0 then
+            publish_count = publish_count + 1
+            local version = "?" .. (os.time() * 100 + publish_count % 100)
+            text.wp_sharp = sharp_src
+            text.wp_blur = fb .. version
+            fact.has_wall = true
+        else
+            log("lock wallpaper: publish failed (" .. tostring(c2) .. ")")
+        end
+        if done then done() end
     end)
 end
 
@@ -327,8 +342,8 @@ prepare_wallpaper = function(force)
         local sigma = cfg.blur / 4              -- the blurred picture is made at 480 wide, a quarter of the screen
         local key = hash(string.format("5 %g %s", sigma, geo) .. path)
         if key == made_key then return done() end
-        local s, b = dir .. "/sharp-" .. key .. ".jpg", dir .. "/blur-" .. key .. ".jpg"
-        -- the pictures of every earlier wallpaper are of no use any more (the two the scene draws are not theirs)
+        local b = dir .. "/blur-" .. key .. ".jpg"
+        -- the blurred pictures of earlier wallpapers are no longer needed
         local function forget_old()
             run("ls", { dir }, function(listing)
                 for name in (listing or ""):gmatch("[^\n]+") do
@@ -338,30 +353,24 @@ prepare_wallpaper = function(force)
                 end
             end)
         end
-        run("ls", { s, b }, function(_, code)
+        run("ls", { b }, function(_, code)
             if code == 0 then
                 made_key = key
-                publish(s, b, done)
+                publish(path, b, done)
                 return
             end
             run("mkdir", { "-p", dir }, function()
-                run("magick", { path, "-resize", geo .. "^", "-gravity", "center", "-extent", geo, "-resize", "1280x720!", "-quality", "90", s }, function(_, c1)
-                    if c1 ~= 0 then
-                        log("lock wallpaper: sharp render failed (" .. tostring(c1) .. ")")
-                        return done()
-                    end
-                    run("magick", { path, "-resize", geo .. "^", "-gravity", "center", "-extent", geo, "-resize", "480x", "-blur", "0x" .. sigma, "-resize", "960x540!", "-quality", "95", "-sampling-factor", "4:4:4", b }, function(_, c2)
-                        if c2 == 0 then
-                            made_key = key
-                            publish(s, b, function()
-                                forget_old()
-                                done()
-                            end)
-                        else
-                            log("lock wallpaper: blur render failed (" .. tostring(c2) .. ")")
+                run("magick", { path, "-resize", geo .. "^", "-gravity", "center", "-extent", geo, "-resize", "480x", "-blur", "0x" .. sigma, "-resize", "960x540!", "-quality", "95", "-sampling-factor", "4:4:4", b }, function(_, c2)
+                    if c2 == 0 then
+                        made_key = key
+                        publish(path, b, function()
+                            forget_old()
                             done()
-                        end
-                    end)
+                        end)
+                    else
+                        log("lock wallpaper: blur render failed (" .. tostring(c2) .. ")")
+                        done()
+                    end
                 end)
             end)
         end)
@@ -385,9 +394,9 @@ local function seed_wallpaper()
         return
     end
     local dir = home .. "/.cache/pleamar-shell/lockscreen"
-    run("ls", { dir .. "/sharp.jpg", dir .. "/blur.jpg" }, function(_, code)
+    run("ls", { dir .. "/blur.jpg" }, function(_, code)
         if code == 0 then
-            text.wp_sharp = dir .. "/sharp.jpg"
+            text.wp_sharp = dir .. "/blur.jpg"
             text.wp_blur = dir .. "/blur.jpg"
             fact.has_wall = true
             log("lock wallpaper: cache seed")
