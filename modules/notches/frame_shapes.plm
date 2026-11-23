@@ -290,4 +290,6 @@ part NotchFrameShapes {
     box { at: nf.cx + nf.ct_w / 2 - nf.rail - nf.dh.9 / 2 + nf.ct_shift, nf.clock_h + (nf.ct_h - nf.clock_h) * 9.5 / 12; size: nf.dh.9, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl; show: nf.ct_shift == 0 and nf.dh.9 > 1 }
     box { at: nf.cx + nf.ct_w / 2 - nf.rail - nf.dh.10 / 2 + nf.ct_shift, nf.clock_h + (nf.ct_h - nf.clock_h) * 10.5 / 12; size: nf.dh.10, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl; show: nf.ct_shift == 0 and nf.dh.10 > 1 }
     box { at: nf.cx + nf.ct_w / 2 - nf.rail - nf.dh.11 / 2 + nf.ct_shift, nf.clock_h + (nf.ct_h - nf.clock_h) * 11.5 / 12; size: nf.dh.11, nf.bw; corner: nf.bw * 0.45; rotate: 0; blend: nf.bbl; show: nf.ct_shift == 0 and nf.dh.11 > 1 }
+    //  Last shape: pointer magnetic bulge on the clock notch (off-screen when idle so SDF stays clean).
+    box { at: nf_bulge_x + nf.bulge_shift, nf.clock_h / 2; size: 64 * nf_bulge_p, nf.clock_h * nf_bulge_p; corner: 20; blend: 12 * nf_bulge_p; show: nf_bulge_p > 0.01 }
 }

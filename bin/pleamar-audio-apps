@@ -1,0 +1,138 @@
+#!/usr/bin/env python3
+"""Per-application PipeWire playback stream mixer helper for Pleamar CenterPanel."""
+
+import json
+import re
+import subprocess
+import sys
+
+
+def _strip_alsa_wrapper(name: str) -> str:
+    m = re.fullmatch(r"PipeWire ALSA \[(.+)\]", name.strip())
+    return m.group(1).strip() if m else name.strip()
+
+
+def _stream_props(obj: dict) -> tuple[float, bool]:
+    params = (obj.get("info") or {}).get("params") or {}
+    props_list = params.get("Props") or []
+    vol = 1.0
+    muted = False
+    for p in props_list:
+        if not isinstance(p, dict):
+            continue
+        cvols = p.get("channelVolumes")
+        if isinstance(cvols, list) and cvols:
+            try:
+                raw = sum(float(v) for v in cvols) / len(cvols)
+                vol = raw ** (1.0 / 3.0) if raw > 0.0 else 0.0
+                vol = max(0.0, min(1.5, vol))
+            except (TypeError, ValueError):
+                pass
+        if "mute" in p:
+            muted = bool(p["mute"])
+    return round(vol, 3), muted
+
+
+def cmd_list() -> int:
+    proc = subprocess.run(
+        ["pw-dump"],
+        capture_output=True,
+        text=True,
+        timeout=3,
+    )
+    if proc.returncode != 0 or not proc.stdout.strip():
+        print("[]")
+        return 0
+    try:
+        objs = json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        print("[]")
+        return 0
+
+    rows = []
+    for obj in objs:
+        if not isinstance(obj, dict):
+            continue
+        info = obj.get("info") or {}
+        props = info.get("props") or {}
+        if props.get("media.class") != "Stream/Output/Audio":
+            continue
+        try:
+            oid = int(obj.get("id") or 0)
+        except (TypeError, ValueError):
+            continue
+        if oid <= 0:
+            continue
+
+        raw_app = str(props.get("application.name") or props.get("node.name") or "").strip()
+        raw_node = str(props.get("node.name") or "").strip()
+        if raw_app.lower() == "pleamar" or raw_node.lower() == "pleamar":
+            continue
+
+        app = _strip_alsa_wrapper(raw_app) if raw_app else "Application"
+        if not app:
+            app = "Application"
+
+        media = str(props.get("media.name") or "").strip()
+        if media == app or media in ("Playback", "ALSA Playback", "Audio Stream"):
+            media = ""
+
+        vol, muted = _stream_props(obj)
+        active = info.get("state") == "running"
+        rows.append(
+            {
+                "id": oid,
+                "name": app,
+                "media": media,
+                "vol": vol,
+                "muted": muted,
+                "active": active,
+            }
+        )
+
+    rows.sort(key=lambda r: (not r["active"], r["name"].lower(), r["id"]))
+    print(json.dumps(rows[:8], ensure_ascii=False))
+    return 0
+
+
+def cmd_vol(args: list[str]) -> int:
+    if len(args) < 2:
+        return 2
+    try:
+        oid = int(args[0])
+        val = max(0.0, min(1.5, float(args[1])))
+    except ValueError:
+        return 2
+    if oid <= 0:
+        return 2
+    proc = subprocess.run(["wpctl", "set-volume", str(oid), f"{val:.3f}"], capture_output=True, timeout=3)
+    return proc.returncode
+
+
+def cmd_mute(args: list[str]) -> int:
+    if len(args) < 1:
+        return 2
+    try:
+        oid = int(args[0])
+    except ValueError:
+        return 2
+    if oid <= 0:
+        return 2
+    proc = subprocess.run(["wpctl", "set-mute", str(oid), "toggle"], capture_output=True, timeout=3)
+    return proc.returncode
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    cmd = args[0] if args else "list"
+    if cmd == "list":
+        return cmd_list()
+    if cmd == "vol":
+        return cmd_vol(args[1:])
+    if cmd == "mute":
+        return cmd_mute(args[1:])
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

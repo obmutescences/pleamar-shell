@@ -7,9 +7,16 @@ local hist = {}
 local proc = nil
 local root_of = nil
 local cal_off = 0
+local last_tab = 0
+local last_raw_procs = {}
 local last_iface = nil
 local audio_out_ids = {}
 local audio_watched = false
+local audio_app_ids = {}
+local audio_app_rows = {}
+local audio_app_busy = false
+local app_vol_pending = {}
+local app_vol_timer = false
 local tray_keys = {}
 local tray_menu_key = nil
 local tray_menu_ids = {}
@@ -200,8 +207,23 @@ local function on_sys_line(line)
     for _, f in ipairs(d.fans or {}) do fans[#fans + 1] = string.format("%s %d rpm", f.l or "Fan", f.rpm or 0) end
     text.sys_fans = #fans > 0 and table.concat(fans, "   ·   ") or ""
 
+    last_raw_procs = d.procs or {}
+    local sort_mem = math.floor(number(fact.sys_proc_sort, 0)) == 1
+    local sorted = {}
+    for _, p in ipairs(last_raw_procs) do sorted[#sorted + 1] = p end
+    table.sort(sorted, function(a, b)
+        if sort_mem then
+            local ma, mb = number(a.mem, 0), number(b.mem, 0)
+            if ma ~= mb then return ma > mb end
+            return number(a.cpu, 0) > number(b.cpu, 0)
+        end
+        local ca, cb = number(a.cpu, 0), number(b.cpu, 0)
+        if ca ~= cb then return ca > cb end
+        return number(a.mem, 0) > number(b.mem, 0)
+    end)
     local prs = {}
-    for i, p in ipairs(d.procs or {}) do
+    for i, p in ipairs(sorted) do
+        if i > 6 then break end
         prs[i] = { name = p.n, cpu = clamp((p.cpu or 0) / 100, 0, 1),
             cpu_txt = string.format("%.1f%%", p.cpu or 0),
             mem = clamp((p.mem or 0) / 100, 0, 1),
@@ -225,6 +247,28 @@ local function on_sys_line(line)
     end
     model.sys_hist = rows
     fact.sys_hist_count = #rows
+
+    -- 30 two-second buckets spanning the last minute, left-padded so vector paths always have 30 x-coords.
+    local rows30 = {}
+    local hn = #hist
+    for b = 1, 30 do
+        local start = hn - (30 - b + 1) * 2 + 1
+        local cmax, mmax, gmax, rmax, tmax = 0, 0, 0, 0, 0
+        for k = 0, 1 do
+            local idx = start + k
+            if idx >= 1 and idx <= hn then
+                local pt = hist[idx]
+                cmax = math.max(cmax, pt.cpu or 0)
+                mmax = math.max(mmax, pt.mem or 0)
+                gmax = math.max(gmax, pt.gpu or 0)
+                rmax = math.max(rmax, (pt.rx or 0) / mx_net)
+                tmax = math.max(tmax, (pt.tx or 0) / mx_net)
+            end
+        end
+        rows30[b] = { cpu = clamp(cmax, 0, 1), mem = clamp(mmax, 0, 1), gpu = clamp(gmax, 0, 1),
+            rx = clamp(rmax, 0, 1), tx = clamp(tmax, 0, 1) }
+    end
+    model.sys_hist30 = rows30
     text.sys_rx_spark = sparkline("rx", 30, 2)
     text.sys_tx_spark = sparkline("tx", 30, 2)
     text.sys_rx_hist = sparkline("rx", 60, 1)
@@ -453,6 +497,24 @@ end
 
 
 local weather_seq = 0
+local wx_sky_state = { rise = 360, set = 1140, off = 0, has_off = false }
+local function update_wx_sky()
+    local now_sec = os.time()
+    local t = wx_sky_state.has_off and os.date("!*t", now_sec + wx_sky_state.off) or os.date("*t", now_sec)
+    local now_m = t.hour * 60 + t.min + t.sec / 60
+    local r, st = wx_sky_state.rise, wx_sky_state.set
+    if r and st and st > r then
+        fact.wx_sun = clamp((now_m - r) / (st - r), 0, 1)
+        local edge = math.min(now_m - r, st - now_m)
+        fact.wx_dl = clamp((edge + 35) / 70, 0, 1)
+    else
+        fact.wx_sun = 0.5
+        fact.wx_dl = (t.hour >= 7 and t.hour < 18) and 1 or 0
+    end
+    -- Synodic month phase since known new moon 2000-01-06 18:14 UTC
+    fact.wx_moon = ((now_sec - 947182440) / 86400 / 29.53058867) % 1
+end
+
 local function refresh_weather()
     weather_seq = weather_seq + 1
     local seq = weather_seq
@@ -477,6 +539,8 @@ local function refresh_weather()
             text.wx_city = ""
             text.wx_status = "在设置中填写城市"
             model.wx_hourly = {}
+            model.wx_hrs = {}
+            fact.wx_hrs_count = 0
             model.wx_daily = {}
             return
         end
@@ -492,6 +556,19 @@ local function refresh_weather()
         text.wx_wind = tostring(d.wind or "--")
         text.wx_updated = d.updated and ("更新 " .. tostring(d.updated)) or ""
         text.wx_status = tostring(d.error or "")
+        fact.wx_kind = math.floor(clamp(number(d.kind, 0), 0, 6))
+        fact.wx_wind_n = clamp(number(d.wind_n, 5), 0, 50)
+        fact.wx_wdir = number(d.wind_dir, 1) < 0 and -1 or 1
+        wx_sky_state.rise = number(d.sunrise, 360)
+        wx_sky_state.set = number(d.sunset, 1140)
+        if d.utc_offset ~= nil then
+            wx_sky_state.off = number(d.utc_offset, 0)
+            wx_sky_state.has_off = true
+        else
+            wx_sky_state.has_off = false
+        end
+        update_wx_sky()
+
         local hours = {}
         for i, h in ipairs(d.hourly or {}) do
             if i > 6 then break end
@@ -503,6 +580,23 @@ local function refresh_weather()
             }
         end
         model.wx_hourly = hours
+
+        local hrs24 = {}
+        for i, h in ipairs(d.hourly24 or {}) do
+            if i > 25 then break end
+            hrs24[i] = {
+                t = number(h.t, 0),
+                deg = tostring(h.deg or ""),
+                label = tostring(h.label or ""),
+                icon = tostring(h.icon or "·"),
+                kind = math.floor(clamp(number(h.kind, 0), 0, 6)),
+            }
+        end
+        model.wx_hrs = hrs24
+        fact.wx_hrs_count = #hrs24
+        fact.wx_hlo = number(d.h_min, 0)
+        fact.wx_hhi = number(d.h_max, 25)
+
         local days = {}
         for i, w in ipairs(d.daily or {}) do
             if i > 4 then break end
@@ -511,9 +605,15 @@ local function refresh_weather()
                 icon = tostring(w.icon or "·"),
                 hi = tostring(w.hi or ""),
                 lo = tostring(w.lo or ""),
+                kind = math.floor(clamp(number(w.kind, 0), 0, 6)),
+                desc = tostring(w.desc or ""),
+                hi_n = number(w.hi_n, 20),
+                lo_n = number(w.lo_n, 10),
             }
         end
         model.wx_daily = days
+        fact.wx_wlo = number(d.w_min, 0)
+        fact.wx_whi = number(d.w_max, 25)
     end)
 end
 
@@ -547,6 +647,50 @@ local function refresh_audio_outputs()
     end)
 end
 
+local function flush_app_vols()
+    app_vol_timer = false
+    local cmds = {}
+    for id, vol in pairs(app_vol_pending) do
+        cmds[#cmds + 1] = string.format("wpctl set-volume %d %.3f >/dev/null 2>&1", id, vol)
+    end
+    app_vol_pending = {}
+    if #cmds == 0 then return end
+    run("sh", { "-c", table.concat(cmds, "; ") }, function() end)
+end
+
+local function refresh_audio_apps()
+    if audio_app_busy or next(app_vol_pending) ~= nil then return end
+    audio_app_busy = true
+    local root = root_of and root_of() or ""
+    local path = root ~= "" and (root .. "/bin/pleamar-audio-apps") or "pleamar-audio-apps"
+    run("sh", { "-c", shq(path) .. " list" }, function(out, code)
+        audio_app_busy = false
+        if code ~= 0 then return end
+        local ok, parsed = pcall(json.decode, out or "")
+        if not ok or type(parsed) ~= "table" then return end
+        if next(app_vol_pending) ~= nil then return end
+        local ids, rows = {}, {}
+        for i, item in ipairs(parsed) do
+            if i > 8 then break end
+            local oid = math.floor(number(item.id, 0))
+            if oid > 0 then
+                ids[#ids + 1] = oid
+                rows[#rows + 1] = {
+                    name = tostring(item.name or "Application"),
+                    media = tostring(item.media or ""),
+                    vol = clamp(number(item.vol, 1), 0, 1.5),
+                    muted = truthy(item.muted),
+                    active = truthy(item.active),
+                }
+            end
+        end
+        audio_app_ids = ids
+        audio_app_rows = rows
+        model.audio_apps = rows
+        fact.audio_apps_count = #rows
+    end)
+end
+
 local function close()
     fact.center_open = false
     fact.center_power_confirm = -1
@@ -570,13 +714,27 @@ local function modal_open()
     return number(fact.center_power_confirm, -1) >= 0 or truthy(fact.audio_pick_open)
 end
 
+local function set_tab(n)
+    n = math.floor(clamp(number(n, 0), 0, 6))
+    if n ~= last_tab then
+        fact.center_tab_dir = (n >= last_tab) and 1 or -1
+        last_tab = n
+    end
+    fact.center_tab = n
+    fact.wx_hv = -1
+    fact.center_cal_hover = -1
+    if n == 4 and truthy(fact.center_open) then
+        refresh_audio_apps()
+    end
+end
+
 local function open(tab)
     local n = tab ~= nil and math.floor(number(tab, 0)) or math.floor(number(fact.center_tab, 0))
     if n < 0 or n > 6 then n = 0 end
     fact.panel_open = false
     fact.launch_open = false
     fact.nt_center = false
-    fact.center_tab = n
+    set_tab(n)
     fact.center_sys_scroll = 0
     fact.center_open = true
     fact.tray_menu_open = false
@@ -585,6 +743,7 @@ local function open(tab)
     calendar()
     refresh_weather()
     refresh_audio_outputs()
+    if n == 4 then refresh_audio_apps() end
     refresh_sys()
 end
 
@@ -594,11 +753,15 @@ function M.start(root_getter)
     on("fact:center_open", function(v)
         if truthy(v) then
             refresh_sys()
+            if math.floor(number(fact.center_tab, 0)) == 4 then
+                refresh_audio_apps()
+            end
         else
             fact.center_power_confirm = -1
             fact.audio_pick_open = false
             fact.tray_menu_open = false
             fact.tray_submenu_open = false
+            fact.center_cal_hover = -1
             stop_sys()
         end
     end)
@@ -637,7 +800,7 @@ function M.start(root_getter)
         if not truthy(fact.center_open) or modal_open() then return end
         local v = math.floor(number(n, 0))
         if v >= 1 and v <= 7 then
-            fact.center_tab = v - 1
+            set_tab(v - 1)
             fact.center_sys_scroll = 0
             fact.tray_menu_open = false
             fact.audio_pick_open = false
@@ -646,7 +809,7 @@ function M.start(root_getter)
     on("center_key_tab", function(d)
         if not truthy(fact.center_open) or modal_open() then return end
         local dir = number(d, 1) < 0 and -1 or 1
-        fact.center_tab = (math.floor(number(fact.center_tab, 0)) + dir + 7) % 7
+        set_tab((math.floor(number(fact.center_tab, 0)) + dir + 7) % 7)
         fact.center_sys_scroll = 0
         fact.tray_menu_open = false
         fact.audio_pick_open = false
@@ -666,14 +829,14 @@ function M.start(root_getter)
         if name == "Escape" or modal_open() then return end
         if name == "Tab" or name == "ISO_Left_Tab" or name == "Backtab" then
             local d = (held("Shift") or name == "ISO_Left_Tab" or name == "Backtab") and -1 or 1
-            fact.center_tab = (math.floor(number(fact.center_tab, 0)) + d + 7) % 7
+            set_tab((math.floor(number(fact.center_tab, 0)) + d + 7) % 7)
             fact.center_sys_scroll = 0
             fact.tray_menu_open = false
             return
         end
         local n = tonumber(name)
         if n and n >= 1 and n <= 7 then
-            fact.center_tab = n - 1
+            set_tab(n - 1)
             fact.center_sys_scroll = 0
             fact.tray_menu_open = false
         end
@@ -682,11 +845,71 @@ function M.start(root_getter)
     on("center_scroll", function(d)
         fact.center_sys_scroll = clamp(number(fact.center_sys_scroll, 0) - number(d, 0), 0, 500)
     end)
+    on("fact:center_tab", function(v)
+        local n = math.floor(clamp(number(v, 0), 0, 6))
+        if n ~= last_tab then
+            fact.center_tab_dir = (n >= last_tab) and 1 or -1
+            last_tab = n
+        end
+        fact.wx_hv = -1
+        fact.center_cal_hover = -1
+        if n == 4 and truthy(fact.center_open) then
+            refresh_audio_apps()
+        end
+    end)
+    on("fact:sys_proc_sort", function()
+        if #last_raw_procs == 0 then return end
+        local sort_mem = math.floor(number(fact.sys_proc_sort, 0)) == 1
+        local sorted = {}
+        for _, p in ipairs(last_raw_procs) do sorted[#sorted + 1] = p end
+        table.sort(sorted, function(a, b)
+            if sort_mem then
+                local ma, mb = number(a.mem, 0), number(b.mem, 0)
+                if ma ~= mb then return ma > mb end
+                return number(a.cpu, 0) > number(b.cpu, 0)
+            end
+            local ca, cb = number(a.cpu, 0), number(b.cpu, 0)
+            if ca ~= cb then return ca > cb end
+            return number(a.mem, 0) > number(b.mem, 0)
+        end)
+        local prs = {}
+        for i, p in ipairs(sorted) do
+            if i > 6 then break end
+            prs[i] = { name = p.n, cpu = clamp((p.cpu or 0) / 100, 0, 1),
+                cpu_txt = string.format("%.1f%%", p.cpu or 0),
+                mem = clamp((p.mem or 0) / 100, 0, 1),
+                mem_txt = string.format("%.1f%%", p.mem or 0) }
+        end
+        model.sys_procs = prs
+    end)
+
+    on("center_power_exec", function(k)
+        local v = math.floor(number(k, -1))
+        if v < 0 or v > 2 then return end
+        after(220, function()
+            close()
+            local svc = v == 0 and "session.logout" or (v == 1 and "session.reboot" or "session.poweroff")
+            local ok = pcall(sys.call, svc)
+            if ok then return end
+            local cmd = v == 0 and "niri msg action quit --skip-confirmation"
+                or v == 1 and "systemctl reboot --no-block"
+                or "systemctl poweroff --no-block"
+            run("sh", { "-c", cmd }, function(_, code)
+                if code ~= 0 then log("power action failed: " .. cmd) end
+            end)
+        end)
+    end)
+
     on("center_cal_step", function(d)
-        fact.center_cal_off = clamp(number(fact.center_cal_off, 0) + number(d, 0), -120, 120)
+        local step = number(d, 0)
+        fact.center_cal_dir = step >= 0 and 1 or -1
+        fact.center_cal_tick = number(fact.center_cal_tick, 0) + 1
+        fact.center_cal_off = clamp(number(fact.center_cal_off, 0) + step, -120, 120)
         calendar()
     end)
     on("center_cal_today", function()
+        fact.center_cal_dir = cal_off > 0 and -1 or 1
+        fact.center_cal_tick = number(fact.center_cal_tick, 0) + 1
         fact.center_cal_off = 0
         calendar()
     end)
@@ -717,6 +940,30 @@ function M.start(root_getter)
         if not pcall(sys.call, "audio.input_mute") then
             wpcall("set-mute @DEFAULT_AUDIO_SOURCE@ toggle")
         end
+    end)
+    on("center_app_vol", function(packed)
+        local n = math.floor(number(packed, -1))
+        if n < 0 then return end
+        local idx = math.floor(n / 1000) + 1
+        local vol = clamp((n % 1000) / 100, 0, 1.5)
+        local id = audio_app_ids[idx]
+        if not id or not audio_app_rows[idx] then return end
+        audio_app_rows[idx].vol = vol
+        model.audio_apps = audio_app_rows
+        app_vol_pending[id] = vol
+        if not app_vol_timer then
+            app_vol_timer = true
+            after(60, flush_app_vols)
+        end
+    end)
+    on("center_app_mute", function(i)
+        local idx = math.floor(number(i, -1)) + 1
+        local id = audio_app_ids[idx]
+        if not id or not audio_app_rows[idx] then return end
+        audio_app_rows[idx].muted = not audio_app_rows[idx].muted
+        model.audio_apps = audio_app_rows
+        wpcall(string.format("set-mute %d toggle", id))
+        after(180, refresh_audio_apps)
     end)
     on("center_media", function(action)
         local call = ({ [0] = "media.previous", [1] = "media.toggle", [2] = "media.next" })[math.floor(number(action, 1))]
@@ -774,12 +1021,111 @@ function M.start(root_getter)
         end
     end)
 
-    sys.watch("media", function(m)
-        if m then
-            if m.length then text.ct_media_len = clock_len(m.length) end
-            fact.ct_has_track = (tostring(m.title or "") ~= "")
+    do
+        local art_seq = 0
+        local last_song = ""
+        local mp_player = ""
+        local mp_playing = false
+        local mp_quiet = 0
+
+        local function mpris_bin()
+            local root = root_of and root_of() or ""
+            return root ~= "" and (root .. "/bin/pleamar-mpris") or "pleamar-mpris"
         end
-    end)
+
+        local function fetch_art(player, seq_expected)
+            local cmd = shq(mpris_bin()) .. " art " .. shq(player or "")
+            run("sh", { "-c", cmd }, function(out, code)
+                if seq_expected ~= art_seq then return end
+                local p = tostring(out or ""):gsub("%s+$", "")
+                if code == 0 and p ~= "" then
+                    text.ct_art_path = p
+                    fact.ct_art_on = true
+                end
+            end)
+        end
+
+        local function read_pos()
+            if not truthy(fact.ct_has_track) or mp_quiet > 0 then return end
+            local cmd = shq(mpris_bin()) .. " pos " .. shq(mp_player)
+            run("sh", { "-c", cmd }, function(out, code)
+                if mp_quiet > 0 or code ~= 0 then return end
+                local v = tonumber((tostring(out or "")):match("[%d%.]+"))
+                if v then
+                    fact.ct_media_pos = v
+                    text.ct_media_pos_txt = clock_len(v)
+                end
+            end)
+        end
+
+        sys.watch("media", function(m)
+            if not m then return end
+            local player = tostring(m.player or "")
+            local title = tostring(m.title or "")
+            local artist = tostring(m.artist or "")
+            mp_player = player
+            mp_playing = truthy(m.playing)
+            local len = number(m.length, 0)
+            fact.ct_media_len_s = len
+            text.ct_media_len = clock_len(len)
+            local has = title ~= ""
+            fact.ct_has_track = has
+            if not has then
+                art_seq = art_seq + 1
+                last_song = ""
+                text.ct_art_path = ""
+                fact.ct_art_on = false
+                fact.ct_media_pos = 0
+                text.ct_media_pos_txt = "0:00"
+                return
+            end
+            local key = player .. "|" .. title .. "|" .. artist
+            if key ~= last_song then
+                local first = last_song == ""
+                last_song = key
+                art_seq = art_seq + 1
+                local seq = art_seq
+                fact.ct_art_on = false
+                text.ct_art_path = ""
+                fact.ct_media_pos = 0
+                text.ct_media_pos_txt = "0:00"
+                if not first then
+                    fact.ct_track_tick = number(fact.ct_track_tick, 0) + 1
+                end
+                fetch_art(player, seq)
+                after(1200, function()
+                    if seq == art_seq and not truthy(fact.ct_art_on) then
+                        fetch_art(player, seq)
+                    end
+                end)
+                after(200, read_pos)
+            end
+        end)
+
+        on("center_media_seek", function(frac)
+            local len = number(fact.ct_media_len_s, 0)
+            if len <= 0 then return end
+            local sec = clamp(number(frac, 0), 0, 1) * len
+            fact.ct_media_pos = sec
+            text.ct_media_pos_txt = clock_len(sec)
+            mp_quiet = 2
+            local cmd = shq(mpris_bin()) .. " seek " .. shq(mp_player) .. " " .. string.format("%.2f", sec)
+            run("sh", { "-c", cmd }, function() end)
+        end)
+
+        on("fact:center_open", function(v)
+            if truthy(v) then after(120, read_pos) end
+        end)
+
+        every(1000, function()
+            if mp_quiet > 0 then mp_quiet = mp_quiet - 1 end
+            if not truthy(fact.center_open) or not truthy(fact.ct_has_track) then return end
+            local tab = math.floor(number(fact.center_tab, 0))
+            if (tab == 0 or tab == 3) and mp_playing and number(fact.ct_media_len_s, 0) > 0 then
+                read_pos()
+            end
+        end)
+    end
 
     sys.watch("bluetooth", function(b)
         if not b or b.present == false then
@@ -908,6 +1254,14 @@ function M.start(root_getter)
         clear_submenu()
     end)
 
+    every(1500, function()
+        if truthy(fact.center_open) and math.floor(number(fact.center_tab, 0)) == 4 then
+            refresh_audio_apps()
+        end
+    end)
+    every(60000, function()
+        if truthy(fact.center_open) then update_wx_sky() end
+    end)
     every(900000, function()
         if truthy(fact.center_open) then refresh_weather() end
     end)

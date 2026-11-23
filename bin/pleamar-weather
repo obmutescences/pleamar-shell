@@ -21,6 +21,7 @@ CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "pl
 WEATHER_CACHE = CACHE_DIR / "weather.json"
 LOCATION_CACHE = CACHE_DIR / "weather-location.json"
 USER_AGENT = "pleamar-shell/0.1 (weather)"
+SCHEMA_VERSION = 2
 
 DESCRIPTIONS = {
     0: "晴", 1: "大部晴朗", 2: "多云", 3: "阴",
@@ -44,6 +45,36 @@ ICONS = {
     85: "❄", 86: "❄",
     95: "⚡", 96: "⚡", 99: "⚡",
 }
+
+
+def wmo_kind(code):
+    """Map WMO code to sky shader kind: 0 clear · 1 partly · 2 cloudy · 3 fog · 4 rain · 5 snow · 6 storm."""
+    if code == 0:
+        return 0
+    if code in (1, 2):
+        return 1
+    if code == 3:
+        return 2
+    if code in (45, 48):
+        return 3
+    if (51 <= code <= 67) or (80 <= code <= 82):
+        return 4
+    if (71 <= code <= 77) or code in (85, 86):
+        return 5
+    if code >= 95:
+        return 6
+    return 2
+
+
+def parse_hm_mins(iso_str, fallback):
+    if not iso_str or "T" not in str(iso_str):
+        return fallback
+    try:
+        tpart = str(iso_str).split("T", 1)[1]
+        hh, mm = tpart.split(":", 2)[:2]
+        return int(hh) * 60 + int(mm)
+    except (ValueError, IndexError):
+        return fallback
 
 
 def run_curl(url, timeout=12):
@@ -120,6 +151,13 @@ def number(value, digits=0):
         return "--"
 
 
+def num_float(value, fallback=0.0):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return float(fallback)
+
+
 def open_meteo(location):
     url = (
         "https://api.open-meteo.com/v1/forecast?latitude=" + str(location["lat"])
@@ -127,7 +165,7 @@ def open_meteo(location):
         + "&current=temperature_2m,relative_humidity_2m,apparent_temperature,"
           "precipitation,weather_code,wind_speed_10m,wind_direction_10m"
         + "&hourly=temperature_2m,weather_code"
-        + "&daily=weather_code,temperature_2m_max,temperature_2m_min"
+        + "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset"
         + "&forecast_days=5&timezone=auto"
     )
     text = run_curl(url, timeout=12)
@@ -149,6 +187,7 @@ def open_meteo(location):
     lo = number((daily.get("temperature_2m_min") or [0])[0])
     now = datetime.now()
     hourly_rows = []
+    hourly24 = []
     times = hourly.get("time") or []
     temps = hourly.get("temperature_2m") or []
     codes = hourly.get("weather_code") or []
@@ -159,19 +198,41 @@ def open_meteo(location):
             continue
         if when < now.replace(minute=0, second=0, microsecond=0):
             continue
-        hcode = int(codes[i] or 0)
-        hourly_rows.append({
-            "label": "现在" if not hourly_rows else when.strftime("%H:%M"),
-            "temp": number(temps[i]) + "°",
-            "icon": ICONS.get(hcode, "·"),
-            "night": when.hour < 6 or when.hour >= 19,
+        hcode = int(codes[i] or 0) if i < len(codes) else 0
+        tf = num_float(temps[i] if i < len(temps) else 0, 0.0)
+        lbl = "现在" if not hourly24 else when.strftime("%H:%M")
+        icon = ICONS.get(hcode, "·")
+        hourly24.append({
+            "t": round(tf, 1),
+            "deg": f"{round(tf)}°",
+            "label": lbl,
+            "icon": icon,
+            "kind": wmo_kind(hcode),
         })
-        if len(hourly_rows) >= 6:
+        if len(hourly_rows) < 6:
+            hourly_rows.append({
+                "label": lbl,
+                "temp": f"{round(tf)}°",
+                "icon": icon,
+                "night": when.hour < 6 or when.hour >= 19,
+            })
+        if len(hourly24) >= 25:
             break
+    while hourly24 and len(hourly24) < 25:
+        hourly24.append(dict(hourly24[-1]))
+    h_vals = [h["t"] for h in hourly24] if hourly24 else [0.0]
+    h_min = min(h_vals)
+    h_max = max(h_vals)
+
     daily_rows = []
     days = daily.get("time") or []
+    w_lows, w_highs = [], []
     for i, stamp in enumerate(days[:4]):
         dcode = int((daily.get("weather_code") or [0] * len(days))[i] or 0)
+        hi_v = num_float((daily.get("temperature_2m_max") or [0])[i], 0.0)
+        lo_v = num_float((daily.get("temperature_2m_min") or [0])[i], 0.0)
+        w_highs.append(hi_v)
+        w_lows.append(lo_v)
         try:
             day = datetime.fromisoformat(stamp).date()
         except ValueError:
@@ -179,10 +240,19 @@ def open_meteo(location):
         daily_rows.append({
             "day": "今天" if i == 0 else (f"周{'一二三四五六日'[day.weekday()]}" if day else ""),
             "icon": ICONS.get(dcode, "·"),
-            "hi": number((daily.get("temperature_2m_max") or [0])[i]) + "°",
-            "lo": number((daily.get("temperature_2m_min") or [0])[i]) + "°",
+            "hi": f"{round(hi_v)}°",
+            "lo": f"{round(lo_v)}°",
+            "hi_n": round(hi_v, 1),
+            "lo_n": round(lo_v, 1),
+            "kind": wmo_kind(dcode),
+            "desc": DESCRIPTIONS.get(dcode, "未知"),
         })
+    wind_spd = num_float(current.get("wind_speed_10m"), 5.0)
+    wind_deg = num_float(current.get("wind_direction_10m"), 90.0)
+    sunrise_m = parse_hm_mins((daily.get("sunrise") or [None])[0], 360)
+    sunset_m = parse_hm_mins((daily.get("sunset") or [None])[0], 1140)
     return {
+        "schema": SCHEMA_VERSION,
         "configured": True,
         "ready": True,
         "city": location.get("city") or location.get("display") or "",
@@ -190,13 +260,24 @@ def open_meteo(location):
         "feels": feels,
         "desc": DESCRIPTIONS.get(code, "未知"),
         "icon": ICONS.get(code, "·"),
+        "kind": wmo_kind(code),
         "hi": hi,
         "lo": lo,
         "humidity": number(current.get("relative_humidity_2m")) + "%",
-        "wind": number(current.get("wind_speed_10m")) + " km/h",
+        "wind": number(wind_spd) + " km/h",
+        "wind_n": round(wind_spd, 1),
+        "wind_dir": 1 if (wind_deg % 360.0) < 180.0 else -1,
+        "sunrise": sunrise_m,
+        "sunset": sunset_m,
+        "utc_offset": int(data.get("utc_offset_seconds") or 0),
         "updated": now.strftime("%H:%M"),
         "error": "",
         "hourly": hourly_rows,
+        "hourly24": hourly24,
+        "h_min": h_min,
+        "h_max": h_max,
+        "w_min": min(w_lows) if w_lows else 0.0,
+        "w_max": max(w_highs) if w_highs else 25.0,
         "daily": daily_rows,
     }
 
@@ -211,32 +292,70 @@ def wttr(city):
         return None
     current = (data.get("current_condition") or [{}])[0]
     wcode = int(current.get("weatherCode") or 113)
-    # wttr codes are not WMO; only use its text and icon fallbacks.
+    kind = 4 if wcode >= 176 else (1 if wcode in (116, 119, 122) else 0)
     desc = current.get("lang_zh") or current.get("weatherDesc") or ""
     if isinstance(desc, list):
         desc = desc[0].get("value", "") if desc else ""
     weather = data.get("weather") or []
     hourly_rows = []
-    for h in ((weather[0].get("hourly") or []) if weather else []):
+    hourly24 = []
+    src_hours = []
+    for day in weather[:2]:
+        for h in (day.get("hourly") or []):
+            src_hours.append(h)
+    for idx, h in enumerate(src_hours):
         label = str(h.get("time", "")).zfill(4)
-        hourly_rows.append({
-            "label": ("现在" if not hourly_rows else label[:2] + ":" + label[2:]),
-            "temp": number(h.get("tempC")) + "°",
-            "icon": "☂" if wcode >= 176 else "☀",
-            "night": int(label[:2] or 0) < 6 or int(label[:2] or 0) >= 19,
-        })
-        if len(hourly_rows) >= 6:
-            break
+        hh_str = label[:2] + ":" + label[2:]
+        tf = num_float(h.get("tempC"), 0.0)
+        hk = 4 if int(h.get("weatherCode") or 113) >= 176 else 0
+        icon = "☂" if hk == 4 else "☀"
+        if len(hourly_rows) < 6:
+            hourly_rows.append({
+                "label": ("现在" if not hourly_rows else hh_str),
+                "temp": f"{round(tf)}°",
+                "icon": icon,
+                "night": int(label[:2] or 0) < 6 or int(label[:2] or 0) >= 19,
+            })
+        for step in range(3):
+            if len(hourly24) >= 25:
+                break
+            nxt = src_hours[min(idx + 1, len(src_hours) - 1)]
+            t_next = num_float(nxt.get("tempC"), tf)
+            t_interp = tf + (t_next - tf) * (step / 3.0)
+            hr_val = (int(label[:2] or 0) + step) % 24
+            hourly24.append({
+                "t": round(t_interp, 1),
+                "deg": f"{round(t_interp)}°",
+                "label": "现在" if not hourly24 else f"{hr_val:02d}:00",
+                "icon": icon,
+                "kind": hk,
+            })
+    while hourly24 and len(hourly24) < 25:
+        hourly24.append(dict(hourly24[-1]))
+    h_vals = [h["t"] for h in hourly24] if hourly24 else [num_float(current.get("temp_C"), 0.0)]
+
     daily_rows = []
+    w_lows, w_highs = [], []
     for i, d in enumerate(weather[:4]):
         date = d.get("date", "")
+        dk = 4 if int(d.get("hourly", [{}])[0].get("weatherCode", 113)) >= 176 else 0
+        hi_v = num_float(d.get("maxtempC"), 0.0)
+        lo_v = num_float(d.get("mintempC"), 0.0)
+        w_highs.append(hi_v)
+        w_lows.append(lo_v)
         daily_rows.append({
             "day": "今天" if i == 0 else date[-5:],
-            "icon": "☂" if int(d.get("hourly", [{}])[0].get("weatherCode", 113)) >= 176 else "☀",
-            "hi": number(d.get("maxtempC")) + "°",
-            "lo": number(d.get("mintempC")) + "°",
+            "icon": "☂" if dk == 4 else "☀",
+            "hi": f"{round(hi_v)}°",
+            "lo": f"{round(lo_v)}°",
+            "hi_n": round(hi_v, 1),
+            "lo_n": round(lo_v, 1),
+            "kind": dk,
+            "desc": "有雨" if dk == 4 else "晴",
         })
+    wind_spd = num_float(current.get("windspeedKmph"), 5.0)
     return {
+        "schema": SCHEMA_VERSION,
         "configured": True,
         "ready": True,
         "city": city,
@@ -244,13 +363,24 @@ def wttr(city):
         "feels": number(current.get("FeelsLikeC")),
         "desc": desc or "未知",
         "icon": "☂" if wcode >= 176 else "☀",
+        "kind": kind,
         "hi": number((weather[0].get("maxtempC") if weather else current.get("temp_C"))),
         "lo": number((weather[0].get("mintempC") if weather else current.get("temp_C"))),
         "humidity": number(current.get("humidity")) + "%",
-        "wind": number(current.get("windspeedKmph")) + " km/h",
+        "wind": number(wind_spd) + " km/h",
+        "wind_n": round(wind_spd, 1),
+        "wind_dir": 1,
+        "sunrise": 360,
+        "sunset": 1140,
+        "utc_offset": 0,
         "updated": datetime.now().strftime("%H:%M"),
         "error": "",
         "hourly": hourly_rows,
+        "hourly24": hourly24,
+        "h_min": min(h_vals),
+        "h_max": max(h_vals),
+        "w_min": min(w_lows) if w_lows else 0.0,
+        "w_max": max(w_highs) if w_highs else 25.0,
         "daily": daily_rows,
     }
 
@@ -262,13 +392,14 @@ def main():
     city = args.city.strip() or configured_city()
     if not city:
         print(json.dumps({
+            "schema": SCHEMA_VERSION,
             "configured": False, "ready": False, "city": "", "error": "",
-            "hourly": [], "daily": [],
+            "hourly": [], "hourly24": [], "daily": [],
         }, ensure_ascii=False, separators=(",", ":")))
         return
 
     cached = read_json(WEATHER_CACHE)
-    if isinstance(cached, dict) and cached.get("city_query") == city:
+    if isinstance(cached, dict) and cached.get("city_query") == city and cached.get("schema") == SCHEMA_VERSION:
         if time.time() - cached.get("ts", 0) < 600 and cached.get("ready"):
             cached.pop("city_query", None)
             cached.pop("ts", None)
@@ -287,8 +418,9 @@ def main():
             print(json.dumps(cached, ensure_ascii=False, separators=(",", ":")))
             return
         print(json.dumps({
+            "schema": SCHEMA_VERSION,
             "configured": True, "ready": False, "city": city, "error": "天气暂时不可用",
-            "hourly": [], "daily": [],
+            "hourly": [], "hourly24": [], "daily": [],
         }, ensure_ascii=False, separators=(",", ":")))
         return
     result["city_query"] = city

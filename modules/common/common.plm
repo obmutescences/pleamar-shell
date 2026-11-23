@@ -144,6 +144,14 @@ part Common {
     }
 
     fact settings_page: number = 1
+    fact slider_fill: number = 0          // 0 Pencil · 1 Marker · 2 Gradient · 3 Plain · 4 Dots
+    fact glass_preset_i: number = 0       // 0..4 preset index, -1 custom
+    event wall_random ->
+    text lb_pw = ""
+    fact lb_ok = false
+    model lb_glyphs max 18 { idx: number; rot: number; outline: bool; ci: number; sym: text }
+    event lb_submit ->
+    event nt_history_dismiss ->
     //  Notification motion settings (0 fade, 1 spin, 2 unfold, 3 drop,
     //  4 aperture, 5 random).  The toast and notification centre keep their
     //  pose through close; drawers and search use notch_drop and the wave.
@@ -319,6 +327,12 @@ part Common {
     follow spec.s.22 = spec.22
     prop spec.s.23 = 0 ~nf_spike
     follow spec.s.23 = spec.23
+
+    //  Semantic motion curves paired with Vitreus-style leading/trailing stretch.
+    spring sp_lead = 560, 34
+    spring sp_trail = 150, 22
+    spring sp_pop = 420, 19
+    spring sp_calm = 220, 28
 
     //  Drawer motion: the drop overshoots, then sag/wobble settle it like a
     //  drop landing.  Kept in Common so NotchFrame drives the unified glass
@@ -500,8 +514,13 @@ part Common {
     //  can read/write them while CenterPanel sleeps via `include … while`.
     fact center_open = false
     fact center_tab: number = 0
+    fact center_tab_dir: number = 1
     fact center_sys_scroll: number = 0
+    fact center_sys_jump: number = -1
+    fact sys_proc_sort: number = 0
     fact center_cal_off: number = 0
+    fact center_cal_dir: number = 1
+    fact center_cal_tick: number = 0
     fact center_cal_progress: number = 1
     fact center_power_confirm: number = -1
     fact sys_ready = false
@@ -553,12 +572,19 @@ part Common {
     text sys_dw_speed = ""
     text sys_fans = ""
     model sys_cores max 24 { pct: number }
-    model sys_hist max 60 { cpu: number; mem: number; gpu: number; rx: number; tx: number; dr: number; dw: number }
+    model sys_hist max 64 { cpu: number; mem: number; gpu: number; rx: number; tx: number; dr: number; dw: number }
+    model sys_hist30 max 36 { cpu: number; mem: number; gpu: number; rx: number; tx: number }
     model sys_mounts max 4 { name: text; info: text; pct: number }
     model sys_temps max 8 { label: text; f: number; heat: number; txt: text }
     model sys_procs max 6 { name: text; cpu: number; cpu_txt: text; mem: number; mem_txt: text }
     text ct_media_len = ""
     fact ct_has_track = false
+    text ct_art_path = ""
+    fact ct_art_on = false
+    fact ct_media_pos: number = 0
+    fact ct_media_len_s: number = 0
+    text ct_media_pos_txt = "0:00"
+    fact ct_track_tick: number = 0
     fact bt_present = false
     fact bt_on = false
     fact bt_count: number = 0
@@ -566,6 +592,8 @@ part Common {
     fact audio_pick_open = false
     text audio_out_name = "Default sink"
     model audio_outputs max 8 { name: text; current: bool }
+    fact audio_apps_count: number = 0
+    model audio_apps max 8 { name: text; media: text; vol: number; muted: bool; active: bool }
     fact tray_count: number = 0
     model tray_items max 32 { icon: image 24, 24; has_icon: bool; name: text; sub: text; status: text; has_sub: bool }
     fact tray_menu_open = false
@@ -601,8 +629,21 @@ part Common {
     text wx_wind = ""
     text wx_updated = ""
     text wx_status = ""
+    fact wx_kind: number = 0
+    fact wx_dl: number = 1
+    fact wx_sun: number = 0.5
+    fact wx_moon: number = 0.25
+    fact wx_wind_n: number = 5
+    fact wx_wdir: number = 1
+    fact wx_hlo: number = 0
+    fact wx_hhi: number = 25
+    fact wx_wlo: number = 0
+    fact wx_whi: number = 25
+    fact wx_hv: number = -1
+    fact wx_hrs_count: number = 0
+    model wx_hrs max 26 { t: number; deg: text; label: text; icon: text; kind: number }
     model wx_hourly max 6 { label: text; temp: text; icon: text; night: bool }
-    model wx_daily max 4 { day: text; icon: text; hi: text; lo: text }
+    model wx_daily max 4 { day: text; icon: text; hi: text; lo: text; kind: number; desc: text; hi_n: number; lo_n: number }
     event center_toggle ->
     event center_close ->
     event center_scroll ->
@@ -611,7 +652,10 @@ part Common {
     event center_audio_default ->
     event center_input_set ->
     event center_input_mute ->
+    event center_app_vol ->
+    event center_app_mute ->
     event center_media ->
+    event center_media_seek ->
     event center_quick ->
     event center_cal_step ->
     event center_cal_today ->
@@ -628,5 +672,6 @@ part Common {
     event center_power_ask ->
     event center_power_cancel ->
     event center_power_do ->
+    event center_power_exec ->
     event ipc_open_center ->
 }

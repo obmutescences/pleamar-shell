@@ -159,6 +159,8 @@ function M.start(layout)
         frame_wave_on = true,
         frame_wave_strength = 100,
         frame_wave_speed = 100,
+        slider_fill = 0,
+        glass_preset_i = 0,
         weather_city = "",
     }
 
@@ -309,6 +311,8 @@ function M.start(layout)
         if type(saved.frame_wave_on) == "boolean" then cfg.frame_wave_on = saved.frame_wave_on end
         cfg.frame_wave_strength = math.floor(clamp(number(saved.frame_wave_strength, cfg.frame_wave_strength), 0, 200))
         cfg.frame_wave_speed = math.floor(clamp(number(saved.frame_wave_speed, cfg.frame_wave_speed), 0, 200))
+        cfg.slider_fill = math.floor(clamp(number(saved.slider_fill, cfg.slider_fill), 0, 4))
+        cfg.glass_preset_i = math.floor(clamp(number(saved.glass_preset_i, cfg.glass_preset_i), -1, 4))
         if type(saved.weather_city) == "string" then
             cfg.weather_city = saved.weather_city:gsub("^%s+", ""):gsub("%s+$", "")
         end
@@ -401,6 +405,8 @@ function M.start(layout)
         fact.frame_wave_on = cfg.frame_wave_on
         fact.frame_wave_strength = cfg.frame_wave_strength
         fact.frame_wave_speed = cfg.frame_wave_speed
+        fact.slider_fill = cfg.slider_fill
+        fact.glass_preset_i = cfg.glass_preset_i
     end
 
     local save_pending, save_running = nil, false
@@ -485,6 +491,8 @@ function M.start(layout)
             frame_wave_on = truthy(fact.frame_wave_on),
             frame_wave_strength = number(fact.frame_wave_strength, 100),
             frame_wave_speed = number(fact.frame_wave_speed, 100),
+            slider_fill = number(fact.slider_fill, 0),
+            glass_preset_i = number(fact.glass_preset_i, 0),
         }
         --  One writer at a time, latest snapshot wins.  A wallpaper apply and
         --  the colour read that follows it both save; without this queue a
@@ -1240,10 +1248,14 @@ function M.start(layout)
         log("no scene data folder; cava cannot start")
     end
 
-    --  Start when the waves are on; stop when they are not.  The timer restarts
-    --  cava if it ever leaves on its own.
+    --  Start when the frame waves are on OR while Centre panel needs live spectrum.
     local function cava_wanted()
-        return truthy(fact.music_frame_on)
+        if truthy(fact.music_frame_on) then return true end
+        if truthy(fact.center_open) then
+            local t = math.floor(number(fact.center_tab, 0))
+            return t == 0 or t == 3 or t == 4
+        end
+        return false
     end
     local function cava_want()
         if cava_wanted() then
@@ -1253,6 +1265,8 @@ function M.start(layout)
         end
     end
     cava_want()
+    on("fact:center_open", cava_want)
+    on("fact:center_tab", cava_want)
     every(5000, function()
         if cava_wanted() and not cava then start_cava() end
     end)
@@ -1812,6 +1826,7 @@ function M.start(layout)
     on("glass_preset", function(v)
         local i = math.floor(clamp(number(v, 0), 0, #GLASS_PRESETS - 1))
         local p = GLASS_PRESETS[i + 1]
+        fact.glass_preset_i = i
         fact.glass_mix = p.mix
         fact.glass_frost_auto = p.frost_auto
         fact.glass_frost = p.frost * 100
@@ -1832,6 +1847,8 @@ function M.start(layout)
         fact.glass_border = p.border
         save()
     end)
+    on("fact:slider_fill", function() save() end)
+    on("fact:glass_preset_i", function() save() end)
     on("fact:glass_tint", function() save() end)
     on("fact:glass_frost", function() save() end)
     on("fact:glass_edge", function() save() end)
@@ -1965,6 +1982,16 @@ function M.start(layout)
         fact.nt_unread = 0
         nt_finish()
     end)
+    on("nt_history_dismiss", function(i)
+        local idx = math.floor(number(i, -1)) + 1
+        if idx >= 1 and idx <= #nt_hist then
+            local h = nt_hist[idx]
+            if h and h.id then pcall(sys.call, "notifications.dismiss", h.id) end
+            table.remove(nt_hist, idx)
+            fact.nt_unread = math.max(0, number(fact.nt_unread, 0) - 1)
+            nt_save_hist()
+        end
+    end)
     on("fact:nt_center", function()
         if truthy(fact.nt_center) then
             set_fx("center")
@@ -2064,7 +2091,70 @@ function M.start(layout)
         local chosen = tostring(text.wall_choice or "")
         if chosen ~= "" then set_wallpaper(chosen, true) end
     end)
+    on("wall_random", function()
+        if #wall_files == 0 then return end
+        local cur = tostring(text.wallpaper or "")
+        local idx = 1
+        if #wall_files > 1 then
+            local cur_i = 0
+            for i, p in ipairs(wall_files) do
+                if p == cur then cur_i = i break end
+            end
+            idx = math.random(1, #wall_files)
+            if idx == cur_i then
+                idx = (cur_i % #wall_files) + 1
+            end
+        end
+        local picked = wall_files[idx]
+        if picked then
+            fact.wp_page = math.floor((idx - 1) / 9)
+            set_wallpaper(picked, true)
+        end
+    end)
     on("fact:wp_page", function() show_wall_page() end)
+
+    --  Lock screen settings Example bar: mirror lockscreen's random glyphs safely.
+    do
+        local LB_SYMS = { "#", "@", "&", "%", "+", "*", "~", "?", "!", "$", "^", "=" }
+        local lb_list = {}
+        local function utf8_len_approx(s)
+            local _, count = tostring(s or ""):gsub("[^\128-\191]", "")
+            return count
+        end
+        on("text:lb_pw", function(v)
+            local want = math.min(18, utf8_len_approx(v))
+            while #lb_list < want do
+                lb_list[#lb_list + 1] = {
+                    idx = math.random(0, 15),
+                    rot = math.random(-20, 20),
+                    outline = math.random() < 0.35,
+                    ci = math.random(0, 59),
+                    sym = LB_SYMS[math.random(1, #LB_SYMS)],
+                }
+            end
+            while #lb_list > want do
+                table.remove(lb_list)
+            end
+            model.lb_glyphs = lb_list
+        end)
+        on("lb_submit", function()
+            if #lb_list > 0 then
+                fact.lb_ok = true
+                text.lb_pw = ""
+                lb_list = {}
+                model.lb_glyphs = {}
+                after(900, function() fact.lb_ok = false end)
+            end
+        end)
+        on("fact:panel_open", function(v)
+            if not truthy(v) and text.lb_pw ~= "" then
+                text.lb_pw = ""
+                lb_list = {}
+                model.lb_glyphs = {}
+                fact.lb_ok = false
+            end
+        end)
+    end
     on("font_pick", function(i)
         local chosen = font_matches[math.floor(number(i, -1)) + 1]
         if chosen then

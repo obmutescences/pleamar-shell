@@ -1,0 +1,295 @@
+#!/usr/bin/env python3
+"""Query and control the active MPRIS2 player for Pleamar's Media cards.
+
+Supports both `playerctl` (when present) and direct `busctl --user` D-Bus calls,
+using only Python stdlib + curl + magick.  Every subcommand exits 0 silently if
+no player or bus is available so the shell never logs spurious errors.
+
+Usage:
+    pleamar-mpris art [player]
+    pleamar-mpris pos [player]
+    pleamar-mpris seek [player] <seconds>
+"""
+import base64
+import hashlib
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+from urllib.parse import unquote, urlparse
+
+MPRIS_PREFIX = "org.mpris.MediaPlayer2."
+MPRIS_PATH = "/org/mpris/MediaPlayer2"
+MPRIS_PLAYER_IFACE = "org.mpris.MediaPlayer2.Player"
+
+
+def find_bin(name, fallback=None):
+    p = shutil.which(name)
+    if p:
+        return p
+    if fallback and os.path.exists(fallback) and os.access(fallback, os.X_OK):
+        return fallback
+    return None
+
+
+BUSCTL = find_bin("busctl", "/run/current-system/sw/bin/busctl")
+PLAYERCTL = find_bin("playerctl", "/run/current-system/sw/bin/playerctl")
+CURL = find_bin("curl", "/run/current-system/sw/bin/curl")
+MAGICK = find_bin("magick", "/run/current-system/sw/bin/magick")
+
+
+def runtime_dir():
+    base = os.environ.get("XDG_RUNTIME_DIR")
+    if base and os.path.isdir(base):
+        d = Path(base) / "pleamar-shell"
+    else:
+        d = Path(f"/tmp/pleamar-shell-{os.getuid()}")
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def cleanup_old(cache_dir, keep_names=()):
+    now = time.time()
+    keep = set(keep_names)
+    try:
+        for p in cache_dir.iterdir():
+            if p.name.startswith("pleamar-art-") and p.name not in keep:
+                try:
+                    if now - p.stat().st_mtime > 7200:
+                        p.unlink()
+                except OSError:
+                    pass
+    except OSError:
+        pass
+
+
+def busctl_json(args, timeout=2.0):
+    if not BUSCTL:
+        return None
+    try:
+        proc = subprocess.run(
+            [BUSCTL, "--user", "--json=short"] + args,
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=timeout,
+        )
+        if proc.returncode != 0 or not proc.stdout.strip():
+            return None
+        return json.loads(proc.stdout)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+
+
+def list_mpris_buses():
+    res = busctl_json([
+        "call", "org.freedesktop.DBus", "/org/freedesktop/DBus",
+        "org.freedesktop.DBus", "ListNames",
+    ])
+    if not isinstance(res, dict):
+        return []
+    data = res.get("data")
+    if isinstance(data, list) and data and isinstance(data[0], list):
+        names = data[0]
+    elif isinstance(data, list):
+        names = data
+    else:
+        return []
+    return [n for n in names if isinstance(n, str) and n.startswith(MPRIS_PREFIX)]
+
+
+def get_prop(bus, prop):
+    res = busctl_json(["get-property", bus, MPRIS_PATH, MPRIS_PLAYER_IFACE, prop])
+    if not isinstance(res, dict):
+        return None
+    return res.get("data")
+
+
+def pick_bus(hint=""):
+    buses = list_mpris_buses()
+    if not buses:
+        return None
+    hl = (hint or "").strip().lower()
+    if hl:
+        for b in buses:
+            short = b[len(MPRIS_PREFIX):].lower()
+            if hl in short or short in hl:
+                return b
+        # Also match org.mpris.MediaPlayer2.Identity when available
+        for b in buses:
+            id_res = busctl_json(["get-property", b, MPRIS_PATH, "org.mpris.MediaPlayer2", "Identity"])
+            ident = str((id_res or {}).get("data") or "").lower()
+            if ident and (hl in ident or ident in hl):
+                return b
+    for b in buses:
+        if str(get_prop(b, "PlaybackStatus") or "") == "Playing":
+            return b
+    return buses[0]
+
+
+def get_metadata(bus):
+    meta = get_prop(bus, "Metadata")
+    return meta if isinstance(meta, dict) else {}
+
+
+def meta_val(meta, key):
+    entry = meta.get(key)
+    if isinstance(entry, dict) and "data" in entry:
+        return entry["data"]
+    return entry
+
+
+def cmd_art(player):
+    art_url = ""
+    if PLAYERCTL:
+        cmds = ([[PLAYERCTL, "-p", player, "metadata", "mpris:artUrl"]] if player else []) + [
+            [PLAYERCTL, "metadata", "mpris:artUrl"]
+        ]
+        for cmd in cmds:
+            try:
+                r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=2)
+                if r.returncode == 0 and r.stdout.strip():
+                    art_url = r.stdout.strip()
+                    break
+            except (OSError, subprocess.SubprocessError):
+                pass
+    if not art_url:
+        bus = pick_bus(player)
+        if bus:
+            art_url = str(meta_val(get_metadata(bus), "mpris:artUrl") or "").strip()
+    if not art_url:
+        return
+
+    cache = runtime_dir()
+    key = hashlib.md5(art_url.encode("utf-8", errors="ignore")).hexdigest()[:16]
+    sq_png = cache / f"pleamar-art-{key}-sq.png"
+    if sq_png.is_file() and sq_png.stat().st_size > 0:
+        cleanup_old(cache, keep_names=(sq_png.name,))
+        print(str(sq_png))
+        return
+
+    src_path = None
+    tmp_dl = None
+    if art_url.startswith("file://"):
+        parsed = unquote(urlparse(art_url).path)
+        if parsed and os.path.isfile(parsed):
+            src_path = parsed
+    elif art_url.startswith("/"):
+        if os.path.isfile(art_url):
+            src_path = art_url
+    elif art_url.startswith("data:image/") and ";base64," in art_url:
+        try:
+            raw = base64.b64decode(art_url.split(";base64,", 1)[1], validate=False)
+            if raw:
+                tmp_dl = cache / f"pleamar-art-{key}.img"
+                tmp_dl.write_bytes(raw)
+                src_path = str(tmp_dl)
+        except Exception:
+            src_path = None
+    elif art_url.startswith(("http://", "https://")) and CURL:
+        tmp_dl = cache / f"pleamar-art-{key}.img"
+        try:
+            r = subprocess.run(
+                [CURL, "-fsSL", "--max-time", "6", "--max-filesize", "16777216",
+                 "--proto-redir", "=http,https", "-o", str(tmp_dl), art_url],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=8,
+            )
+            if r.returncode == 0 and tmp_dl.is_file() and tmp_dl.stat().st_size > 0:
+                src_path = str(tmp_dl)
+        except (OSError, subprocess.SubprocessError):
+            src_path = None
+
+    if not src_path:
+        return
+
+    out_path = src_path
+    if MAGICK:
+        try:
+            r = subprocess.run(
+                [MAGICK, f"{src_path}[0]", "-auto-orient", "-thumbnail", "256x256^",
+                 "-gravity", "center", "-extent", "256x256", "-quality", "90", str(sq_png)],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=6,
+            )
+            if r.returncode == 0 and sq_png.is_file() and sq_png.stat().st_size > 0:
+                out_path = str(sq_png)
+        except (OSError, subprocess.SubprocessError):
+            pass
+
+    cleanup_old(cache, keep_names=(Path(out_path).name, sq_png.name))
+    print(out_path)
+
+
+def cmd_pos(player):
+    if PLAYERCTL:
+        cmds = ([[PLAYERCTL, "-p", player, "position"]] if player else []) + [[PLAYERCTL, "position"]]
+        for cmd in cmds:
+            try:
+                r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=2)
+                if r.returncode == 0 and r.stdout.strip():
+                    val = float(r.stdout.strip())
+                    print(f"{max(0.0, val):.3f}")
+                    return
+            except (OSError, ValueError, subprocess.SubprocessError):
+                pass
+    bus = pick_bus(player)
+    if not bus:
+        return
+    usec = get_prop(bus, "Position")
+    if isinstance(usec, (int, float)):
+        print(f"{max(0.0, float(usec) / 1_000_000.0):.3f}")
+
+
+def cmd_seek(player, sec_str):
+    try:
+        sec = max(0.0, float(sec_str))
+    except (TypeError, ValueError):
+        return
+    if PLAYERCTL:
+        cmds = ([[PLAYERCTL, "-p", player, "position", f"{sec:.3f}"]] if player else []) + [
+            [PLAYERCTL, "position", f"{sec:.3f}"]
+        ]
+        for cmd in cmds:
+            try:
+                r = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+                if r.returncode == 0:
+                    return
+            except (OSError, subprocess.SubprocessError):
+                pass
+    if not BUSCTL:
+        return
+    bus = pick_bus(player)
+    if not bus:
+        return
+    meta = get_metadata(bus)
+    track_id = meta_val(meta, "mpris:trackid")
+    if not isinstance(track_id, str) or not track_id.startswith("/"):
+        return
+    usec = int(round(sec * 1_000_000))
+    try:
+        subprocess.run(
+            [BUSCTL, "--user", "call", bus, MPRIS_PATH, MPRIS_PLAYER_IFACE,
+             "SetPosition", "ox", track_id, str(usec)],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2,
+        )
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
+def main():
+    args = sys.argv[1:]
+    if not args:
+        return
+    cmd = args[0]
+    if cmd == "art":
+        cmd_art(args[1] if len(args) > 1 else "")
+    elif cmd == "pos":
+        cmd_pos(args[1] if len(args) > 1 else "")
+    elif cmd == "seek":
+        if len(args) >= 3:
+            cmd_seek(args[1], args[2])
+        elif len(args) == 2:
+            cmd_seek("", args[1])
+
+
+if __name__ == "__main__":
+    main()

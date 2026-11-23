@@ -27,6 +27,10 @@ part NotchFrame {
             0))
     prop nf_clock_w = 168 ~quick
     follow nf_clock_w = max(notch_clock_w, nf_need_w)
+    prop nf_beat = 0 ~quick
+    follow nf_beat = if(music_frame_on and music_on and not motion.reduced, clamp(bands.0, 0, 1), 0)
+    prop nf_bulge_p = 0 ~sp_calm
+    prop nf_bulge_x = 960 ~sp_lead
 
     surface notch_frame {
         size: full, full
@@ -40,8 +44,8 @@ part NotchFrame {
         let nf.w = notch_frame.width
         let nf.h = notch_frame.height
         let nf.cx = nf.w / 2
-        let nf.clock_w = nf_clock_w
-        let nf.clock_h = notch_clock_h
+        let nf.clock_w = nf_clock_w + 4 * nf_beat
+        let nf.clock_h = notch_clock_h + 2.5 * nf_beat
         let nf.settings_h = notch_clock_h + 820
         let nf.center_h = notch_clock_h + 720
         //  anchor:center places the row's top edge at y in plm.
@@ -106,6 +110,10 @@ part NotchFrame {
         let nf.cp_shift = if(panel_open or nf.cp_p > 0.01, 0, 30000)
         let nf.ct_shift = if(center_open or nf.ct_p > 0.01, 0, 30000)
         let nf.la_shift = if(launch_open or nf.launch_p > 0.01, 0, 30000)
+        let nf.bulge_hot = not panel_open and not center_open and not launch_open and not nt_center and not motion.reduced and nf_clock.hover > 0.5
+        follow nf_bulge_p = if(nf.bulge_hot, 1, 0)
+        follow nf_bulge_x = if(nf.bulge_hot, clamp(pointer.x, nf.cx - nf.clock_w / 2 + 28, nf.cx + nf.clock_w / 2 - 28), nf.cx)
+        let nf.bulge_shift = if(nf_bulge_p > 0.01, 0, 30000)
         let nf.smoke_bg = mix(tint, #000000, glass_smoke * 0.65)
         let nf.frame_color = mix(nf.smoke_bg, primary,
             if(notch_tint_on, clamp(notch_tint_depth / 100, 0, 1), 0))
