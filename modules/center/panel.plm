@@ -210,8 +210,8 @@ part CenterPanel {
         let fr = if(hot > 0.02, ct_fr, 0)
         let jt = 0.25 + 0.35 * hot
 
-        box { from: x0, y - 6; size: w, 12; corner: 6; color: ct.track; opacity: 86% }
-        box { from: x0, y - 6; size: w, 12; corner: 6; stroke: 1; color: ink; opacity: 12% + 14% * hot }
+        box { from: x0, y - 6; size: w, 12; corner: 6; color: #091118; opacity: 44% }
+        box { from: x0, y - 6; size: w, 12; corner: 6; stroke: 1; color: #ffffff; opacity: 14% + 18% * hot }
 
         shader ct_hatch {
             at: x0 - 6, y - h
@@ -255,10 +255,11 @@ part CenterPanel {
             size: 268, 50
             let chosen = open > 0 and sel == r.index
             let cy = if(r.has_sub, 16, 24)
-            box { from: 0, 2; size: 268, 46; corner: 12; color: if(chosen, ct.primary, ink); opacity: if(chosen, 14%, 3% + 5% * tray_hit.hover) }
-            box { from: 0, 2; size: 268, 46; corner: 12; stroke: 1; color: if(chosen, ct.primary, ink); opacity: if(chosen, 36%, 4% + 10% * tray_hit.hover) }
-            box { from: 0, 12; size: 3, 26; corner: 1.5; color: if(mod(r.index, 2) == 0, ct.primary, ct.secondary); show: chosen }
-            box { from: 10, 12; size: 28, 28; corner: 8; color: if(mod(r.index, 2) == 0, ct.primary, ct.secondary); opacity: 12%; show: not r.has_icon }
+            box { from: 0, 2; size: 268, 46; corner: 12; color: #ffffff; opacity: if(chosen, 12%, 3% + 6% * tray_hit.hover) }
+            box { from: 0, 2; size: 268, 46; corner: 12; stroke: 1; color: #ffffff; opacity: if(chosen, 38%, 8% + 18% * tray_hit.hover) }
+            box { from: 2, 12; size: 3, 26; corner: 1.5; color: if(mod(r.index, 2) == 0, ct.primary, ct.secondary); show: chosen }
+            box { from: 10, 12; size: 28, 28; corner: 8; color: #ffffff; opacity: 7%; show: not r.has_icon }
+            box { from: 10, 12; size: 28, 28; corner: 8; stroke: 0.8; color: #ffffff; opacity: 18%; show: not r.has_icon }
             image r.icon { at: 12, 13; size: 24, 24; fit: contain; show: r.has_icon }
             text r.name { at: 48, cy; anchor: left center; size: 12; weight: 600; color: if(chosen, ct.primary, ink); width: 174; lines: 1; family: "Space Grotesk" }
             text r.sub { at: 48, 32; anchor: left center; size: 9.5; color: faint; width: 174; lines: 1; show: r.has_sub; family: "Space Grotesk" }
@@ -275,7 +276,8 @@ part CenterPanel {
             size: 388, if(r.separator, 12, 32)
             let on = sel == r.index and r.enabled and not r.separator
             line { from: 10, 6; to: 378, 6; width: 1; color: ink; opacity: 12%; show: r.separator }
-            box { from: 0, 1; size: 388, 30; corner: 8; color: if(on, ct.primary, ink); opacity: if(on, 13%, 4% * hit.hover); show: not r.separator and r.enabled }
+            box { from: 0, 1; size: 388, 30; corner: 8; color: #ffffff; opacity: if(on, 11%, 6% * hit.hover); show: not r.separator and r.enabled }
+            box { from: 0, 1; size: 388, 30; corner: 8; stroke: 0.8; color: #ffffff; opacity: if(on, 28%, 16% * hit.hover); show: not r.separator and r.enabled }
             text "✓" { at: 12, 16; anchor: left center; size: 10.5; weight: 700; color: ct.primary; show: not r.separator and r.checked; family: "Space Grotesk" }
             text r.label { at: if(r.checked, 28, 12), 16; anchor: left center; size: 11.5; weight: if(on, 600, 500); color: if(r.enabled, ink, faint); opacity: if(r.enabled, 96%, 45%); width: 326; lines: 1; show: not r.separator; family: "Space Grotesk" }
             text "›" { at: 370, 16; anchor: center; size: 14; weight: 700; color: if(on, ct.primary, ct.secondary); show: not r.separator and r.sub; family: "Space Grotesk" }
@@ -289,7 +291,8 @@ part CenterPanel {
         group {
             size: 264, if(r.separator, 12, 32)
             line { from: 8, 6; to: 256, 6; width: 1; color: ink; opacity: 12%; show: r.separator }
-            box { from: 0, 1; size: 264, 30; corner: 8; color: ct.secondary; opacity: 10% * hit.hover; show: not r.separator and r.enabled }
+            box { from: 0, 1; size: 264, 30; corner: 8; color: #ffffff; opacity: 9% * hit.hover; show: not r.separator and r.enabled }
+            box { from: 0, 1; size: 264, 30; corner: 8; stroke: 0.8; color: #ffffff; opacity: 22% * hit.hover; show: not r.separator and r.enabled }
             text "✓" { at: 10, 16; anchor: left center; size: 10.5; weight: 700; color: ct.secondary; show: not r.separator and r.checked; family: "Space Grotesk" }
             text r.label { at: if(r.checked, 26, 10), 16; anchor: left center; size: 11.5; color: if(r.enabled, ink, faint); opacity: if(r.enabled, 96%, 45%); width: 224; lines: 1; show: not r.separator; family: "Space Grotesk" }
             zone box hit { from: 0, 1; size: 264, 30; corner: 8; cursor: pointer; active: not r.separator and r.enabled; label: r.label }
@@ -339,37 +342,21 @@ part CenterPanel {
             text ct_weekday     { size: 15; weight: 500; color: ct.secondary; family: "Noto Sans CJK SC" }
         }
 
-        //  Page counter + Close button
+        //  Page counter + Close glass orb
         text number(center_tab + 1, 0, "0") { at: 1014, 44; anchor: right center; size: 11; weight: 700; color: ct.secondary; family: "Space Grotesk" }
         text "/ 07" { at: 1020, 44; anchor: left center; size: 10; color: faint; opacity: 60%; family: "Space Grotesk" }
-        ellipse { at: 1076, 44; radius: 15; color: ink; opacity: 6% + 12% * ct_close.hover }
-        ellipse { at: 1076, 44; radius: 15; stroke: 1; color: ink; opacity: 14% + 26% * ct_close.hover }
+        GlassOrb(1076, 44, 15, ct_close.hover)
         line { from: 1071, 39; to: 1081, 49; width: 1.6; color: ink }
         line { from: 1081, 39; to: 1071, 49; width: 1.6; color: ink }
         zone box ct_close { from: 1058, 26; size: 36, 36; corner: 18; cursor: pointer; label: "Close centre panel" }
         on press ct_close { emit ui_sound; emit center_close }
 
-        //  Dual-edge stretching tab pill
+        //  Dual-edge stretching pure crystal-glass tab prism
         let tb_l = ct.tab_x + min(ct_tab_ld, ct_tab_tl) * ct.tab_w + 2
         let tb_r = ct.tab_x + (max(ct_tab_ld, ct_tab_tl) + 1) * ct.tab_w - 2
         let tb_w = max(ct.tab_w - 4, tb_r - tb_l)
-        shader ct_hatch {
-            at: ct.tab_x, 26
-            size: ct.tab_n * ct.tab_w, 38
-            values: (tb_l - ct.tab_x) + 4, (tb_r - ct.tab_x) - 4, 3.6, 32, 0.25, 0, 0.9, 0
-            colors: mix(ct.primary, ct.secondary, 0.32)
-            opacity: 22%
-            show: slider_fill == 0
-        }
-        shader ct_fill {
-            at: ct.tab_x, 26
-            size: ct.tab_n * ct.tab_w, 38
-            values: (tb_l - ct.tab_x) + 2, (tb_r - ct.tab_x) - 2, 34, 17, slider_fill, 0, 0.25, 1
-            colors: mix(ct.primary, ct.secondary, 0.32)
-            opacity: 28%
-            show: slider_fill > 0
-        }
-        box { from: tb_l, 26; size: tb_w, 38; corner: 19; stroke: 1.5; color: ct.secondary; opacity: 88% }
+        GlassPrism(tb_l, 26, tb_w, 38, 15, 0, 1)
+        box { at: tb_l + tb_w / 2, 60.5; size: 22, 2.2; corner: 1.1; color: ct.primary; opacity: 92% }
 
         repeat t in 0..7 {
             text pick(t, "OVERVIEW", "SYSTEM", "TRAY", "MEDIA", "AUDIO", "CALENDAR", "ACTIONS") {
@@ -377,7 +364,7 @@ part CenterPanel {
                 color: if(center_tab == t, ct.primary, faint); family: "Space Grotesk"
             }
             text number(t + 1, 0, "") {
-                at: ct.tab_x + t * ct.tab_w + ct.tab_w - 7, 29; anchor: right top; size: 8.5; weight: 700
+                at: ct.tab_x + t * ct.tab_w + ct.tab_w - 11, 30.5; anchor: right top; size: 8.5; weight: 700
                 color: if(center_tab == t, ct.primary, ct.secondary); opacity: if(center_tab == t, 95%, 52%); family: "Space Grotesk"
             }
             zone box ct_tab_hit.$t { from: ct.tab_x + t * ct.tab_w, 26; size: ct.tab_w, 38; corner: 19; cursor: pointer; role: tab; selected: center_tab == t; label: pick(t, "Overview", "System", "Tray", "Media", "Audio", "Calendar", "Actions") }
@@ -398,18 +385,18 @@ part CenterPanel {
         group {
             show: center_tab == 0
 
-            //  Top Row: 4 clickable Water Tanks (jump directly to System section)
+            //  Top Row: 4 clickable Crystal Glass Water Tanks (refractive glass shell over animated wave)
             repeat q in 0..4 {
                 let qx = 36 + q * 262
                 let lv = clamp(pick(q, sys_cpu, sys_mem, sys_gpu, if(sys_mounts.count > 0, sys_mounts.0.pct, 0)), 0, 1)
                 let fluid = if(q == 1 or q == 3, ct.secondary, ct.primary)
-                box { from: qx, 114; size: 248, 128; corner: 18; color: ct.card2; opacity: 64% }
                 shader ct_water {
                     at: qx, 114; size: 248, 128; corner: 18
                     values: lv, q * 0.85, ct_ov_stat.$q.hover, if(motion.reduced, 0, 1)
                     colors: if(q == 1 or q == 3, ct.secondary, ct.primary), mix(fluid, ct.primary, 0.35)
+                    opacity: 60%
                 }
-                box { from: qx, 114; size: 248, 128; corner: 18; stroke: 1; color: if(ct_ov_stat.$q.hover > 0.4, fluid, ink); opacity: 10% + 26% * ct_ov_stat.$q.hover }
+                GlassLensShell(qx, 114, 248, 128, 18, ct_ov_stat.$q.hover)
                 text pick(q, "CPU", "MEMORY", "GPU", "DISK") { at: qx + 18, 134; anchor: left center; size: 9.5; weight: 700; color: faint; family: "Space Grotesk" }
                 text pick(q, "", "", "", sys_mounts.0.name) { at: qx + 230, 134; anchor: right center; size: 9.5; weight: 700; color: fluid; show: q == 3 and sys_mounts.count > 0; family: "Space Grotesk" }
                 text "System ›" { at: qx + 230, 134; anchor: right center; size: 9.5; weight: 700; color: fluid; opacity: ct_ov_stat.$q.hover; show: q < 3 or sys_mounts.count < 1; family: "Space Grotesk" }
@@ -419,9 +406,8 @@ part CenterPanel {
                 on press ct_ov_stat.$q { ripple ct_ov_stat.$q; emit ui_sound; center_sys_jump = q; center_tab = 1 }
             }
 
-            //  Left-Mid: Now Playing Card (spinning mini-vinyl + circular art + real 18-bar spec.s)
-            box { from: 36, 258; size: 524, 240; corner: 20; color: ct.card2; opacity: 64% }
-            box { from: 36, 258; size: 524, 240; corner: 20; stroke: 1; color: ink; opacity: 10% }
+            //  Left-Mid: Now Playing Crystal Glass Card
+            GlassCard(36, 258, 524, 240, 20)
             text "NOW PLAYING" { at: 56, 280; anchor: left center; size: 9.5; weight: 700; color: ct.secondary; family: "Space Grotesk" }
             text med.player { at: 540, 280; anchor: right center; size: 10; color: faint; opacity: 80%; family: "Space Grotesk" }
 
@@ -458,33 +444,30 @@ part CenterPanel {
                 box { from: 56 + b * 14, 480 - bh; size: 9, bh; corner: 4.5; color: mix(ct.primary, ct.secondary, b / 17); opacity: if(med.playing, 88%, 25%) }
             }
 
-            //  Transport controls
-            ellipse { at: 416, 464; radius: 17; color: ink; opacity: 6% + 12% * ct_med_prev.hover }
-            ellipse { at: 416, 464; radius: 17; stroke: 1; color: ct.secondary; opacity: 38% * ct_med_prev.hover }
+            //  Transport glass orb controls
+            GlassOrb(416, 464, 17, ct_med_prev.hover)
             path { at: 416, 464; color: ink; move 4, -5; line -5, 0; line 4, 5; close }
             line { from: 410, 459; to: 410, 469; width: 1.8; color: ink }
             zone box ct_med_prev { from: 398, 446; size: 36, 36; corner: 18; cursor: pointer; label: "Previous track" }
             on press ct_med_prev { ripple ct_med_prev; emit ui_sound; emit center_media(0) }
 
-            ellipse { at: 468, 464; radius: 24.5; stroke: 1.5; color: ct.secondary; opacity: 14% + 52% * ct_med_play.hover }
-            ellipse { at: 468, 464; radius: 22; color: ct.primary; opacity: 88% + 12% * ct_med_play.hover }
-            group { show: not med.playing; path { at: 469, 464; color: ct.card; move -5, -7; line 7, 0; line -5, 7; close } }
-            group { show: med.playing; box { from: 462, 456; size: 4, 16; corner: 2; color: ct.card }; box { from: 471, 456; size: 4, 16; corner: 2; color: ct.card } }
+            GlassOrb(468, 464, 22, max(ct_med_play.hover, if(med.playing, 0.45, 0)))
+            ellipse { at: 468, 464; radius: 24.5; stroke: 1.4; color: ct.primary; opacity: 32% + 48% * ct_med_play.hover }
+            group { show: not med.playing; path { at: 470, 464; color: ct.primary; move -5, -7; line 7, 0; line -5, 7; close } }
+            group { show: med.playing; box { from: 462, 456; size: 4, 16; corner: 2; color: ct.primary }; box { from: 471, 456; size: 4, 16; corner: 2; color: ct.primary } }
             zone box ct_med_play { from: 444, 440; size: 48, 48; corner: 24; cursor: pointer; label: "Play or pause" }
             on press ct_med_play { ripple ct_med_play; emit ui_sound; emit center_media(1) }
 
-            ellipse { at: 520, 464; radius: 17; color: ink; opacity: 6% + 12% * ct_med_next.hover }
-            ellipse { at: 520, 464; radius: 17; stroke: 1; color: ct.secondary; opacity: 38% * ct_med_next.hover }
+            GlassOrb(520, 464, 17, ct_med_next.hover)
             path { at: 520, 464; color: ink; move -4, -5; line 5, 0; line -4, 5; close }
             line { from: 526, 459; to: 526, 469; width: 1.8; color: ink }
             zone box ct_med_next { from: 502, 446; size: 36, 36; corner: 18; cursor: pointer; label: "Next track" }
             on press ct_med_next { ripple ct_med_next; emit ui_sound; emit center_media(2) }
 
-            //  Left-Bottom: Recent Alerts with inline dismiss (`×`) + expand body + All link
-            box { from: 36, 514; size: 524, 160; corner: 20; color: ct.card2; opacity: 64% }
-            box { from: 36, 514; size: 524, 160; corner: 20; stroke: 1; color: ink; opacity: 10% }
+            //  Left-Bottom: Recent Alerts Crystal Glass Card
+            GlassCard(36, 514, 524, 160, 20)
             text "RECENT ALERTS" { at: 56, 534; anchor: left center; size: 9.5; weight: 700; color: ct.primary; family: "Space Grotesk" }
-            box { from: 488, 522; size: 54, 22; corner: 11; color: ct.secondary; opacity: 12% + 14% * ct_ov_alerts.hover }
+            GlassPrism(488, 522, 54, 22, 11, ct_ov_alerts.hover, 0)
             text "All ›" { at: 515, 533; anchor: center; size: 10.5; weight: 700; color: ct.secondary; family: "Space Grotesk" }
             zone box ct_ov_alerts { from: 488, 522; size: 54, 22; corner: 11; cursor: pointer; label: "Open Notification Center" }
             on press ct_ov_alerts { emit ui_sound; emit ipc_open_notifications }
@@ -494,7 +477,8 @@ part CenterPanel {
                 group {
                     show: a < nt_history.count
                     let is_exp = ct_alert_exp == a
-                    box { from: 52, ay; size: 492, 34; corner: 10; color: ink; opacity: if(is_exp, 8%, 3% + 4% * ct_ov_al_row.$a.hover) }
+                    box { from: 52, ay; size: 492, 34; corner: 10; color: #ffffff; opacity: if(is_exp, 10%, 3% + 6% * ct_ov_al_row.$a.hover) }
+                    box { from: 52, ay; size: 492, 34; corner: 10; stroke: 0.8; color: #ffffff; opacity: if(is_exp, 26%, 9% + 16% * ct_ov_al_row.$a.hover) }
                     box { from: 56, ay + 6; size: 2.5, 22; corner: 1.25; color: if(nt_history.$a.urgent, alert, if(mod(a, 2) == 0, ct.primary, ct.secondary)); opacity: 84% }
                     text nt_history.$a.app   { at: 68, ay + 11; anchor: left center; size: 9; weight: 700; color: ct.secondary; width: 140; lines: 1; family: "Space Grotesk" }
                     text nt_history.$a.when  { at: 504, ay + 11; anchor: right center; size: 8.5; color: faint; opacity: 75%; family: "Space Grotesk" }
@@ -513,9 +497,8 @@ part CenterPanel {
             }
             text "No alerts. The water is quiet." { at: 56, 594; anchor: left center; size: 12; color: faint; show: nt_history.count < 1; family: "Space Grotesk" }
 
-            //  Right-Top: Network Card (`ct_netfx` + 30-column mirrored vector RX/TX histogram + click jump)
-            box { from: 576, 258; size: 508, 128; corner: 20; color: ct.card2; opacity: 64% }
-            box { from: 576, 258; size: 508, 128; corner: 20; stroke: 1; color: if(ct_ov_net.hover > 0.4, ct.secondary, ink); opacity: 10% + 22% * ct_ov_net.hover }
+            //  Right-Top: Network Crystal Glass Card + Recessed Well
+            GlassCard(576, 258, 508, 128, 20, ct_ov_net.hover)
             text "NETWORK" { at: 596, 280; anchor: left center; size: 9.5; weight: 700; color: ct.secondary; family: "Space Grotesk" }
             text pick(sys_net_up, "OFFLINE", sys_iface) { at: 1064, 276; anchor: right center; size: 9.5; weight: 700; color: if(sys_net_up, faint, alert); family: "Space Grotesk" }
             text sys_ip { at: 1064, 290; anchor: right center; size: 8.5; color: faint; opacity: 75%; width: 190; lines: 1; family: "Space Grotesk" }
@@ -527,8 +510,8 @@ part CenterPanel {
             text sys_tx_txt   { at: 734, 328; anchor: left center; size: 17; weight: 700; color: ct.secondary; width: 112; lines: 1; family: "Space Grotesk" }
             text sys_tx_total { at: 734, 348; anchor: left center; size: 8.5; color: faint; width: 112; lines: 1; family: "Space Grotesk" }
 
-            //  Mirrored 30-sample vector RX/TX well (`x = 858..1064`, mid `y = 336`)
-            box { from: 856, 302; size: 210, 68; corner: 10; color: deep; opacity: 38% }
+            //  Mirrored 30-sample vector RX/TX recessed glass well (`x = 858..1064`, mid `y = 336`)
+            GlassWell(856, 302, 210, 68, 10)
             shader ct_netfx { at: 856, 302; size: 210, 68; values: if(sys_net_up, 1, 0), if(motion.reduced, 0, 1); colors: ct.primary, ct.secondary }
             line { from: 862, 336; to: 1060, 336; width: 1; color: ink; opacity: 14% }
             group {
@@ -544,25 +527,30 @@ part CenterPanel {
             zone box ct_ov_net { from: 576, 258; size: 508, 128; corner: 20; cursor: pointer; label: "Open System Network" }
             on press ct_ov_net { ripple ct_ov_net; emit ui_sound; center_sys_jump = 4; center_tab = 1 }
 
-            //  Right-Bottom: Live Sky Weather Card (sky.wgsl + 24h Bezier + 4-day interactive preview)
-            box { from: 576, 400; size: 508, 274; corner: 20; color: ct.card2; opacity: 64% }
+            //  Right-Bottom: Live Sky Crystal Window Weather Card
             group {
-                clip box { from: 577, 401; size: 506, 272; corner: 19 }
-                let sky_pack = clamp(wx_wind_n / 30, 0, 1) * wx_wdir
-                shader ct_sky {
-                    at: 577, 401; size: 506, 272
-                    values: sk_cl, sk_rn, sk_sn, floor(clamp(sk_fg, 0, 1) * 999) + clamp(sk_st, 0, 0.999), ct_sky_t, sk_dl, floor(clamp(sk_sun, 0, 1) * 1000) + clamp(wx_moon, 0, 0.999), sky_pack
-                    colors: ct.primary, ink
-                    opacity: 90%
-                    show: wx_ready
-                }
+                show: not wx_ready
+                GlassCard(576, 400, 508, 274, 20)
             }
-            box { from: 576, 400; size: 508, 274; corner: 20; stroke: 1; color: ink; opacity: 14% }
+            group {
+                show: wx_ready
+                group {
+                    clip box { from: 577, 401; size: 506, 272; corner: 19 }
+                    let sky_pack = clamp(wx_wind_n / 30, 0, 1) * wx_wdir
+                    shader ct_sky {
+                        at: 577, 401; size: 506, 272
+                        values: sk_cl, sk_rn, sk_sn, floor(clamp(sk_fg, 0, 1) * 999) + clamp(sk_st, 0, 0.999), ct_sky_t, sk_dl, floor(clamp(sk_sun, 0, 1) * 1000) + clamp(wx_moon, 0, 0.999), sky_pack
+                        colors: ct.primary, ink
+                        opacity: 76%
+                    }
+                }
+                GlassLensShell(576, 400, 508, 274, 20)
+            }
 
-            //  City + Settings gear button
+            //  City + Settings glass orb gear button
             ellipse { at: 602, 422; radius: 4; stroke: 1.6; color: ink; opacity: 88% }
             text if(wx_configured, wx_city, "Weather city not set") { at: 614, 422; anchor: left center; size: 12.5; weight: 700; color: ink; width: 210; lines: 1; family: "Space Grotesk" }
-            box { from: 1038, 410; size: 28, 24; corner: 12; color: deep; opacity: 42% + 22% * ct_ov_weather.hover }
+            GlassOrb(1052, 422, 13, ct_ov_weather.hover)
             ellipse { at: 1052, 422; radius: 4.5; stroke: 1.4; color: ink }
             zone box ct_ov_weather { from: 1036, 408; size: 32, 28; corner: 14; cursor: pointer; label: "Configure weather city" }
             on press ct_ov_weather { emit ui_sound; emit ipc_open_settings(9) }
@@ -601,7 +589,7 @@ part CenterPanel {
                     let dx = 224 / 24
                     let sp = max(1, wx_hhi - wx_hlo)
                     let yb = 594
-                    box { from: 592, 536; size: 242, 74; corner: 12; color: deep; opacity: 32% }
+                    GlassWell(592, 536, 242, 74, 12, ct_wx_hr_z.hover)
                     path {
                         at: 0, 0; color: ct.secondary; opacity: 20%
                         move x0, yb + 10
@@ -673,17 +661,17 @@ part CenterPanel {
                     text wx_hrs[sk_k].label .. " · " .. wx_hrs[sk_k].deg { at: 826, 622; anchor: right center; size: 10; weight: 700; color: ct.primary; show: dhr_k >= 0; family: "Space Grotesk" }
                 }
 
-                //  4-Day Forecast Card with Relative Temperature Range Bars & Sky Hover Preview
+                //  4-Day Forecast Recessed Glass Well with Relative Temperature Range Bars
                 let w_sp = max(1, wx_whi - wx_wlo)
-                box { from: 850, 444; size: 222, 214; corner: 14; color: deep; opacity: 42% }
-                box { from: 850, 444; size: 222, 214; corner: 14; stroke: 1; color: ink; opacity: 12% }
+                GlassWell(850, 444, 222, 214, 14)
                 repeat d in 0..4 {
                     let ry = 456 + d * 48
                     group {
                         show: d < wx_daily.count
                         let x_lo = 940 + 74 * clamp((wx_daily.$d.lo_n - wx_wlo) / w_sp, 0, 1)
                         let x_hi = 940 + 74 * clamp((wx_daily.$d.hi_n - wx_wlo) / w_sp, 0, 1)
-                        box { from: 856, ry; size: 210, 42; corner: 10; color: ct.secondary; opacity: if(wx_hv == d, 18%, 0%) }
+                        box { from: 856, ry; size: 210, 42; corner: 10; color: #ffffff; opacity: if(wx_hv == d, 13%, 0%) }
+                        box { from: 856, ry; size: 210, 42; corner: 10; stroke: 0.8; color: #ffffff; opacity: if(wx_hv == d, 34%, 0%) }
                         text wx_daily.$d.day { at: 866, ry + 21; anchor: left center; size: 11; weight: 700; color: ink; width: 44; lines: 1; family: "Space Grotesk" }
                         text wx_daily.$d.lo  { at: 936, ry + 21; anchor: right center; size: 10.5; color: ct.secondary; opacity: 88%; family: "Space Grotesk" }
                         box { from: 940, ry + 18.5; size: 74, 5; corner: 2.5; color: ink; opacity: 14% }
@@ -725,9 +713,8 @@ part CenterPanel {
                     move: 0, -sys.off
 
                     //  ── LEFT COLUMN (x = 36, w = 508): CPU / MEMORY / TEMPS ──
-                    //  CPU Card (`y = 156..414`)
-                    box { from: 36, 156; size: 508, 258; corner: 18; color: ct.card2; opacity: 64% }
-                    box { from: 36, 156; size: 508, 258; corner: 18; stroke: 1; color: ink; opacity: 10% }
+                    //  CPU Crystal Glass Card (`y = 156..414`)
+                    GlassCard(36, 156, 508, 258, 18)
                     text "CPU" { at: 54, 178; anchor: left center; size: 10; weight: 700; color: ct.primary; family: "Space Grotesk" }
                     text sys_cpu_meta { at: 526, 178; anchor: right center; size: 10.5; color: faint; width: 320; lines: 1; align: right; family: "Space Grotesk" }
                     CtGlowArc(110, 240, 42, 360 * max(0.004, sys_cpu) * 1deg, 180 * sys_cpu * 1deg, 8, mix(ct.primary, alert, clamp((sys_cpu - 0.8) / 0.2, 0, 1)))
@@ -736,7 +723,7 @@ part CenterPanel {
                     text sys_threads { at: 110, 310; anchor: center; size: 9; color: faint; opacity: 75%; family: "Space Grotesk" }
 
                     //  CPU Vector History Chart (`x = 172..524`, `y = 200..268`, baseline `y = 264`, h = `60`)
-                    box { from: 168, 198; size: 360, 72; corner: 12; color: deep; opacity: 38% }
+                    GlassWell(168, 198, 360, 72, 12)
                     group {
                         show: sys_hist_count > 0
                         let cx0 = 174
@@ -830,9 +817,8 @@ part CenterPanel {
                         text number(sys_cores.$c.pct * 100, 0, "") { at: cxx, cyy; anchor: center; size: 8; weight: 600; color: ink; opacity: 90%; show: c < sys_cores.count; family: "Space Grotesk" }
                     }
 
-                    //  Memory Card (`y = 428..648`)
-                    box { from: 36, 428; size: 508, 220; corner: 18; color: ct.card2; opacity: 64% }
-                    box { from: 36, 428; size: 508, 220; corner: 18; stroke: 1; color: ink; opacity: 10% }
+                    //  Memory Crystal Glass Card (`y = 428..648`)
+                    GlassCard(36, 428, 508, 220, 18)
                     text "MEMORY" { at: 54, 450; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
                     text sys_mem_total { at: 526, 450; anchor: right center; size: 11; color: faint; family: "Space Grotesk" }
                     CtGlowArc(110, 514, 38, 360 * max(0.004, sys_mem) * 1deg, 180 * max(0.004, sys_mem) * 1deg, 9, mix(ct.secondary, alert, clamp((sys_mem - 0.85) / 0.15, 0, 1)))
@@ -847,7 +833,7 @@ part CenterPanel {
                     text sys_swap_txt  { at: 526, 504; anchor: right center; size: 11.5; weight: 700; color: ct.secondary; family: "Space Grotesk" }
 
                     //  Memory Vector Area Chart (`x = 172..524`, `y = 534..628`, baseline `622`, h = `78`)
-                    box { from: 168, 530; size: 360, 100; corner: 12; color: deep; opacity: 38% }
+                    GlassWell(168, 530, 360, 100, 12)
                     group {
                         show: sys_hist_count > 0
                         let mx0 = 174
@@ -925,9 +911,8 @@ part CenterPanel {
                         }
                     }
 
-                    //  Temps & Fans Card (`y = 662..940`)
-                    box { from: 36, 662; size: 508, 280; corner: 18; color: ct.card2; opacity: 64% }
-                    box { from: 36, 662; size: 508, 280; corner: 18; stroke: 1; color: ink; opacity: 10% }
+                    //  Temps & Fans Crystal Glass Card (`y = 662..940`)
+                    GlassCard(36, 662, 508, 280, 18)
                     text "TEMPERATURES & FANS" { at: 54, 684; anchor: left center; size: 10; weight: 700; color: ct.primary; family: "Space Grotesk" }
                     repeat t in 0..8 {
                         let ty = 716 + t * 24
@@ -940,9 +925,8 @@ part CenterPanel {
                     text sys_fans { at: 54, 922; anchor: left center; size: 9.5; color: faint; width: 472; lines: 1; family: "Space Grotesk" }
 
                     //  ── RIGHT COLUMN (x = 556, w = 520): GPU / NETWORK / STORAGE ──
-                    //  GPU Card (`y = 156..398`)
-                    box { from: 556, 156; size: 520, 242; corner: 18; color: ct.card2; opacity: 64% }
-                    box { from: 556, 156; size: 520, 242; corner: 18; stroke: 1; color: ink; opacity: 10% }
+                    //  GPU Crystal Glass Card (`y = 156..398`)
+                    GlassCard(556, 156, 520, 242, 18)
                     text "GPU" { at: 574, 178; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
                     text sys_gpu_name { at: 1058, 178; anchor: right center; size: 10; color: faint; width: 320; lines: 1; family: "Space Grotesk"; selectable: true }
                     group {
@@ -963,7 +947,7 @@ part CenterPanel {
                     text sys_gpu_clock { at: 1058, 256; anchor: right center; size: 10.5; weight: 700; color: ct.primary; family: "Space Grotesk" }
 
                     //  GPU Vector History Chart (`x = 702..1054`, `y = 280..378`, baseline `372`, h = `82`)
-                    box { from: 698, 276; size: 360, 104; corner: 12; color: deep; opacity: 38% }
+                    GlassWell(698, 276, 360, 104, 12)
                     group {
                         show: sys_hist_count > 0
                         let gx0 = 704
@@ -1041,9 +1025,8 @@ part CenterPanel {
                         }
                     }
 
-                    //  Network Card (`y = 412..620`)
-                    box { from: 556, 412; size: 520, 208; corner: 18; color: ct.card2; opacity: 64% }
-                    box { from: 556, 412; size: 520, 208; corner: 18; stroke: 1; color: ink; opacity: 10% }
+                    //  Network Crystal Glass Card (`y = 412..620`)
+                    GlassCard(556, 412, 520, 208, 18)
                     text "NETWORK" { at: 574, 434; anchor: left center; size: 10; weight: 700; color: ct.primary; family: "Space Grotesk" }
                     text sys_iface { at: 1058, 434; anchor: right center; size: 10; color: faint; family: "Space Grotesk" }
                     text sys_ip    { at: 574, 456; anchor: left center; size: 10; color: faint; family: "Space Grotesk"; selectable: true }
@@ -1052,8 +1035,8 @@ part CenterPanel {
                     text sys_rx_total { at: 786, 470; anchor: left center; size: 8.5; color: faint; family: "Space Grotesk" }
                     text sys_tx_total { at: 936, 470; anchor: left center; size: 8.5; color: faint; family: "Space Grotesk" }
 
-                    //  Mirrored RX/TX Vector Bars + Baseline (`y = 546`)
-                    box { from: 574, 488; size: 484, 114; corner: 12; color: deep; opacity: 38% }
+                    //  Mirrored RX/TX Recessed Glass Well + Baseline (`y = 546`)
+                    GlassWell(574, 488, 484, 114, 12)
                     line { from: 582, 545; to: 1050, 545; width: 1; color: ink; opacity: 14% }
                     group {
                         show: sys_hist_count > 0
@@ -1066,9 +1049,8 @@ part CenterPanel {
                         }
                     }
 
-                    //  Disk & Storage Card (`y = 634..942`)
-                    box { from: 556, 634; size: 520, 308; corner: 18; color: ct.card2; opacity: 64% }
-                    box { from: 556, 634; size: 520, 308; corner: 18; stroke: 1; color: ink; opacity: 10% }
+                    //  Disk & Storage Crystal Glass Card (`y = 634..942`)
+                    GlassCard(556, 634, 520, 308, 18)
                     text "STORAGE" { at: 574, 656; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
                     text sys_dr_txt .. " read" { at: 1058, 656; anchor: right center; size: 9.5; color: faint; family: "Space Grotesk" }
                     repeat m in 0..4 {
@@ -1088,18 +1070,17 @@ part CenterPanel {
                     text sys_dw_speed { at: 1058, 882; anchor: right center; size: 22; weight: 700; color: ct.secondary; family: "Space Grotesk" }
 
                     //  ── BUSIEST PROGRAMS (`y = 956..1180`, sortable CPU/MEM headers) ──
-                    box { from: 36, 956; size: 1040, 224; corner: 18; color: ct.card2; opacity: 64% }
-                    box { from: 36, 956; size: 1040, 224; corner: 18; stroke: 1; color: ink; opacity: 10% }
+                    GlassCard(36, 956, 1040, 224, 18)
                     text "BUSIEST PROGRAMS" { at: 54, 980; anchor: left center; size: 10; weight: 700; color: ct.primary; family: "Space Grotesk" }
 
-                    //  Clickable Sort Headers
-                    box { from: 616, 968; size: 84, 24; corner: 12; color: ct.primary; opacity: if(sys_proc_sort == 0, 18%, 4% + 8% * ct_sort_cpu.hover) }
+                    //  Clickable Crystal-Glass Sort Headers
+                    GlassPrism(616, 968, 84, 24, 12, ct_sort_cpu.hover, if(sys_proc_sort == 0, 1, 0))
                     text if(sys_proc_sort == 0, "CPU ▾", "CPU") { at: 658, 980; anchor: center; size: 10; weight: 700; color: if(sys_proc_sort == 0, ct.primary, faint); family: "Space Grotesk" }
                     zone box ct_sort_cpu { from: 616, 968; size: 84, 24; corner: 12; cursor: pointer; active: 980 - sys.off > 152 and 980 - sys.off < 670; label: "Sort programs by CPU" }
                     on scroll ct_sort_cpu { ct_sys_sc_to = clamp(ct_sys_sc_to - wheel * 54, 0, sys.max_s) }
                     on press ct_sort_cpu { emit ui_sound; sys_proc_sort = 0 }
 
-                    box { from: 966, 968; size: 92, 24; corner: 12; color: ct.secondary; opacity: if(sys_proc_sort == 1, 18%, 4% + 8% * ct_sort_mem.hover) }
+                    GlassPrism(966, 968, 92, 24, 12, ct_sort_mem.hover, if(sys_proc_sort == 1, 1, 0))
                     text if(sys_proc_sort == 1, "MEMORY ▾", "MEMORY") { at: 1012, 980; anchor: center; size: 10; weight: 700; color: if(sys_proc_sort == 1, ct.secondary, faint); family: "Space Grotesk" }
                     zone box ct_sort_mem { from: 966, 968; size: 92, 24; corner: 12; cursor: pointer; active: 980 - sys.off > 152 and 980 - sys.off < 670; label: "Sort programs by Memory" }
                     on scroll ct_sort_mem { ct_sys_sc_to = clamp(ct_sys_sc_to - wheel * 54, 0, sys.max_s) }
@@ -1122,15 +1103,13 @@ part CenterPanel {
                     text "Waiting for programs…" { at: 54, 1020; anchor: left center; size: 11; color: faint; show: sys_procs.count < 1; family: "Space Grotesk" }
                 }
 
-                //  16-step bottom fade + bobbing More pill
-                repeat f in 0..16 {
-                    let fk = (f + 1) / 16
-                    box { from: 36, 614 + f * 3.5; size: 1042, 4; color: deep; opacity: 52% * fk * fk * sys.cue }
+                //  Soft shadow fade + bobbing crystal-glass More pill
+                repeat f in 0..12 {
+                    let fk = (f + 1) / 12
+                    box { from: 36, 622 + f * 4; size: 1042, 4.5; color: #05090e; opacity: 26% * fk * fk * sys.cue }
                 }
                 let sys.cuey = 644 + 2 * sin(ct_clk * 240)
-                box { at: 557, sys.cuey; size: 92, 26; corner: 13; color: deep; opacity: 84% * sys.cue }
-                box { at: 557, sys.cuey; size: 92, 26; corner: 13; color: ct.secondary; opacity: (12% + 14% * sys_cue_hit.hover) * sys.cue }
-                box { at: 557, sys.cuey; size: 92, 26; corner: 13; stroke: 1; color: ct.secondary; opacity: (38% + 36% * sys_cue_hit.hover) * sys.cue }
+                GlassPrism(511, sys.cuey - 13, 92, 26, 13, sys_cue_hit.hover, 1, sys.cue)
                 path { at: 530, sys.cuey - 1; stroke: 1.5; color: ct.secondary; opacity: sys.cue; move -4, -2; line 0, 2; line 4, -2 }
                 text "More" { at: 566, sys.cuey; anchor: center; size: 12.5; weight: 700; color: ink; opacity: sys.cue; family: "Space Grotesk" }
                 zone box sys_cue_hit { at: 557, 644; size: 92, 28; corner: 14; cursor: pointer; active: sys.cue > 0.4; label: "Scroll down" }
@@ -1156,9 +1135,8 @@ part CenterPanel {
             zone box ct_tray_shield { from: 36, 152; size: 1048, 500; active: tray_menu_open; label: "Close tray menu" }
             on press ct_tray_shield { emit center_tray_menu_close }
 
-            //  Left Pane: Applications
-            box { from: 36, 160; size: 300, 488; corner: 20; color: ct.card2; opacity: 66% }
-            box { from: 36, 160; size: 300, 488; corner: 20; stroke: 1; color: ink; opacity: 12% }
+            //  Left Pane: Applications Crystal Glass Card
+            GlassCard(36, 160, 300, 488, 20)
             text "APPLICATIONS" { at: 56, 182; anchor: left center; size: 9.5; weight: 700; color: ct.primary; family: "Space Grotesk" }
             line { from: 56, 198; to: 316, 198; width: 1; color: ink; opacity: 10% }
             column ct_tray_list {
@@ -1174,11 +1152,10 @@ part CenterPanel {
             text "No tray items" { at: 186, 330; anchor: center; size: 17; weight: 700; color: ink; show: tray_items.count < 1; family: "Space Grotesk" }
             text "Run an app that publishes a StatusNotifier item." { at: 186, 356; anchor: center; size: 10.5; color: faint; width: 232; lines: 2; align: center; show: tray_items.count < 1; family: "Space Grotesk" }
 
-            //  Middle Pane: Actions (slides smoothly in when menu opens)
+            //  Middle Pane: Actions Crystal Glass Card
             group {
                 move: 16 * (1 - ct_tray_m_p) * if(motion.reduced, 0, 1), 0
-                box { from: 352, 160; size: 420, 488; corner: 20; color: ct.card2; opacity: 66% }
-                box { from: 352, 160; size: 420, 488; corner: 20; stroke: 1; color: ink; opacity: 12% }
+                GlassCard(352, 160, 420, 488, 20)
                 text "ACTIONS" { at: 372, 182; anchor: left center; size: 9.5; weight: 700; color: ct.secondary; family: "Space Grotesk" }
                 text tray_items[tray_menu_row].name { at: 372, 200; anchor: left center; size: 12; weight: 600; color: ink; width: 328; lines: 1; show: tray_menu_open; family: "Space Grotesk" }
                 text "Choose an app" { at: 372, 200; anchor: left center; size: 12; weight: 600; color: faint; width: 328; lines: 1; show: not tray_menu_open; family: "Space Grotesk" }
@@ -1202,11 +1179,10 @@ part CenterPanel {
                 text "This item has no actions." { at: 562, 360; anchor: center; size: 11.5; color: faint; show: tray_menu_open and tray_menu_count < 1; family: "Space Grotesk" }
             }
 
-            //  Right Pane: Submenu (slides smoothly in when submenu opens)
+            //  Right Pane: Submenu Crystal Glass Card
             group {
                 move: 16 * (1 - ct_tray_s_p) * if(motion.reduced, 0, 1), 0
-                box { from: 788, 160; size: 296, 488; corner: 20; color: ct.card2; opacity: 66% }
-                box { from: 788, 160; size: 296, 488; corner: 20; stroke: 1; color: ink; opacity: 12% }
+                GlassCard(788, 160, 296, 488, 20)
                 text "SUBMENU" { at: 808, 182; anchor: left center; size: 9.5; weight: 700; color: ct.secondary; family: "Space Grotesk" }
                 column ct_tray_sub_list {
                     at: 804, 220
@@ -1307,28 +1283,26 @@ part CenterPanel {
             group {
                 show: ct_has_track and ct_media_len_s <= 0
                 let lp = if(motion.reduced, 1, 0.55 + 0.45 * sin(ct_clk * 240))
-                box { from: 484, 442; size: 68, 22; corner: 11; color: alert; opacity: 18% }
+                GlassPrism(484, 442, 68, 22, 11, 0, 1)
                 ellipse { at: 498, 453; radius: 3.5; color: alert; opacity: lp }
                 text "LIVE" { at: 510, 453; anchor: left center; size: 10; weight: 700; color: alert; family: "Space Grotesk" }
             }
 
-            //  Large Transport Buttons with ripple
-            ellipse { at: 508, 548; radius: 22; color: ink; opacity: 6% + 12% * ct_media_prev.hover }
-            ellipse { at: 508, 548; radius: 22; stroke: 1; color: ct.secondary; opacity: 42% * ct_media_prev.hover }
+            //  Large Crystal-Glass Transport Orbs with ripple
+            GlassOrb(508, 548, 22, ct_media_prev.hover)
             path { at: 508, 548; color: ink; move 5, -6; line -6, 0; line 5, 6; close }
             line { from: 501, 542; to: 501, 554; width: 2; color: ink }
             zone box ct_media_prev { from: 484, 524; size: 48, 48; corner: 24; cursor: pointer; label: "Previous track" }
             on press ct_media_prev { ripple ct_media_prev; emit ui_sound; emit center_media(0) }
 
-            ellipse { at: 572, 548; radius: 31; stroke: 1.5; color: ct.secondary; opacity: 16% + 52% * ct_media_play.hover }
-            ellipse { at: 572, 548; radius: 28; color: ct.primary; opacity: 88% + 12% * ct_media_play.hover }
-            group { show: not med.playing; path { at: 574, 548; color: ct.card; move -6, -8; line 8, 0; line -6, 8; close } }
-            group { show: med.playing; box { from: 565, 540; size: 4.5, 16; corner: 2; color: ct.card }; box { from: 575, 540; size: 4.5, 16; corner: 2; color: ct.card } }
+            GlassOrb(572, 548, 28, max(ct_media_play.hover, if(med.playing, 0.45, 0)))
+            ellipse { at: 572, 548; radius: 31; stroke: 1.5; color: ct.primary; opacity: 32% + 48% * ct_media_play.hover }
+            group { show: not med.playing; path { at: 574, 548; color: ct.primary; move -6, -8; line 8, 0; line -6, 8; close } }
+            group { show: med.playing; box { from: 565, 540; size: 4.5, 16; corner: 2; color: ct.primary }; box { from: 575, 540; size: 4.5, 16; corner: 2; color: ct.primary } }
             zone box ct_media_play { from: 542, 518; size: 60, 60; corner: 30; cursor: pointer; label: "Play or pause" }
             on press ct_media_play { ripple ct_media_play; emit ui_sound; emit center_media(1) }
 
-            ellipse { at: 636, 548; radius: 22; color: ink; opacity: 6% + 12% * ct_media_next.hover }
-            ellipse { at: 636, 548; radius: 22; stroke: 1; color: ct.secondary; opacity: 42% * ct_media_next.hover }
+            GlassOrb(636, 548, 22, ct_media_next.hover)
             path { at: 636, 548; color: ink; move -5, -6; line 6, 0; line -5, 6; close }
             line { from: 643, 542; to: 643, 554; width: 2; color: ink }
             zone box ct_media_next { from: 612, 524; size: 48, 48; corner: 24; cursor: pointer; label: "Next track" }
@@ -1352,9 +1326,9 @@ part CenterPanel {
             text pick(aud.muted, "Drag or scroll dial to adjust output volume.", "The default output is muted.") { at: 36, 140; anchor: left center; size: 12.5; color: faint; width: 404; lines: 1; family: "Space Grotesk" }
 
             //  ── Left Column (cx = 238): Master Volume Dial, Sink Picker, Mute, Mic ──
-            ellipse { at: 238, 294; radius: 126; color: if(aud.muted, alert, ct.primary); opacity: 6% * ct_aud_dial.hover }
-            ellipse { at: 238, 294; radius: 124; stroke: 1.2; color: if(aud.muted, alert, ct.secondary); opacity: 10% + 28% * ct_aud_dial.hover }
-            ellipse { at: 238, 294; radius: 114; stroke: 10; color: ct.track; opacity: 90% }
+            ellipse { at: 238, 294; radius: 126; color: #ffffff; opacity: 5% * ct_aud_dial.hover }
+            ellipse { at: 238, 294; radius: 124; stroke: 1.2; color: #ffffff; opacity: 14% + 26% * ct_aud_dial.hover }
+            ellipse { at: 238, 294; radius: 114; stroke: 10; color: #ffffff; opacity: 11% }
             arc { at: 238, 294; radius: 114; span: 360 * clamp(aud.volume, 0.004, 1) * 1deg; width: 10; color: if(aud.muted, alert, ct.primary); opacity: 92%; rotate: 180 * clamp(aud.volume, 0.004, 1) * 1deg }
             repeat s in 0..36 {
                 let sa = s * 10
@@ -1367,24 +1341,21 @@ part CenterPanel {
             on press  ct_aud_dial { aud_drag_y = pointer.y; aud_drag_v = aud.volume }
             on drag   ct_aud_dial { emit center_audio_set(clamp(aud_drag_v + (aud_drag_y - pointer.y) / 180, 0, 1)) }
 
-            //  Output Device Picker Pill (`y = 438..474`)
-            box { from: 48, 438; size: 380, 36; corner: 18; color: ct.card2; opacity: 75% }
-            box { from: 48, 438; size: 380, 36; corner: 18; stroke: 1; color: if(ct_audio_pick.hover > 0.3, ct.secondary, ink); opacity: 12% + 28% * ct_audio_pick.hover }
+            //  Output Device Picker Crystal Pill (`y = 438..474`)
+            GlassPrism(48, 438, 380, 36, 18, ct_audio_pick.hover, 0)
             text audio_out_name { at: 66, 456; anchor: left center; size: 12; weight: 600; color: ink; width: 324; lines: 1; family: "Space Grotesk" }
             text "▾" { at: 410, 456; anchor: center; size: 13; color: ct.secondary; family: "Space Grotesk" }
             zone box ct_audio_pick { from: 48, 438; size: 380, 36; corner: 18; cursor: pointer; label: "Choose output device" }
             on press ct_audio_pick { emit ui_sound; audio_pick_open = true }
 
-            //  Mute Output Pill (`y = 486..524`)
-            box { from: 48, 486; size: 380, 38; corner: 19; color: if(aud.muted, alert, ct.primary); opacity: if(aud.muted, 24%, 14%) + 10% * ct_aud_mute.hover }
-            box { from: 48, 486; size: 380, 38; corner: 19; stroke: 1; color: if(aud.muted, alert, ct.primary); opacity: 32% }
+            //  Mute Output Crystal Pill (`y = 486..524`)
+            GlassPrism(48, 486, 380, 38, 19, ct_aud_mute.hover, if(aud.muted, 1, 0))
             text pick(aud.muted, "Mute output", "Unmute output") { at: 238, 505; anchor: center; size: 12; weight: 700; color: if(aud.muted, alert, ct.primary); family: "Space Grotesk" }
             zone box ct_aud_mute { from: 48, 486; size: 380, 38; corner: 19; cursor: pointer; label: "Toggle output mute" }
             on press ct_aud_mute { ripple ct_aud_mute; emit ui_sound; emit center_audio_mute }
 
-            //  Compact Microphone Card (`y = 540..662`)
-            box { from: 36, 540; size: 404, 122; corner: 18; color: ct.card2; opacity: 64% }
-            box { from: 36, 540; size: 404, 122; corner: 18; stroke: 1; color: ink; opacity: 10% }
+            //  Compact Microphone Crystal Glass Card (`y = 540..662`)
+            GlassCard(36, 540, 404, 122, 18)
             text "MICROPHONE" { at: 54, 562; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
             text number(aud.input * 100, 0, "%") { at: 422, 562; anchor: right center; size: 17; weight: 700; color: if(aud.input_muted, alert, ct.secondary); family: "Space Grotesk" }
             CtSlider(54, 594, 368, clamp(aud.input, 0, 1), ct_aud_in_track.hover, if(aud.input_muted, alert, ct.secondary))
@@ -1392,15 +1363,13 @@ part CenterPanel {
             on press ct_aud_in_track { emit center_input_set(clamp((pointer.x - ct.px - 54) / 368, 0, 1)) }
             on drag  ct_aud_in_track { emit center_input_set(clamp((pointer.x - ct.px - 54) / 368, 0, 1)) }
 
-            box { from: 54, 620; size: 120, 28; corner: 14; color: if(aud.input_muted, alert, ct.secondary); opacity: if(aud.input_muted, 24%, 12%) + 10% * ct_aud_in_mute.hover }
-            box { from: 54, 620; size: 120, 28; corner: 14; stroke: 1; color: if(aud.input_muted, alert, ct.secondary); opacity: 30% }
+            GlassPrism(54, 620, 120, 28, 14, ct_aud_in_mute.hover, if(aud.input_muted, 1, 0))
             text pick(aud.input_muted, "Mute mic", "Unmute mic") { at: 114, 634; anchor: center; size: 10.5; weight: 700; color: if(aud.input_muted, alert, ct.secondary); family: "Space Grotesk" }
             zone box ct_aud_in_mute { from: 54, 620; size: 120, 28; corner: 14; cursor: pointer; label: "Toggle mic mute" }
             on press ct_aud_in_mute { ripple ct_aud_in_mute; emit ui_sound; emit center_input_mute }
 
             //  ── Right Column (`464..1084`): Master Output, Per-App Mixer, 24-Band EQ ──
-            box { from: 464, 114; size: 620, 74; corner: 18; color: ct.card2; opacity: 64% }
-            box { from: 464, 114; size: 620, 74; corner: 18; stroke: 1; color: ink; opacity: 10% }
+            GlassCard(464, 114, 620, 74, 18)
             text "MASTER OUTPUT" { at: 484, 134; anchor: left center; size: 10; weight: 700; color: ct.primary; family: "Space Grotesk" }
             text number(aud.volume * 100, 0, "%") { at: 1064, 134; anchor: right center; size: 18; weight: 700; color: if(aud.muted, alert, ink); family: "Space Grotesk" }
             CtSlider(484, 162, 580, clamp(aud.volume, 0, 1), ct_aud_track.hover, if(aud.muted, alert, ct.primary))
@@ -1408,11 +1377,11 @@ part CenterPanel {
             on press ct_aud_track { emit center_audio_set(clamp((pointer.x - ct.px - 484) / 580, 0, 1)) }
             on drag  ct_aud_track { emit center_audio_set(clamp((pointer.x - ct.px - 484) / 580, 0, 1)) }
 
-            //  Application Mixer Card (`y = 200..524`, 4 visible rows + smooth manual scroll up to 8 streams)
-            box { from: 464, 200; size: 620, 324; corner: 18; color: ct.card2; opacity: 64% }
-            box { from: 464, 200; size: 620, 324; corner: 18; stroke: 1; color: ink; opacity: 10% }
+            //  Application Mixer Crystal Glass Card (`y = 200..524`)
+            GlassCard(464, 200, 620, 324, 18)
             text "APPLICATION MIXER" { at: 484, 222; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
-            box { from: 992, 212; size: 72, 20; corner: 10; color: ct.primary; opacity: if(audio_apps_count > 0, 16%, 6%) }
+            box { from: 992, 212; size: 72, 20; corner: 10; color: #ffffff; opacity: if(audio_apps_count > 0, 10%, 5%) }
+            box { from: 992, 212; size: 72, 20; corner: 10; stroke: 0.8; color: #ffffff; opacity: if(audio_apps_count > 0, 26%, 12%) }
             text number(audio_apps_count, 0, " active") { at: 1028, 222; anchor: center; size: 9.5; weight: 700; color: if(audio_apps_count > 0, ct.primary, faint); family: "Space Grotesk" }
 
             group {
@@ -1430,14 +1399,14 @@ part CenterPanel {
                         let row_col = if(audio_apps.$a.muted, alert, app_col)
                         group {
                             show: a < audio_apps_count
-                            box { from: 484, ry; size: 580, 56; corner: 12; color: deep; opacity: 34% + 12% * ct_app_sl.$a.hover }
-                            box { from: 484, ry; size: 580, 56; corner: 12; stroke: 1; color: if(audio_apps.$a.active, row_col, ink); opacity: if(audio_apps.$a.active, 20%, 8%) }
+                            box { from: 484, ry; size: 580, 56; corner: 12; color: #09121a; opacity: 24% + 8% * ct_app_sl.$a.hover }
+                            box { from: 484, ry; size: 580, 56; corner: 12; stroke: 0.9; color: #ffffff; opacity: if(audio_apps.$a.active, 20%, 10%) + 14% * ct_app_sl.$a.hover }
                             ellipse { at: 500, ry + 28; radius: 3.5; color: if(audio_apps.$a.muted, alert, if(audio_apps.$a.active, app_col, faint)); opacity: if(audio_apps.$a.active or audio_apps.$a.muted, 92%, 45%) }
                             text audio_apps.$a.name  { at: 514, ry + 19; anchor: left center; size: 12; weight: 700; color: if(audio_apps.$a.muted, faint, ink); width: 154; lines: 1; family: "Space Grotesk" }
                             text audio_apps.$a.media { at: 514, ry + 37; anchor: left center; size: 9.5; color: faint; width: 154; lines: 1; family: "Space Grotesk" }
 
-                            box { from: 676, ry + 15; size: 52, 26; corner: 13; color: if(audio_apps.$a.muted, alert, app_col); opacity: if(audio_apps.$a.muted, 24%, 11%) + 12% * ct_app_mute.$a.hover }
-                            box { from: 676, ry + 15; size: 52, 26; corner: 13; stroke: 1; color: if(audio_apps.$a.muted, alert, app_col); opacity: 28% }
+                            box { from: 676, ry + 15; size: 52, 26; corner: 13; color: #ffffff; opacity: if(audio_apps.$a.muted, 16%, 7%) + 10% * ct_app_mute.$a.hover }
+                            box { from: 676, ry + 15; size: 52, 26; corner: 13; stroke: 0.9; color: #ffffff; opacity: 22% + 18% * ct_app_mute.$a.hover }
                             text if(audio_apps.$a.muted, "Muted", "Mute") { at: 702, ry + 28; anchor: center; size: 9.5; weight: 700; color: if(audio_apps.$a.muted, alert, app_col); family: "Space Grotesk" }
                             zone box ct_app_mute.$a { from: 676, ry + 15; size: 52, 26; corner: 13; cursor: pointer; active: row_in_view; label: audio_apps.$a.name }
                             on press  ct_app_mute.$a { ripple ct_app_mute.$a; emit ui_sound; emit center_app_mute(a) }
@@ -1468,11 +1437,10 @@ part CenterPanel {
             text "No applications playing audio" { at: 774, 364; anchor: center; size: 13.5; weight: 700; color: faint; show: audio_apps_count < 1; family: "Space Grotesk" }
             text "Start playback in a browser or media player to control app levels." { at: 774, 386; anchor: center; size: 10.5; color: faint; opacity: 78%; show: audio_apps_count < 1; family: "Space Grotesk" }
 
-            //  24-Band Frequency Spectrum (`y = 536..662`)
-            box { from: 464, 536; size: 620, 126; corner: 18; color: ct.card2; opacity: 64% }
-            box { from: 464, 536; size: 620, 126; corner: 18; stroke: 1; color: ink; opacity: 10% }
+            //  24-Band Frequency Spectrum Crystal Glass Card + Recessed Well (`y = 536..662`)
+            GlassCard(464, 536, 620, 126, 18)
             text "FREQUENCY SPECTRUM" { at: 484, 554; anchor: left center; size: 10; weight: 700; color: ct.primary; family: "Space Grotesk" }
-            box { from: 484, 568; size: 580, 82; corner: 12; color: deep; opacity: 38% }
+            GlassWell(484, 568, 580, 82, 12)
             repeat b in 0..24 {
                 let sv = clamp(pick(b, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), 0, 1)
                 let bh = 4 + 62 * if(music_on, sv, 0.05)
@@ -1491,28 +1459,27 @@ part CenterPanel {
             text "悬停日期查看农历" { at: 754, 166; anchor: right center; size: 10; weight: 600; color: faint; width: 400; lines: 1; show: center_cal_hover < 0; family: "Noto Sans CJK SC" }
             text ct_days[clamp(center_cal_hover, 0, 41)].hover { at: 754, 166; anchor: right center; size: 10.5; weight: 600; color: ct.primary; width: 400; lines: 1; show: center_cal_hover >= 0; family: "Noto Sans CJK SC" }
 
-            box { from: 884, 128; size: 38, 34; corner: 17; color: ink; opacity: 5% + 10% * ct_cal_prev.hover }
+            GlassPrism(884, 128, 38, 34, 17, ct_cal_prev.hover, 0)
             text "‹" { at: 903, 145; anchor: center; size: 20; color: ink; family: "Space Grotesk" }
             zone box ct_cal_prev { from: 884, 128; size: 38, 34; corner: 17; cursor: pointer; label: "Previous month" }
             on press ct_cal_prev { emit ui_sound; emit center_cal_step(-1) }
 
-            box { from: 928, 128; size: 38, 34; corner: 17; color: ink; opacity: 5% + 10% * ct_cal_next.hover }
+            GlassPrism(928, 128, 38, 34, 17, ct_cal_next.hover, 0)
             text "›" { at: 947, 145; anchor: center; size: 20; color: ink; family: "Space Grotesk" }
             zone box ct_cal_next { from: 928, 128; size: 38, 34; corner: 17; cursor: pointer; label: "Next month" }
             on press ct_cal_next { emit ui_sound; emit center_cal_step(1) }
 
-            box { from: 976, 128; size: 88, 34; corner: 17; color: ct.primary; opacity: 12% + 14% * ct_cal_today.hover }
+            GlassPrism(976, 128, 88, 34, 17, ct_cal_today.hover, 1)
             text "今天" { at: 1020, 145; anchor: center; size: 11; weight: 700; color: ct.primary; family: "Noto Sans CJK SC" }
             zone box ct_cal_today { from: 976, 128; size: 88, 34; corner: 17; cursor: pointer; label: "Today" }
             on press ct_cal_today { emit ui_sound; emit center_cal_today }
 
-            //  Left: Month Grid Card with directional slide
-            box { from: 36, 184; size: 720, 460; corner: 18; color: ct.card2; opacity: 62% }
-            box { from: 36, 184; size: 720, 460; corner: 18; stroke: 1; color: ink; opacity: 10% }
+            //  Left: Month Grid Crystal Glass Card with directional slide
+            GlassCard(36, 184, 720, 460, 18)
             repeat w in 0..7 {
                 text pick(w, "一", "二", "三", "四", "五", "六", "日") { at: 96 + w * 101, 208; anchor: center; size: 10; weight: 700; color: if(w > 4, ct.secondary, faint); family: "Noto Sans CJK SC" }
             }
-            line { from: 50, 224; to: 742, 224; width: 1; color: ink; opacity: 9% }
+            line { from: 50, 224; to: 742, 224; width: 1; color: #ffffff; opacity: 12% }
 
             group {
                 clip box { from: 38, 226; size: 716, 416; corner: 16 }
@@ -1528,8 +1495,11 @@ part CenterPanel {
                         let is_work = ct_days.$d.work
                         let is_anniv = ct_days.$d.anniv_count > 0
                         let is_today = ct_days.$d.today
-                        box { from: dx, dy; size: 92, 56; corner: 11; color: if(is_today, ct.primary, if(is_off, ct.off, if(is_work, ct.work, if(is_anniv, ct.secondary, ink)))); opacity: if(is_today, 14%, if(is_off or is_work, 8%, if(is_anniv, 5%, 2%))) + 5% * ct_day_hit.$d.hover }
-                        box { from: dx, dy; size: 92, 56; corner: 11; stroke: 1; color: if(is_today, ct.primary, if(is_off, ct.off, if(is_work, ct.work, if(is_anniv, ct.secondary, ink)))); opacity: if(is_today, 42%, if(is_off or is_work, 30%, if(is_anniv, 20%, 5%))) + 14% * ct_day_hit.$d.hover }
+                        //  Pure etched crystal glass facets; TODAY floats as a real raised optical GlassPrism!
+                        GlassPrism(dx, dy, 92, 56, 11, ct_day_hit.$d.hover, 1, if(is_today, 1, 0))
+                        box { from: dx, dy; size: 92, 56; corner: 11; color: #ffffff; opacity: 2.5% + 6.5% * ct_day_hit.$d.hover; show: not is_today }
+                        box { from: dx, dy; size: 92, 56; corner: 11; stroke: 0.9; color: #ffffff; opacity: (8% + 18% * ct_day_hit.$d.hover) + if(is_off or is_work or is_anniv, 6%, 0%); show: not is_today }
+                        box { at: dx + 46, dy + 2; size: 18, 2; corner: 1; color: if(is_today, ct.primary, if(is_off, ct.off, if(is_work, ct.work, ct.secondary))); opacity: 88%; show: is_today or is_off or is_work or is_anniv }
                         text number(ct_days.$d.day, 0, "") { at: dx + 46, dy + 17; anchor: center; size: 17; weight: if(is_today, 700, 500); color: if(ct_days.$d.cur, if(is_today, ct.primary, ink), faint); opacity: if(ct_days.$d.cur, 100%, 45%); family: "Space Grotesk" }
                         ellipse { at: dx + 82, dy + 9; radius: 2.3; color: ct.primary; show: is_today }
                         text ct_days.$d.label { at: dx + 46, dy + 33; anchor: center; size: 7.5; color: if(is_today, ct.primary, if(is_off, ct.off, if(is_work, ct.work, if(is_anniv, ct.secondary, faint)))); width: 86; lines: 1; family: "Noto Sans CJK SC" }
@@ -1547,9 +1517,8 @@ part CenterPanel {
                 }
             }
 
-            //  Right: Today Ring + Month Progress + Countdown Reminders
-            box { from: 774, 184; size: 290, 460; corner: 18; color: ct.card2; opacity: 62% }
-            box { from: 774, 184; size: 290, 460; corner: 18; stroke: 1; color: ink; opacity: 10% }
+            //  Right: Today Ring + Month Progress + Countdown Crystal Glass Card
+            GlassCard(774, 184, 290, 460, 18)
             ellipse { at: 919, 316; radius: 92; stroke: 6; color: ink; opacity: 7% }
             CtGlowArc(919, 316, 92, 360 * center_cal_progress * 1deg, 180 * center_cal_progress * 1deg, 6, ct.secondary)
             text ct_today_month { at: 919, 272; anchor: center; size: 11; weight: 700; color: ct.secondary; family: "Space Grotesk" }
@@ -1557,15 +1526,15 @@ part CenterPanel {
             text ct_today_year  { at: 919, 364; anchor: center; size: 11; color: faint; family: "Space Grotesk" }
             text ct_weekday     { at: 919, 434; anchor: center; size: 14; weight: 600; color: ct.primary; family: "Noto Sans CJK SC" }
             text ct_weeknum     { at: 919, 456; anchor: center; size: 10.5; color: faint; family: "Space Grotesk" }
-            line { from: 800, 480; to: 1038, 480; width: 1; color: ink; opacity: 10% }
+            line { from: 800, 480; to: 1038, 480; width: 1; color: #ffffff; opacity: 12% }
             text ct_countdown_title { at: 800, 502; anchor: left center; size: 9.5; weight: 700; color: ct.secondary; family: "Noto Sans CJK SC" }
             repeat c in 0..2 {
                 let cy = 524 + c * 56
                 group {
                     show: c < ct_countdown.count
-                    box { from: 800, cy; size: 240, 48; corner: 11; color: ink; opacity: 3% }
-                    box { from: 800, cy; size: 240, 48; corner: 11; stroke: 1; color: ct.secondary; opacity: if(ct_countdown.$c.days >= 0 and ct_countdown.$c.days <= 7, 36%, 14%) }
-                    line { from: 800, cy + 8; to: 800, cy + 40; width: 2.5; color: ct.secondary; opacity: if(ct_countdown.$c.days >= 0 and ct_countdown.$c.days <= 7, 90%, 55%) }
+                    box { from: 800, cy; size: 240, 48; corner: 11; color: #ffffff; opacity: 4.5% }
+                    box { from: 800, cy; size: 240, 48; corner: 11; stroke: 0.9; color: #ffffff; opacity: if(ct_countdown.$c.days >= 0 and ct_countdown.$c.days <= 7, 28%, 14%) }
+                    box { from: 802, cy + 8; size: 2.5, 32; corner: 1.25; color: ct.secondary; opacity: if(ct_countdown.$c.days >= 0 and ct_countdown.$c.days <= 7, 94%, 58%) }
                     text ct_countdown.$c.title { at: 812, cy + 15; anchor: left center; size: 11; weight: 600; color: ink; width: 158; lines: 1; family: "Noto Sans CJK SC" }
                     text ct_countdown.$c.when  { at: 1028, cy + 15; anchor: right center; size: 9; weight: 700; color: if(ct_countdown.$c.days >= 0 and ct_countdown.$c.days <= 7, ct.primary, faint); family: "Noto Sans CJK SC" }
                     text ct_countdown.$c.date  { at: 812, cy + 33; anchor: left center; size: 9; color: faint; family: "Noto Sans CJK SC" }
@@ -1582,11 +1551,9 @@ part CenterPanel {
             text "QUICK ACTIONS" { at: 36, 120; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
             text "Jump straight to a surface, flip toggles, or hold 1 s on a session card." { at: 36, 140; anchor: left center; size: 13; color: faint; family: "Space Grotesk" }
 
-            //  1. Surface Launcher Row
+            //  1. Surface Launcher Row (Pure Optical Crystal Glass Cards)
             text "SURFACES" { at: 36, 168; anchor: left center; size: 9.5; weight: 700; color: faint; family: "Space Grotesk" }
-            box { from: 36, 184; size: 244, 100; corner: 16; color: ct.card2; opacity: 64% }
-            box { from: 36, 184; size: 244, 100; corner: 16; color: ct.primary; opacity: 12% * ct_action_search.hover }
-            box { from: 36, 184; size: 244, 100; corner: 16; stroke: 1; color: ct.primary; opacity: 16% + 36% * ct_action_search.hover }
+            GlassCard(36, 184, 244, 100, 16, ct_action_search.hover)
             ellipse { at: 66, 214; radius: 13; stroke: 1.7; color: ct.primary }
             line { from: 75, 223; to: 83, 231; width: 1.8; color: ct.primary }
             text "Search" { at: 54, 250; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk" }
@@ -1594,9 +1561,7 @@ part CenterPanel {
             zone box ct_action_search { from: 36, 184; size: 244, 100; corner: 16; cursor: pointer; label: "Search" }
             on press ct_action_search { ripple ct_action_search; emit ui_sound; emit ipc_open_search }
 
-            box { from: 290, 184; size: 244, 100; corner: 16; color: ct.card2; opacity: 64% }
-            box { from: 290, 184; size: 244, 100; corner: 16; color: ct.secondary; opacity: 12% * ct_action_settings.hover }
-            box { from: 290, 184; size: 244, 100; corner: 16; stroke: 1; color: ct.secondary; opacity: 16% + 36% * ct_action_settings.hover }
+            GlassCard(290, 184, 244, 100, 16, ct_action_settings.hover)
             ellipse { at: 320, 214; radius: 11; stroke: 1.7; color: ct.secondary }
             ellipse { at: 320, 214; radius: 4; stroke: 1.4; color: ct.secondary }
             text "Settings" { at: 308, 250; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk" }
@@ -1604,18 +1569,14 @@ part CenterPanel {
             zone box ct_action_settings { from: 290, 184; size: 244, 100; corner: 16; cursor: pointer; label: "Settings" }
             on press ct_action_settings { ripple ct_action_settings; emit ui_sound; emit ipc_open_settings }
 
-            box { from: 544, 184; size: 244, 100; corner: 16; color: ct.card2; opacity: 64% }
-            box { from: 544, 184; size: 244, 100; corner: 16; color: ct.primary; opacity: 12% * ct_action_notifications.hover }
-            box { from: 544, 184; size: 244, 100; corner: 16; stroke: 1; color: ct.primary; opacity: 16% + 36% * ct_action_notifications.hover }
+            GlassCard(544, 184, 244, 100, 16, ct_action_notifications.hover)
             path { at: 574, 216; stroke: 1.7; color: ct.primary; move -8, 6; line -8, -1; curve 8, -1 via 0, -13; line 8, 6; close }
             text "Notifications" { at: 562, 250; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk" }
             text "History & DND" { at: 562, 268; anchor: left center; size: 10.5; color: faint; family: "Space Grotesk" }
             zone box ct_action_notifications { from: 544, 184; size: 244, 100; corner: 16; cursor: pointer; label: "Notifications" }
             on press ct_action_notifications { ripple ct_action_notifications; emit ui_sound; emit ipc_open_notifications }
 
-            box { from: 798, 184; size: 244, 100; corner: 16; color: ct.card2; opacity: 64% }
-            box { from: 798, 184; size: 244, 100; corner: 16; color: ct.secondary; opacity: 12% * ct_action_lock.hover }
-            box { from: 798, 184; size: 244, 100; corner: 16; stroke: 1; color: ct.secondary; opacity: 16% + 36% * ct_action_lock.hover }
+            GlassCard(798, 184, 244, 100, 16, ct_action_lock.hover)
             box { from: 816, 212; size: 18, 13; corner: 3; stroke: 1.6; color: ct.secondary }
             path { at: 825, 212; stroke: 1.6; color: ct.secondary; move -5, 0; line -5, -5; curve 5, -5 via 0, -10; line 5, 0 }
             text "Lock" { at: 816, 250; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk" }
@@ -1623,7 +1584,7 @@ part CenterPanel {
             zone box ct_action_lock { from: 798, 184; size: 244, 100; corner: 16; cursor: pointer; label: "Lock" }
             on press ct_action_lock { ripple ct_action_lock; emit ui_sound; emit lock_now }
 
-            //  2. Quick Controls with Clipped Radial Accent Wash + Press-Squash Switches
+            //  2. Quick Controls: Pure Crystal Glass Cards (glass clarity & rim intensify when active)
             text "QUICK CONTROLS" { at: 36, 308; anchor: left center; size: 9.5; weight: 700; color: faint; family: "Space Grotesk" }
             repeat q in 0..4 {
                 let qx = 36 + q * 254
@@ -1634,24 +1595,20 @@ part CenterPanel {
                 let q_col = pick(q, ct.primary, ct.secondary, ct.primary, ct.secondary)
                 let ps = ct_action_quick.$q.pressed
 
-                box { from: qx, qy; size: 244, 96; corner: 16; color: ct.card2; opacity: 64% }
-                group {
-                    clip box { from: qx, qy; size: 244, 96; corner: 16 }
-                    ellipse { at: qx + 22, qy + 28; radius: 280 * clamp(q_fl, 0, 1); color: q_col; opacity: 16% * clamp(q_fl, 0, 1); show: q_fl > 0.01 }
-                }
-                box { from: qx, qy; size: 244, 96; corner: 16; stroke: 1; color: if(q_on, q_col, ink); opacity: if(q_on, 36%, 9%) + 14% * ct_action_quick.$q.hover }
-                ellipse { at: qx + 22, qy + 28; radius: 6; color: q_col; opacity: if(q_on, 92%, 28%) }
+                GlassCard(qx, qy, 244, 96, 16, ct_action_quick.$q.hover, clamp(q_fl, 0, 1))
+                ellipse { at: qx + 22, qy + 28; radius: 6; color: q_col; opacity: if(q_on, 95%, 26%) }
                 text pick(q, "Frame music", "Glass", "Bluetooth", "Wallpaper") { at: qx + 38, qy + 28; anchor: left center; size: 13.5; weight: 700; color: ink; family: "Space Grotesk" }
                 text pick(q, "Notch frame bars", "Lens & refraction", bt_sub, "Auto rotate pictures") { at: qx + 18, qy + 52; anchor: left center; size: 10; color: faint; width: 196; lines: 1; family: "Space Grotesk" }
                 //  Press-squash capsule switch
                 let m = clamp(4 * q_k * (1 - q_k), 0, 1)
-                box { from: qx + 200, qy + 66 + 0.8 * ps; size: 30, 16 - 1.6 * ps; corner: 8; color: mix(ink, q_col, q_k); opacity: 22% + 70% * q_k }
-                box { at: qx + 208 + 14 * q_k, qy + 74; size: (11 + 5 * m) * (1 + 0.14 * ps), (11 - 2 * m) * (1 - 0.14 * ps); corner: 5.5; color: mix(faint, ct.card, q_k) }
+                box { from: qx + 200, qy + 66 + 0.8 * ps; size: 30, 16 - 1.6 * ps; corner: 8; color: mix(#0c151d, q_col, q_k); opacity: 48% + 44% * q_k }
+                box { from: qx + 200, qy + 66 + 0.8 * ps; size: 30, 16 - 1.6 * ps; corner: 8; stroke: 0.9; color: mix(#ffffff, q_col, q_k); opacity: 24% + 36% * q_k }
+                box { at: qx + 208 + 14 * q_k, qy + 74; size: (11 + 5 * m) * (1 + 0.14 * ps), (11 - 2 * m) * (1 - 0.14 * ps); corner: 5.5; color: mix(#ffffff, #071014, q_k) }
                 zone box ct_action_quick.$q { from: qx, qy; size: 244, 96; corner: 16; cursor: pointer; role: toggle; checked: q_on; label: pick(q, "Frame music", "Glass", "Bluetooth", "Wallpaper rotation") }
                 on press ct_action_quick.$q { emit ui_sound; emit center_quick(q) }
             }
 
-            //  3. Session Safety Row: 1-second Hold-to-Confirm + Liquid Fill + Shake + Countdown + Particle Shatter
+            //  3. Session Safety Row: Pure Crystal Glass Cards + 1s Hold Liquid Rise + Particle Shatter
             text "SESSION (HOLD 1 S)" { at: 36, 444; anchor: left center; size: 9.5; weight: 700; color: faint; family: "Space Grotesk" }
 
             //  Card 0: Log out
@@ -1660,15 +1617,16 @@ part CenterPanel {
             let pwt0 = pw_hp0 < 0.03 and ct_clk - pw_h0 >= 0 and ct_clk - pw_h0 < 1.3
             group {
                 move: pwx0, pwy0
-                box { from: 36, 462; size: 330, 104; corner: 16; color: ct.card2; opacity: 64% }
+                GlassCard(36, 462, 330, 104, 16, max(ct_pwr_0.hover, pw_hp0))
                 group {
+                    show: pw_hp0 > 0.01
                     clip box { from: 36, 462; size: 330, 104; corner: 16 }
                     let fh0 = 104 * clamp(pw_hp0, 0, 1)
-                    box { from: 36, 566 - fh0; size: 330, fh0; color: ct.primary; opacity: 26% }
-                    box { from: 36, 566 - fh0; size: 330, 2; color: ct.primary; opacity: 80% * clamp(pw_hp0 * 8, 0, 1) }
+                    box { from: 36, 566 - fh0; size: 330, fh0; color: ct.primary; opacity: 22% }
+                    box { from: 36, 566 - fh0; size: 330, 2; color: ct.primary; opacity: 82% * clamp(pw_hp0 * 8, 0, 1) }
                 }
-                box { from: 36, 462; size: 330, 104; corner: 16; stroke: 1.2; color: ct.primary; opacity: 18% + 36% * max(ct_pwr_0.hover, pw_hp0) }
-                ellipse { at: 72, 498; radius: 16; color: ct.primary; opacity: 14% }
+                ellipse { at: 72, 498; radius: 16; color: #ffffff; opacity: 7% }
+                ellipse { at: 72, 498; radius: 16; stroke: 0.9; color: #ffffff; opacity: 22% }
                 line { from: 66, 498; to: 78, 498; width: 1.6; color: ct.primary }
                 path { at: 78, 498; stroke: 1.6; color: ct.primary; move -4, -5; line 4, 0; line -4, 5 }
                 text "Log out" { at: 102, 490; anchor: left center; size: 17; weight: 700; color: ink; show: pw_hp0 < 0.03 and not pwt0; family: "Space Grotesk" }
@@ -1689,15 +1647,16 @@ part CenterPanel {
             let pwt1 = pw_hp1 < 0.03 and ct_clk - pw_h1 >= 0 and ct_clk - pw_h1 < 1.3
             group {
                 move: pwx1, pwy1
-                box { from: 386, 462; size: 330, 104; corner: 16; color: ct.card2; opacity: 64% }
+                GlassCard(386, 462, 330, 104, 16, max(ct_pwr_1.hover, pw_hp1))
                 group {
+                    show: pw_hp1 > 0.01
                     clip box { from: 386, 462; size: 330, 104; corner: 16 }
                     let fh1 = 104 * clamp(pw_hp1, 0, 1)
-                    box { from: 386, 566 - fh1; size: 330, fh1; color: ct.secondary; opacity: 26% }
-                    box { from: 386, 566 - fh1; size: 330, 2; color: ct.secondary; opacity: 80% * clamp(pw_hp1 * 8, 0, 1) }
+                    box { from: 386, 566 - fh1; size: 330, fh1; color: ct.secondary; opacity: 22% }
+                    box { from: 386, 566 - fh1; size: 330, 2; color: ct.secondary; opacity: 82% * clamp(pw_hp1 * 8, 0, 1) }
                 }
-                box { from: 386, 462; size: 330, 104; corner: 16; stroke: 1.2; color: ct.secondary; opacity: 18% + 36% * max(ct_pwr_1.hover, pw_hp1) }
-                ellipse { at: 422, 498; radius: 16; color: ct.secondary; opacity: 14% }
+                ellipse { at: 422, 498; radius: 16; color: #ffffff; opacity: 7% }
+                ellipse { at: 422, 498; radius: 16; stroke: 0.9; color: #ffffff; opacity: 22% }
                 arc { at: 422, 498; radius: 8; span: 300deg; width: 1.6; color: ct.secondary; rotate: -120deg }
                 path { at: 429, 491; stroke: 1.6; color: ct.secondary; move -3, -3; line 3, 0; line -3, 3 }
                 text "Restart" { at: 452, 490; anchor: left center; size: 17; weight: 700; color: ink; show: pw_hp1 < 0.03 and not pwt1; family: "Space Grotesk" }
@@ -1718,15 +1677,16 @@ part CenterPanel {
             let pwt2 = pw_hp2 < 0.03 and ct_clk - pw_h2 >= 0 and ct_clk - pw_h2 < 1.3
             group {
                 move: pwx2, pwy2
-                box { from: 736, 462; size: 330, 104; corner: 16; color: ct.card2; opacity: 64% }
+                GlassCard(736, 462, 330, 104, 16, max(ct_pwr_2.hover, pw_hp2))
                 group {
+                    show: pw_hp2 > 0.01
                     clip box { from: 736, 462; size: 330, 104; corner: 16 }
                     let fh2 = 104 * clamp(pw_hp2, 0, 1)
-                    box { from: 736, 566 - fh2; size: 330, fh2; color: alert; opacity: 28% }
+                    box { from: 736, 566 - fh2; size: 330, fh2; color: alert; opacity: 24% }
                     box { from: 736, 566 - fh2; size: 330, 2; color: alert; opacity: 85% * clamp(pw_hp2 * 8, 0, 1) }
                 }
-                box { from: 736, 462; size: 330, 104; corner: 16; stroke: 1.2; color: alert; opacity: 22% + 42% * max(ct_pwr_2.hover, pw_hp2) }
-                ellipse { at: 772, 498; radius: 16; color: alert; opacity: 16% }
+                ellipse { at: 772, 498; radius: 16; color: #ffffff; opacity: 7% }
+                ellipse { at: 772, 498; radius: 16; stroke: 0.9; color: #ffffff; opacity: 22% }
                 arc { at: 772, 498; radius: 7.5; span: 280deg; width: 1.7; color: alert; rotate: -50deg }
                 line { from: 772, 490; to: 772, 498; width: 1.7; color: alert }
                 text "Shut down" { at: 802, 490; anchor: left center; size: 17; weight: 700; color: ink; show: pw_hp2 < 0.03 and not pwt2; family: "Space Grotesk" }
@@ -1750,30 +1710,30 @@ part CenterPanel {
     text "1–7  TABS   ·   TAB  NEXT   ·   ESC  CLOSE" { at: 36, 697; anchor: left center; size: 9; weight: 700; color: faint; opacity: 45%; family: "Space Grotesk" }
     on key Escape while center_open { emit center_key_escape }
 
-    //  ── External Power Fallback Modal (if `center_power_confirm` set) ───
+    //  ── External Power Fallback Modal (Sculpted Frosted Crystal Sheet) ──
     group {
         show: center_open and (center_power_confirm >= 0 or ct_power_p > 0.01)
         opacity: ct_power_p
-        box { from: 0, 0; size: 1120, 720; corner: 26; color: #00000075 }
+        box { from: 0, 0; size: 1120, 720; corner: 26; color: #00000060 }
         zone box ct_power_shield { from: 0, 0; size: 1120, 720; active: center_power_confirm >= 0; label: "Dismiss session confirmation" }
         on press ct_power_shield { emit center_power_cancel }
         group {
             move: 260, 215
             pivot: 300, 145
             scale: 0.94 + 0.06 * ct_power_p
-            box { from: 40, 40; size: 520, 210; corner: 22; color: ct.card; opacity: 94% }
-            box { from: 40, 40; size: 520, 210; corner: 22; stroke: 1.5; color: alert; opacity: 38% }
+            GlassModal(40, 40, 520, 210, 22)
             zone box ct_power_body { from: 40, 40; size: 520, 210; corner: 22; active: center_power_confirm >= 0; label: "Session confirmation card" }
             on press ct_power_body { center_power_confirm = center_power_confirm }
             text "SESSION ACTION" { at: 68, 66; anchor: left center; size: 9.5; weight: 700; color: ct.secondary; family: "Space Grotesk" }
             text pick(center_power_confirm, "Log out?", "Restart?", "Shut down?") { at: 68, 108; anchor: left center; size: 28; weight: 700; color: ink; family: "Space Grotesk" }
             text pick(center_power_confirm, "End this niri session and return to the greeter.", "Reboot the machine. Open work will be interrupted.", "Power off the machine. Open work will be interrupted.") { at: 68, 138; anchor: left top; size: 12; color: faint; width: 464; lines: 2; line_height: 1.3; family: "Space Grotesk" }
-            box { from: 68, 194; size: 130, 34; corner: 17; color: ink; opacity: 6% + 8% * ct_power_cancel.hover }
+            GlassPrism(68, 194, 130, 34, 17, ct_power_cancel.hover, 0)
             text "Cancel" { at: 133, 211; anchor: center; size: 12; weight: 700; color: ink; family: "Space Grotesk" }
             zone box ct_power_cancel { from: 68, 194; size: 130, 34; corner: 17; cursor: pointer; role: button; label: "Cancel power action" }
             on press ct_power_cancel { emit ui_sound; emit center_power_cancel }
-            box { from: 402, 194; size: 130, 34; corner: 17; color: alert; opacity: 76% + 24% * ct_power_confirm.hover }
-            text "Confirm" { at: 467, 211; anchor: center; size: 12; weight: 700; color: ct.card; family: "Space Grotesk" }
+            GlassPrism(402, 194, 130, 34, 17, ct_power_confirm.hover, 1)
+            box { from: 402, 194; size: 130, 34; corner: 17; stroke: 1.3; color: alert; opacity: 75% + 25% * ct_power_confirm.hover }
+            text "Confirm" { at: 467, 211; anchor: center; size: 12; weight: 700; color: alert; family: "Space Grotesk" }
             zone box ct_power_confirm { from: 402, 194; size: 130, 34; corner: 17; cursor: pointer; role: button; agent: no; label: "Confirm power action" }
             on press ct_power_confirm { emit ui_sound; emit center_power_do }
         }

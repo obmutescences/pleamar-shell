@@ -233,12 +233,20 @@ part ConfigPanel {
 
     //  ── Shared Components ───────────────────────────────────────────────
 
-    //  Layered Obsidian card: deep backing + subtle ink veil + crisp hairline border.
-    component CpCard(x: number, y: number, w: number, h: number) {
-        box { from: x, y; size: w, h; corner: 14; color: deep; opacity: 24% }
-        box { from: x, y; size: w, h; corner: 14; color: cp.card; opacity: 52% }
-        box { from: x, y; size: w, h; corner: 14; color: ink; opacity: 3.5% }
-        box { from: x, y; size: w, h; corner: 14; stroke: 1; color: ink; opacity: 11% }
+    //  Pure sculpted crystal-glass setting block (neutral refraction + pointer rim).
+    component CpCard(x: number, y: number, w: number, h: number, hot: number = 0) {
+        GlassCard(x, y, w, h, 14, hot)
+    }
+
+    //  Floating crystal-glass scroll cue pill for tall settings pages.
+    component CpMoreCue(cue: number, cuey: number, hot: number) {
+        repeat f in 0..12 {
+            let fk = (f + 1) / 12
+            box { from: cp.vx, 740 + f * 4; size: cp.vw, 4.5; color: #05090e; opacity: 26% * fk * fk * cue }
+        }
+        GlassPrism(493, cuey - 13, 84, 26, 13, hot, 1, cue)
+        path { at: 511, cuey - 1; stroke: 1.5; color: cp.mint; opacity: cue; move -4, -2; line 0, 2; line 4, -2 }
+        text "More" { at: 545, cuey; anchor: center; size: 12.5; weight: 700; color: ink; opacity: cue; family: "Space Grotesk" }
     }
 
     //  GPU pencil dotted leader connecting label right edge to control left edge.
@@ -271,11 +279,11 @@ part ConfigPanel {
         let fr = if(hot > 0.02, cp_fr, 0)
         let jt = 0.28 + 0.35 * hot
 
-        //  Track groove + optional floor dead-zone indicator.
-        box { from: x0, y - 6; size: w, 12; corner: 6; color: cp.track; opacity: 82% * (1 - 0.45 * dim) }
-        box { from: x0 + 1, y - 5; size: max(1, w * dead - 2), 10; corner: 5; color: faint; opacity: 14% * (1 - 0.45 * dim); show: dead > 0.01 }
-        line { from: x0 + w * dead, y - 6; to: x0 + w * dead, y + 6; width: 1; color: faint; opacity: 32%; show: dead > 0.01 }
-        box { from: x0, y - 6; size: w, 12; corner: 6; stroke: 1; color: ink; opacity: (10% + 14% * hot) * (1 - 0.5 * dim) }
+        //  Recessed smoked-glass groove + optional floor dead-zone indicator.
+        box { from: x0, y - 6; size: w, 12; corner: 6; color: #091118; opacity: 44% * (1 - 0.45 * dim) }
+        box { from: x0 + 1, y - 5; size: max(1, w * dead - 2), 10; corner: 5; color: #ffffff; opacity: 10% * (1 - 0.45 * dim); show: dead > 0.01 }
+        line { from: x0 + w * dead, y - 6; to: x0 + w * dead, y + 6; width: 1; color: faint; opacity: 36%; show: dead > 0.01 }
+        box { from: x0, y - 6; size: w, 12; corner: 6; stroke: 1; color: #ffffff; opacity: (14% + 18% * hot) * (1 - 0.5 * dim) }
 
         //  Active GPU fill (pencil hatch or fillstyle).
         shader cp_hatch {
@@ -322,12 +330,12 @@ part ConfigPanel {
         let ps = clamp(press, 0, 1)
         let kw = (16 + 8 * m) * (1 + 0.14 * ps)
         let kh = (16 - 3 * m) * (1 - 0.14 * ps)
-        box { at: scx, cy; size: sw + 2 * ps, 22 - 1.6 * ps; corner: 11; color: mix(bg, accent, clamp(on, 0, 1)); opacity: 86% + 14% * hot }
-        box { at: scx, cy; size: sw + 2 * ps, 22 - 1.6 * ps; corner: 11; stroke: 1; color: mix(fg, accent, clamp(on, 0, 1)); opacity: 24% + 28% * hot }
-        box { at: kx, cy; size: kw, kh; corner: kh / 2; color: mix(fg, #071014, clamp(on, 0, 1)); opacity: 96% }
+        box { at: scx, cy; size: sw + 2 * ps, 22 - 1.6 * ps; corner: 11; color: mix(#0c151d, accent, clamp(on, 0, 1)); opacity: (48% + 40% * clamp(on, 0, 1)) + 12% * hot }
+        box { at: scx, cy; size: sw + 2 * ps, 22 - 1.6 * ps; corner: 11; stroke: 1; color: mix(#ffffff, accent, clamp(on, 0, 1)); opacity: 22% + 28% * hot }
+        box { at: kx, cy; size: kw, kh; corner: kh / 2; color: mix(#ffffff, #071014, clamp(on, 0, 1)); opacity: 96% }
     }
 
-    //  Segmented picker with dual-edge stretching GPU thumb.
+    //  Segmented picker: recessed smoked-glass trough + gliding crystal-glass lens thumb.
     component CpSetPick(x0: number, y: number, w: number, h: number, n: number, sel: number, hot: number, accent: color, dim: number = 0) {
         prop ld = 0 ~sp_lead
         prop tl = 0 ~sp_trail
@@ -338,42 +346,23 @@ part ConfigPanel {
         let rx = x0 + (max(ld, tl) + 1) * seg - 2
         let tw = max(8, rx - lx)
         let has_sel = sel >= 0 and sel < n
-        let fr = if(hot > 0.02, cp_fr, 0)
-        let jt = 0.22 + 0.3 * hot
 
-        box { from: x0, y - h / 2; size: w, h; corner: h / 2; color: deep; opacity: 34% * (1 - 0.45 * dim) }
-        box { from: x0, y - h / 2; size: w, h; corner: h / 2; stroke: 1; color: ink; opacity: (12% + 12% * hot) * (1 - 0.5 * dim) }
-
-        shader cp_hatch {
-            at: x0 - 4, y - h / 2
-            size: w + 8, h
-            values: 4 + (lx - x0) + 3, 4 + (rx - x0) - 3, 3.4, h * 0.85, jt, fr, 0.9, 0
-            colors: accent
-            opacity: (26% + 14% * hot) * (1 - 0.55 * dim)
-            show: has_sel and slider_fill == 0
-        }
-        shader cp_fill {
-            at: x0 - 4, y - h / 2
-            size: w + 8, h
-            values: 4 + (lx - x0) + 2, 4 + (rx - x0) - 2, h - 4, (h - 4) / 2, slider_fill, fr, jt, 1
-            colors: accent
-            opacity: (36% + 16% * hot) * (1 - 0.55 * dim)
-            show: has_sel and slider_fill > 0
-        }
-        box { from: lx, y - h / 2 + 2; size: tw, h - 4; corner: (h - 4) / 2; stroke: 1.4; color: accent; opacity: (78% + 22% * hot) * (1 - 0.55 * dim); show: has_sel }
+        GlassWell(x0, y - h / 2, w, h, h / 2, hot * (1 - dim))
+        GlassPrism(lx, y - h / 2 + 2, tw, h - 4, (h - 4) / 2, hot, 1 - 0.45 * dim, if(has_sel, 1 - 0.45 * dim, 0))
+        box { at: (lx + rx) / 2, y + h / 2 - 3.5; size: min(22, tw * 0.42), 2; corner: 1; color: accent; opacity: (82% + 18% * hot) * (1 - 0.55 * dim); show: has_sel }
     }
 
-    //  Standalone pill button for actions & effect matrices.
+    //  Standalone pure crystal-glass pill button.
     component CpPill(x: number, y: number, w: number, h: number, active: number, hot: number, accent: color, fg: color) {
-        box { from: x, y; size: w, h; corner: h / 2; color: mix(cp.track, accent, 0.22 * active + 0.14 * hot); opacity: 88% }
-        box { from: x, y; size: w, h; corner: h / 2; stroke: 1; color: mix(fg, accent, active); opacity: 14% + 36% * max(active, hot) }
+        GlassPrism(x, y, w, h, h / 2, hot, active)
     }
 
     component FontRow(r: record, pick: event) {
         group {
             size: 552, 42
-            box { from: 0, 0; size: 552, 42; corner: 10; color: ink; opacity: 3.5% + 9% * hit.hover }
-            box { from: 0, 0; size: 552, 42; corner: 10; stroke: 1; color: mix(ink, cp.mint, hit.hover); opacity: 8% + 22% * hit.hover }
+            box { from: 0, 0; size: 552, 42; corner: 10; color: #ffffff; opacity: 3% + 8% * hit.hover }
+            box { from: 0, 0; size: 552, 42; corner: 10; stroke: 1; color: #ffffff; opacity: 10% + 26% * hit.hover }
+            box { from: 2, 10; size: 2.5, 22; corner: 1.25; color: cp.mint; opacity: 85% * hit.hover }
             text r.name { at: 14, 21; anchor: left center; size: 15.5; weight: 600; color: ink; width: 516; lines: 1; family: "Space Grotesk" }
             zone box hit { from: 0, 0; size: 552, 42; corner: 10; cursor: pointer; label: r.name }
             on press hit { emit ui_sound; emit pick(r.index) }
@@ -410,43 +399,24 @@ part ConfigPanel {
             at: 217 + cp_parent.width, 45; anchor: left center; size: 14; weight: 700; color: cp.mint; family: "Space Grotesk"
         }
 
-        ellipse { at: 812, 44; radius: 14; color: ink; opacity: 6% + 12% * cp_close.hover }
-        ellipse { at: 812, 44; radius: 14; stroke: 1; color: ink; opacity: 14% + 26% * cp_close.hover }
+        GlassOrb(812, 44, 15, cp_close.hover)
         line { from: 807, 39; to: 817, 49; width: 1.7; color: ink }
         line { from: 817, 39; to: 807, 49; width: 1.7; color: ink }
         zone box cp_close { from: 794, 26; size: 36, 36; corner: 18; cursor: pointer; label: "Close settings" }
         on press cp_close { emit ui_sound; panel_open = false }
-        line { from: 28, 78; to: 832, 78; width: 1; color: cp.track; opacity: 75% }
+        line { from: 28, 78; to: 832, 78; width: 1; color: #ffffff; opacity: 14% }
     }
 
-    //  ── Sidebar Navigation (LOOK / SHELL / SCREEN / SYSTEM) ─────────────
+    //  ── Sidebar Navigation (Pure Sculpted Crystal Slab + Gliding Lens Pill) ─
     group {
-        box { from: 28, 100; size: 194, 520; corner: 18; color: deep; opacity: 24% }
-        box { from: 28, 100; size: 194, 520; corner: 18; color: cp.card; opacity: 44% }
-        box { from: 28, 100; size: 194, 520; corner: 18; stroke: 1; color: ink; opacity: 10% }
+        GlassCard(28, 100, 194, 520, 18)
 
-        //  Dual-edge stretching sidebar indicator filled with current slider fill style.
+        //  Dual-edge stretching crystal-glass active indicator pill.
         let nav_top = cp.nav_y + min(cp_nav_ld, cp_nav_tl) * cp.nav_step + 1
         let nav_bot = cp.nav_y + max(cp_nav_ld, cp_nav_tl) * cp.nav_step + 27
         let nav_h = max(26, nav_bot - nav_top)
-        shader cp_hatch {
-            at: 34, nav_top - 1
-            size: 182, nav_h + 2
-            values: 8, 174, 3.8, nav_h * 0.85, 0.2, 0, 0.9, 0
-            colors: cp.mint
-            opacity: 20%
-            show: slider_fill == 0
-        }
-        shader cp_fill {
-            at: 34, nav_top - 1
-            size: 182, nav_h + 2
-            values: 5, 177, nav_h - 4, 9, slider_fill, 0, 0.2, 1
-            colors: cp.mint
-            opacity: 28%
-            show: slider_fill > 0
-        }
-        box { from: 38, nav_top; size: 174, nav_h; corner: 10; stroke: 1.2; color: cp.mint; opacity: 64% }
-        box { from: 40, nav_top + 6; size: 3, max(14, nav_h - 12); corner: 1.5; color: cp.mint; opacity: 92% }
+        GlassPrism(38, nav_top, 174, nav_h, 9, 0, 1)
+        box { from: 41.5, nav_top + 6; size: 2.8, max(12, nav_h - 12); corner: 1.4; color: cp.mint; opacity: 96% }
 
         //  0: LOOK
         let g0 = clamp(1 - abs(cp_grp - 0), 0, 1)
@@ -616,10 +586,8 @@ part ConfigPanel {
             on press cp_page_weather { emit ui_sound; settings_page = 9 }
         }
 
-        //  Palette footer card: live wallpaper-extracted swatches, clicking jumps to Theme.
-        box { from: 28, 636; size: 194, 108; corner: 16; color: deep; opacity: 24% }
-        box { from: 28, 636; size: 194, 108; corner: 16; color: cp.card; opacity: 44% }
-        box { from: 28, 636; size: 194, 108; corner: 16; stroke: 1; color: ink; opacity: if(cp_pal_card.hover > 0.5, 28%, 10%) }
+        //  Palette footer card: pure crystal glass block housing live wallpaper swatches.
+        GlassCard(28, 636, 194, 108, 16, cp_pal_card.hover)
         text "PALETTE" { at: 44, 656; anchor: left center; size: 10; weight: 700; color: faint; family: "Space Grotesk" }
         text "Theme ›" { at: 206, 656; anchor: right center; size: 10.5; weight: 600; color: cp.mint; opacity: 70% + 30% * cp_pal_card.hover; family: "Space Grotesk" }
         ellipse { at: 58,  684; radius: 10; color: primary }
@@ -1002,17 +970,9 @@ part ConfigPanel {
                     }
                 }
 
-                //  16-step bottom fade + bobbing More pill.
-                repeat f in 0..16 {
-                    let fk = (f + 1) / 16
-                    box { from: cp.vx, 732 + f * 3.5; size: cp.vw, 4; color: deep; opacity: 52% * fk * fk * gl.cue }
-                }
+                //  Soft shadow fade + bobbing crystal-glass More pill.
                 let gl.cuey = 762 + 2 * sin(cp_clk * 240)
-                box { at: 535, gl.cuey; size: 84, 26; corner: 13; color: deep; opacity: 84% * gl.cue }
-                box { at: 535, gl.cuey; size: 84, 26; corner: 13; color: cp.mint; opacity: (12% + 14% * gl_cue_hit.hover) * gl.cue }
-                box { at: 535, gl.cuey; size: 84, 26; corner: 13; stroke: 1; color: cp.mint; opacity: (36% + 36% * gl_cue_hit.hover) * gl.cue }
-                path { at: 511, gl.cuey - 1; stroke: 1.5; color: cp.mint; opacity: gl.cue; move -4, -2; line 0, 2; line 4, -2 }
-                text "More" { at: 545, gl.cuey; anchor: center; size: 12.5; weight: 700; color: ink; opacity: gl.cue; family: "Space Grotesk" }
+                CpMoreCue(gl.cue, gl.cuey, gl_cue_hit.hover)
                 zone box gl_cue_hit { at: 535, 762; size: 84, 28; corner: 14; cursor: pointer; active: gl.cue > 0.4; label: "Scroll down" }
                 on press gl_cue_hit { emit ui_sound; cp_sc_gl_to = clamp(cp_sc_gl_to + 320, 0, gl.max_s) }
             }
@@ -1219,8 +1179,7 @@ part ConfigPanel {
                     text "Module order" { at: 266, y_ord + 18; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk"; measure: m_br_ord }
                     CpLeader(266 + m_br_ord.width + 10, 734, y_ord + 18, cp_ord_reset.hover)
                     text "点击左右箭头调整顶栏中间各模块的排列顺序。" { at: 266, y_ord + 36; anchor: left center; size: 12; color: faint; family: "Noto Sans CJK SC" }
-                    box { from: 744, y_ord + 10; size: 60, 24; corner: 12; color: cp.mint; opacity: 12% + 14% * cp_ord_reset.hover }
-                    box { from: 744, y_ord + 10; size: 60, 24; corner: 12; stroke: 1; color: cp.mint; opacity: 32% + 28% * cp_ord_reset.hover }
+                    GlassPrism(744, y_ord + 10, 60, 24, 12, cp_ord_reset.hover, 0)
                     text "Reset" { at: 774, y_ord + 22; anchor: center; size: 11; weight: 700; color: cp.mint; family: "Space Grotesk" }
                     zone box cp_ord_reset { from: 744, y_ord + 10; size: 60, 24; corner: 12; cursor: pointer; active: (y_ord + 22) - br.off > 176 and (y_ord + 22) - br.off < 784; label: "Reset module order" }
                     on scroll cp_ord_reset { cp_sc_br_to = clamp(cp_sc_br_to - wheel * 48, 0, br.max_s) }
@@ -1228,17 +1187,19 @@ part ConfigPanel {
 
                     repeat k in 0..6 {
                         let ox = 268 + k * 90
-                        box { from: ox, y_ord + 52; size: 84, 48; corner: 12; color: deep; opacity: 50% }
-                        box { from: ox, y_ord + 52; size: 84, 48; corner: 12; stroke: 1; color: if(bar_order_slots.$k.enabled, cp.mint, ink); opacity: if(bar_order_slots.$k.enabled, 42%, 14%) }
-                        text bar_order_slots.$k.label { at: ox + 42, y_ord + 66; anchor: center; size: 12.5; weight: 700; color: if(bar_order_slots.$k.enabled, ink, faint); family: "Noto Sans CJK SC" }
+                        GlassWell(ox, y_ord + 52, 84, 48, 12, if(bar_order_slots.$k.enabled, 0.5, 0))
+                        box { at: ox + 42, y_ord + 54; size: 18, 2; corner: 1; color: cp.mint; opacity: 88%; show: bar_order_slots.$k.enabled }
+                        text bar_order_slots.$k.label { at: ox + 42, y_ord + 67; anchor: center; size: 12.5; weight: 700; color: if(bar_order_slots.$k.enabled, ink, faint); family: "Noto Sans CJK SC" }
 
-                        box { from: ox + 5, y_ord + 78; size: 35, 18; corner: 9; color: ink; opacity: if(k > 0, 7% + 10% * cp_ord_l.$k.hover, 2%) }
+                        box { from: ox + 5, y_ord + 78; size: 35, 18; corner: 9; color: #ffffff; opacity: if(k > 0, 6% + 12% * cp_ord_l.$k.hover, 2%) }
+                        box { from: ox + 5, y_ord + 78; size: 35, 18; corner: 9; stroke: 0.8; color: #ffffff; opacity: if(k > 0, 14% + 20% * cp_ord_l.$k.hover, 4%) }
                         text "‹" { at: ox + 22.5, y_ord + 87; anchor: center; size: 13; weight: 700; color: if(k > 0, if(cp_ord_l.$k.hover > 0.5, cp.mint, ink), faint); opacity: if(k > 0, 92%, 25%); family: "Space Grotesk" }
                         zone box cp_ord_l.$k { from: ox + 5, y_ord + 78; size: 35, 18; corner: 9; cursor: pointer; active: k > 0 and (y_ord + 87) - br.off > 176 and (y_ord + 87) - br.off < 784; label: "Move left" }
                         on scroll cp_ord_l.$k { cp_sc_br_to = clamp(cp_sc_br_to - wheel * 48, 0, br.max_s) }
                         on press cp_ord_l.$k { emit ui_sound; emit bar_order_move(k * 2) }
 
-                        box { from: ox + 44, y_ord + 78; size: 35, 18; corner: 9; color: ink; opacity: if(k < 5, 7% + 10% * cp_ord_r.$k.hover, 2%) }
+                        box { from: ox + 44, y_ord + 78; size: 35, 18; corner: 9; color: #ffffff; opacity: if(k < 5, 6% + 12% * cp_ord_r.$k.hover, 2%) }
+                        box { from: ox + 44, y_ord + 78; size: 35, 18; corner: 9; stroke: 0.8; color: #ffffff; opacity: if(k < 5, 14% + 20% * cp_ord_r.$k.hover, 4%) }
                         text "›" { at: ox + 61.5, y_ord + 87; anchor: center; size: 13; weight: 700; color: if(k < 5, if(cp_ord_r.$k.hover > 0.5, cp.mint, ink), faint); opacity: if(k < 5, 92%, 25%); family: "Space Grotesk" }
                         zone box cp_ord_r.$k { from: ox + 44, y_ord + 78; size: 35, 18; corner: 9; cursor: pointer; active: k < 5 and (y_ord + 87) - br.off > 176 and (y_ord + 87) - br.off < 784; label: "Move right" }
                         on scroll cp_ord_r.$k { cp_sc_br_to = clamp(cp_sc_br_to - wheel * 48, 0, br.max_s) }
@@ -1290,16 +1251,8 @@ part ConfigPanel {
                     on press cp_bar_cd_switch { emit ui_sound; toggle bar_show_countdown }
                 }
 
-                repeat f in 0..16 {
-                    let fk = (f + 1) / 16
-                    box { from: cp.vx, 732 + f * 3.5; size: cp.vw, 4; color: deep; opacity: 52% * fk * fk * br.cue }
-                }
                 let br.cuey = 762 + 2 * sin(cp_clk * 240)
-                box { at: 535, br.cuey; size: 84, 26; corner: 13; color: deep; opacity: 84% * br.cue }
-                box { at: 535, br.cuey; size: 84, 26; corner: 13; color: cp.mint; opacity: (12% + 14% * br_cue_hit.hover) * br.cue }
-                box { at: 535, br.cuey; size: 84, 26; corner: 13; stroke: 1; color: cp.mint; opacity: (36% + 36% * br_cue_hit.hover) * br.cue }
-                path { at: 511, br.cuey - 1; stroke: 1.5; color: cp.mint; opacity: br.cue; move -4, -2; line 0, 2; line 4, -2 }
-                text "More" { at: 545, br.cuey; anchor: center; size: 12.5; weight: 700; color: ink; opacity: br.cue; family: "Space Grotesk" }
+                CpMoreCue(br.cue, br.cuey, br_cue_hit.hover)
                 zone box br_cue_hit { at: 535, 762; size: 84, 28; corner: 14; cursor: pointer; active: br.cue > 0.4; label: "Scroll down" }
                 on press br_cue_hit { emit ui_sound; cp_sc_br_to = clamp(cp_sc_br_to + 320, 0, br.max_s) }
             }
@@ -1329,9 +1282,8 @@ part ConfigPanel {
             text "Aa Bb Cc 0123456789 · 中文字体预览" { at: 266, 240; anchor: left center; size: 13; color: faint; opacity: 82%; width: 350; lines: 1; family: "Noto Sans CJK SC" }
             text font_status { at: 804, 240; anchor: right center; size: 11; weight: 600; color: cp.mint; width: 190; lines: 1; align: right; family: "Space Grotesk" }
 
-            //  Filter search bar.
-            box { from: 250, 280; size: 570, 38; corner: 12; color: deep; opacity: 32% }
-            box { from: 250, 280; size: 570, 38; corner: 12; stroke: 1; color: ink; opacity: 14% }
+            //  Filter search bar (recessed smoked-crystal well).
+            GlassWell(250, 280, 570, 38, 12)
             ellipse { at: 270, 298; radius: 6; stroke: 1.5; color: faint }
             line { from: 274.5, 302.5; to: 279, 307; width: 1.5; color: faint }
             input font_query { at: 290, 290; width: 512; size: 15; color: ink; family: "Space Grotesk"; placeholder: "Search installed fonts…" }
@@ -1397,13 +1349,13 @@ part ConfigPanel {
                     show: k < wp_rows.count
                     group {
                         shader: cp_liquid, wp_row.$k.hover, if(motion.reduced, 0, 12), wp_row.$k.hover * cp_wp_sw.$k, relx, rely, 0, 0, 0
-                        box { from: wx, wy; size: 180, 114; corner: 12; color: deep; opacity: 52% }
+                        box { from: wx, wy; size: 180, 114; corner: 12; color: #ffffff; opacity: 5% + 6% * wp_row.$k.hover }
                         group {
-                            opacity: if(wp_rows.$k.cur, 100%, 86% + 14% * wp_row.$k.hover)
+                            opacity: if(wp_rows.$k.cur, 100%, 88% + 12% * wp_row.$k.hover)
                             clip box { from: wx + 5, wy + 4; size: 170, 96; corner: 9 }
                             image wp_rows.$k.thumb { at: wx + 5, wy + 4; size: 170, 96; fit: cover }
                         }
-                        box { from: wx, wy; size: 180, 114; corner: 12; stroke: if(wp_rows.$k.cur, 1.8, 1); color: if(wp_rows.$k.cur, cp.mint, ink); opacity: if(wp_rows.$k.cur, 95%, 14% + 28% * wp_row.$k.hover) }
+                        box { from: wx, wy; size: 180, 114; corner: 12; stroke: if(wp_rows.$k.cur, 1.8, 1); color: if(wp_rows.$k.cur, cp.mint, #ffffff); opacity: if(wp_rows.$k.cur, 95%, 18% + 32% * wp_row.$k.hover) }
                         box { at: wx + 162, wy + 16; size: 18, 18; corner: 9; color: cp.mint; show: wp_rows.$k.cur }
                         path { at: wx + 162, wy + 16; stroke: 1.8; color: #051116; move -3.5, 0.5; line -1, 3; line 4, -2.5; show: wp_rows.$k.cur }
                         text wp_rows.$k.name { at: wcx, wy + 105; anchor: center; size: 10.5; weight: 600; color: if(wp_rows.$k.cur, cp.mint, faint); width: 164; lines: 1; family: "Space Grotesk" }
@@ -1734,16 +1686,8 @@ part ConfigPanel {
                     on press cp_motion_1_5 { emit ui_sound; emit anim_set(11) }
                 }
 
-                repeat f in 0..16 {
-                    let fk = (f + 1) / 16
-                    box { from: cp.vx, 732 + f * 3.5; size: cp.vw, 4; color: deep; opacity: 52% * fk * fk * mo.cue }
-                }
                 let mo.cuey = 762 + 2 * sin(cp_clk * 240)
-                box { at: 535, mo.cuey; size: 84, 26; corner: 13; color: deep; opacity: 84% * mo.cue }
-                box { at: 535, mo.cuey; size: 84, 26; corner: 13; color: cp.mint; opacity: (12% + 14% * mo_cue_hit.hover) * mo.cue }
-                box { at: 535, mo.cuey; size: 84, 26; corner: 13; stroke: 1; color: cp.mint; opacity: (36% + 36% * mo_cue_hit.hover) * mo.cue }
-                path { at: 511, mo.cuey - 1; stroke: 1.5; color: cp.mint; opacity: mo.cue; move -4, -2; line 0, 2; line 4, -2 }
-                text "More" { at: 545, mo.cuey; anchor: center; size: 12.5; weight: 700; color: ink; opacity: mo.cue; family: "Space Grotesk" }
+                CpMoreCue(mo.cue, mo.cuey, mo_cue_hit.hover)
                 zone box mo_cue_hit { at: 535, 762; size: 84, 28; corner: 14; cursor: pointer; active: mo.cue > 0.4; label: "Scroll down" }
                 on press mo_cue_hit { emit ui_sound; cp_sc_mo_to = clamp(cp_sc_mo_to + 320, 0, mo.max_s) }
             }
@@ -1791,10 +1735,8 @@ part ConfigPanel {
                     on press cp_lk_now { emit ui_sound; emit lock_now }
 
                     //  Simulated glass password pill + real SVG shape / dot / star / symbol mask.
-                    let lbc = if(lb_ok, #10b981, cp.mint)
-                    box { from: 266, 218; size: 538, 42; corner: 21; color: deep; opacity: 44% }
-                    box { from: 266, 218; size: 538, 42; corner: 21; color: lbc; opacity: if(lb_ok, 18%, 0%) }
-                    box { from: 266, 218; size: 538, 42; corner: 21; stroke: 1.4; color: lbc; opacity: if(lb_ok, 92%, 22% + 28% * cp_lb_hit.hover) }
+                    GlassWell(266, 218, 538, 42, 21, max(cp_lb_hit.hover, if(lb_ok, 1, 0)))
+                    box { from: 266, 218; size: 538, 42; corner: 21; stroke: 1.5; color: #10b981; opacity: 88%; show: lb_ok }
                     text if(lb_ok, "Preview submitted ✓", "Type here to preview mask · Enter to test") {
                         at: 286, 239; anchor: left center; size: 13; weight: if(lb_ok, 700, 500)
                         color: if(lb_ok, #10b981, faint); opacity: if(lb_ok, 100%, 72%)
@@ -2036,16 +1978,8 @@ part ConfigPanel {
                     on press cp_lk_power { emit ui_sound; lock_power = not lock_power }
                 }
 
-                repeat f in 0..16 {
-                    let fk = (f + 1) / 16
-                    box { from: cp.vx, 732 + f * 3.5; size: cp.vw, 4; color: deep; opacity: 52% * fk * fk * lk.cue }
-                }
                 let lk.cuey = 762 + 2 * sin(cp_clk * 240)
-                box { at: 535, lk.cuey; size: 84, 26; corner: 13; color: deep; opacity: 84% * lk.cue }
-                box { at: 535, lk.cuey; size: 84, 26; corner: 13; color: cp.mint; opacity: (12% + 14% * lk_cue_hit.hover) * lk.cue }
-                box { at: 535, lk.cuey; size: 84, 26; corner: 13; stroke: 1; color: cp.mint; opacity: (36% + 36% * lk_cue_hit.hover) * lk.cue }
-                path { at: 511, lk.cuey - 1; stroke: 1.5; color: cp.mint; opacity: lk.cue; move -4, -2; line 0, 2; line 4, -2 }
-                text "More" { at: 545, lk.cuey; anchor: center; size: 12.5; weight: 700; color: ink; opacity: lk.cue; family: "Space Grotesk" }
+                CpMoreCue(lk.cue, lk.cuey, lk_cue_hit.hover)
                 zone box lk_cue_hit { at: 535, 762; size: 84, 28; corner: 14; cursor: pointer; active: lk.cue > 0.4; label: "Scroll down" }
                 on press lk_cue_hit { emit ui_sound; cp_sc_lk_to = clamp(cp_sc_lk_to + 320, 0, lk.max_s) }
             }
@@ -2068,9 +2002,8 @@ part ConfigPanel {
             text "IDLE SEQUENCE LADDER" { at: 266, 196; anchor: left center; size: 10.5; weight: 700; color: faint; family: "Space Grotesk" }
             text "No suspend triggered by shell." { at: 804, 196; anchor: right center; size: 11; color: faint; opacity: 78%; family: "Space Grotesk" }
 
-            //  Stage 0: ACTIVE
-            box { at: 326, 240; size: 116, 52; corner: 12; color: cp.mint; opacity: 14% }
-            box { at: 326, 240; size: 116, 52; corner: 12; stroke: 1.4; color: cp.mint; opacity: 80% }
+            //  Stage 0: ACTIVE (raised crystal prism)
+            GlassPrism(268, 214, 116, 52, 12, 0, 1)
             ellipse { at: 288, 232; radius: 4; color: cp.mint }
             text "ACTIVE" { at: 300, 232; anchor: left center; size: 11.5; weight: 700; color: cp.mint; family: "Space Grotesk" }
             text "Working" { at: 326, 252; anchor: center; size: 11; color: ink; opacity: 82%; family: "Space Grotesk" }
@@ -2081,8 +2014,8 @@ part ConfigPanel {
             path { at: 454, 240; stroke: 1.6; color: if(lock_active, cp.mint, faint); opacity: if(lock_active, 75%, 28%); move -5, -4; line 0, 0; line -5, 4 }
 
             //  Stage 1: LOCK
-            box { at: 528, 240; size: 132, 52; corner: 12; color: if(lock_active, cp.mint, deep); opacity: if(lock_active, 16%, 32%) }
-            box { at: 528, 240; size: 132, 52; corner: 12; stroke: 1.4; color: if(lock_active, cp.mint, faint); opacity: if(lock_active, 85%, 30%) }
+            GlassPrism(462, 214, 132, 52, 12, 0, if(lock_active, 1, 0))
+            box { at: 528, 216; size: 22, 2; corner: 1; color: cp.mint; opacity: 88%; show: lock_active }
             text "LOCK" { at: 528, 229; anchor: center; size: 11.5; weight: 700; color: if(lock_active, cp.mint, faint); family: "Space Grotesk" }
             text idle_lock_t { at: 528, 250; anchor: center; size: 13; weight: 700; color: if(lock_active, ink, faint); family: "Space Grotesk" }
 
@@ -2092,8 +2025,8 @@ part ConfigPanel {
             path { at: 660, 240; stroke: 1.6; color: if(off_active, cp.mint, faint); opacity: if(off_active, 75%, 28%); move -5, -4; line 0, 0; line -5, 4 }
 
             //  Stage 2: SCREEN OFF
-            box { at: 734, 240; size: 132, 52; corner: 12; color: if(off_active, cp.mint, deep); opacity: if(off_active, 16%, 32%) }
-            box { at: 734, 240; size: 132, 52; corner: 12; stroke: 1.4; color: if(off_active, cp.mint, faint); opacity: if(off_active, 85%, 30%) }
+            GlassPrism(668, 214, 132, 52, 12, 0, if(off_active, 1, 0))
+            box { at: 734, 216; size: 22, 2; corner: 1; color: cp.mint; opacity: 88%; show: off_active }
             text "SCREEN OFF" { at: 734, 229; anchor: center; size: 11.5; weight: 700; color: if(off_active, cp.mint, faint); family: "Space Grotesk" }
             text idle_off_t { at: 734, 250; anchor: center; size: 13; weight: 700; color: if(off_active, ink, faint); family: "Space Grotesk" }
 
@@ -2144,8 +2077,7 @@ part ConfigPanel {
             CpCard(250, 194, 570, 138)
             text "City name" { at: 266, 216; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk" }
             text "Used for live sky shader, 24 h curve and 4-day outlook in Center Panel." { at: 266, 238; anchor: left center; size: 12.5; color: faint; family: "Space Grotesk" }
-            box { from: 266, 258; size: 446, 38; corner: 12; color: deep; opacity: 38% }
-            box { from: 266, 258; size: 446, 38; corner: 12; stroke: 1; color: cp.mint; opacity: 38% }
+            GlassWell(266, 258, 446, 38, 12, 0.35)
             input weather_city { at: 282, 268; width: 416; size: 15; color: ink; family: "Space Grotesk"; placeholder: "e.g. Shanghai, Tokyo, London" }
             on submit weather_city { emit ui_sound; emit weather_apply }
 
@@ -2401,16 +2333,8 @@ part ConfigPanel {
                     on drag  cp_ripple_track { glass_preset_i = -1; glass_ripple = clamp((pointer.x - cp.sx - cp.sl_x) / cp.sl_w, 0, 1) }
                 }
 
-                repeat f in 0..16 {
-                    let fk = (f + 1) / 16
-                    box { from: cp.vx, 732 + f * 3.5; size: cp.vw, 4; color: deep; opacity: 52% * fk * fk * th.cue }
-                }
                 let th.cuey = 762 + 2 * sin(cp_clk * 240)
-                box { at: 535, th.cuey; size: 84, 26; corner: 13; color: deep; opacity: 84% * th.cue }
-                box { at: 535, th.cuey; size: 84, 26; corner: 13; color: cp.mint; opacity: (12% + 14% * th_cue_hit.hover) * th.cue }
-                box { at: 535, th.cuey; size: 84, 26; corner: 13; stroke: 1; color: cp.mint; opacity: (36% + 36% * th_cue_hit.hover) * th.cue }
-                path { at: 511, th.cuey - 1; stroke: 1.5; color: cp.mint; opacity: th.cue; move -4, -2; line 0, 2; line 4, -2 }
-                text "More" { at: 545, th.cuey; anchor: center; size: 12.5; weight: 700; color: ink; opacity: th.cue; family: "Space Grotesk" }
+                CpMoreCue(th.cue, th.cuey, th_cue_hit.hover)
                 zone box th_cue_hit { at: 535, 762; size: 84, 28; corner: 14; cursor: pointer; active: th.cue > 0.4; label: "Scroll down" }
                 on press th_cue_hit { emit ui_sound; cp_sc_th_to = clamp(cp_sc_th_to + 320, 0, th.max_s) }
             }
