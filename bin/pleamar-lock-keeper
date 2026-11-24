@@ -105,31 +105,72 @@ last_screen=""
 last_locked=false
 needs_lock=false
 ticks=0
+hang_misses=0
 lock_file="$runtime/pleamar/lock-scene.lock"
+mark_file="$runtime/pleamar-lock-held"
 mkdir -p "$runtime/pleamar" 2>/dev/null || true
+[[ -e "$mark_file" ]] && needs_lock=true
+
+rotate_log() {
+    local size=0
+    if [[ -f "$log" ]]; then
+        size="$(stat -c%s "$log" 2>/dev/null || wc -c <"$log" 2>/dev/null || echo 0)"
+        if (( size > 4194304 )); then
+            mv -f "$log" "$log.1" 2>/dev/null || true
+        fi
+    fi
+}
+
+supervise_tick() {
+    local pid="${1:-}"
+    local screen
+    if dpms_on; then screen=true; else screen=false; fi
+    if [[ "$screen" != "$last_screen" ]]; then
+        "$bin" --say lockscreen "fact screen_on $screen" >/dev/null 2>&1 || true
+        last_screen="$screen"
+    fi
+    ticks=$((ticks + 1))
+    if (( ticks % 600 == 0 )); then
+        rotate_log
+    fi
+    if (( ticks % 4 == 0 )); then
+        if scene_locked || [[ -e "$mark_file" ]]; then
+            last_locked=true
+            needs_lock=false
+            hang_misses=0
+        elif [[ "$needs_lock" != true ]]; then
+            last_locked=false
+            if (( ticks % 20 == 0 )); then
+                if timeout 15 "$bin" --say lockscreen "wait lockscreen_bg.width > 0 5s" >/dev/null 2>&1; then
+                    hang_misses=0
+                else
+                    hang_misses=$((hang_misses + 1))
+                    echo "keeper   · lock scene IPC probe failed ($hang_misses/3)" >>"$log"
+                    if (( hang_misses >= 3 )); then
+                        if [[ -z "$pid" ]]; then
+                            pid="$(pgrep -f -- 'pleamar --scene .*/lockscreen/lockscreen\.plm' 2>/dev/null | head -n1 || true)"
+                        fi
+                        if [[ -n "$pid" ]]; then
+                            echo "keeper   · lock scene hung: killing pid $pid" >>"$log"
+                            kill -9 "$pid" 2>/dev/null || true
+                        fi
+                        hang_misses=0
+                        return 1
+                    fi
+                fi
+            fi
+        fi
+    fi
+    return 0
+}
+
 while :; do
     compositor_alive || exit 0
     if running; then
         #  The shell or a previous process already owns the scene.  Wait for it
         #  to stop rather than starting a second one.  The short poll keeps the
         #  compositor's red fallback visible for as little time as possible.
-        if dpms_on; then screen=true; else screen=false; fi
-        if [[ "$screen" != "$last_screen" ]]; then
-            "$bin" --say lockscreen "fact screen_on $screen" >/dev/null 2>&1 || true
-            last_screen="$screen"
-        fi
-        #  Remember whether it was locked before it disappears.  logind's
-        #  LockedHint can be stale across an output reconnect, but the scene
-        #  itself knows: a new scene must lock again when this one did.
-        ticks=$((ticks + 1))
-        if (( ticks % 4 == 0 )); then
-            if scene_locked; then
-                last_locked=true
-                needs_lock=false
-            elif [[ "$needs_lock" != true ]]; then
-                last_locked=false
-            fi
-        fi
+        supervise_tick || true
         sleep 0.5
         continue
     fi
@@ -160,16 +201,24 @@ while :; do
         echo "keeper   · previous scene was locked: re-locking the new one" >>"$log"
     fi
 
+    rotate_log
     started="$(date +%s)"
     echo "keeper   · starting lock scene" >>"$log"
-    PLEAMAR_SWAPCHAIN=1 "$root/bin/pleamar-shell" lock >>"$log" 2>&1 8>&- &
+    "$root/bin/pleamar-shell" lock >>"$log" 2>&1 8>&- &
     child=$!
     lock_if_needed "$force_lock" >>"$log" 2>&1 8>&- &
     flock -u 8
+    ticks=0
+    hang_misses=0
+    while kill -0 "$child" 2>/dev/null; do
+        compositor_alive || break
+        supervise_tick "$child" || break
+        sleep 0.5
+    done
     wait "$child"
     code=$?
 
-    if [[ "$last_locked" == true ]]; then needs_lock=true; fi
+    if [[ "$last_locked" == true || -e "$mark_file" ]]; then needs_lock=true; fi
 
     compositor_alive || exit 0
     if (( $(date +%s) - started < 30 )); then

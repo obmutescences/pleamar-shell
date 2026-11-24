@@ -9,54 +9,121 @@ part NotchFrame {
     measure nf_lunar_m
     measure nf_week_m
     measure nf_dot_m
-    let nf_stacked = bar_date_any and notch_clock_h >= 52
-    let nf_inline = bar_date_any and notch_clock_h < 52
-    let nf_clk_w = max(nf_clk_m.width, 54) + if(bar_show_secs, 20, 0)
+    measure nf_cpu_m
+    measure nf_mem_m
+    measure nf_rx_m
+    measure nf_tx_m
+    measure nf_cd_t_m
+    measure nf_cd_d_m
+    let nf_m_cpu = bar_show_cpu
+    let nf_m_mem = bar_show_mem
+    let nf_m_net = bar_show_net
+    let nf_m_clk = true
+    let nf_m_date = bar_date_any
+    let nf_m_cd = bar_show_countdown and bar_has_cd
+    let nf_extra_any = nf_m_cpu or nf_m_mem or nf_m_net or nf_m_cd
+    let nf_stacked = (not nf_extra_any) and bar_date_any and notch_clock_h >= 52
+    let nf_inline = not nf_stacked
+    let nf_fs = clamp(bar_font_size, 12, 26)
+    let nf_sub_fs = clamp(nf_fs * 0.68, 10, 16)
+    let nf_glass_on = bar_num_style >= 1
+    let nf_g_h = nf_fs * 0.96
+    let nf_g_pair_w = 266 * (nf_g_h / 88)
+    let nf_g_sec_w = 108 * ((nf_fs * 0.56) / 88)
+    let nf_g_wt = clamp(bar_num_weight, 70, 145) / 100
+    let nf_clk_w = if(nf_glass_on,
+        nf_g_pair_w + if(bar_show_secs, 4 + nf_g_sec_w, 0),
+        max(nf_clk_m.width, nf_fs * 2.8) + if(bar_show_secs, nf_fs * 1.1, 0))
     let nf_dot_w = max(nf_dot_m.width, 4)
-    let nf_d_w = if(bar_has_date, nf_date_m.width, 0)
+    let nf_d_w = if(bar_has_date, if(nf_glass_on, nf_g_pair_w, nf_date_m.width), 0)
     let nf_l_w = if(bar_has_lunar, nf_lunar_m.width, 0)
     let nf_w_w = if(bar_has_weekday, nf_week_m.width, 0)
     let nf_sep1 = bar_has_date and bar_has_lunar
     let nf_sep2 = (bar_has_date or bar_has_lunar) and bar_has_weekday
     let nf_before_week_w = nf_d_w + if(nf_sep1, 10 + nf_dot_w, 0) + nf_l_w
-    let nf_date_w = nf_before_week_w + if(nf_sep2, 10 + nf_dot_w, 0) + nf_w_w
-    let nf_need_w = if(nf_inline,
-        nf_clk_w + 16 + nf_date_w + 40,
-        if(nf_stacked,
-            max(nf_clk_w, nf_date_w) + 40,
-            0))
+    let nf_date_w = nf_before_week_w + if(nf_sep2, 6, 0) + nf_w_w
+    let nf_ring_r = clamp(nf_fs * 0.46, 6.8, 10.5)
+    let nf_ring_w = clamp(nf_fs * 0.21, 2.8, 4.4) * nf_g_wt
+    let nf_w_cpu = if(nf_m_cpu, nf_ring_r * 2 + nf_ring_w + 5 + max(nf_cpu_m.width, nf_sub_fs * 2.2), 0)
+    let nf_w_mem = if(nf_m_mem, nf_ring_r * 2 + nf_ring_w + 5 + max(nf_mem_m.width, nf_sub_fs * 2.2), 0)
+    let nf_w_net = if(nf_m_net, 12 + max(nf_rx_m.width, nf_sub_fs * 2.3) + 8 + 12 + max(nf_tx_m.width, nf_sub_fs * 2.3), 0)
+    let nf_w_clk = nf_clk_w
+    let nf_w_date = if(nf_m_date, nf_date_w, 0)
+    let nf_w_cd = if(nf_m_cd, nf_cd_t_m.width + 3 + nf_cd_d_m.width + if(nf_glass_on, 10, 0), 0)
+    let nf_m_gap = 14
+    let nf_vis_n = if(nf_m_cpu, 1, 0) + if(nf_m_mem, 1, 0) + if(nf_m_net, 1, 0) + 1 + if(nf_m_date, 1, 0) + if(nf_m_cd, 1, 0)
+    let nf_strip_w = nf_w_cpu + nf_w_mem + nf_w_net + nf_w_clk + nf_w_date + nf_w_cd + max(0, nf_vis_n - 1) * nf_m_gap
+    let nf_rel_cpu = if(nf_m_mem and bar_ord_mem < bar_ord_cpu, nf_w_mem + nf_m_gap, 0) + if(nf_m_net and bar_ord_net < bar_ord_cpu, nf_w_net + nf_m_gap, 0) + if(nf_m_clk and bar_ord_clock < bar_ord_cpu, nf_w_clk + nf_m_gap, 0) + if(nf_m_date and bar_ord_date < bar_ord_cpu, nf_w_date + nf_m_gap, 0) + if(nf_m_cd and bar_ord_cd < bar_ord_cpu, nf_w_cd + nf_m_gap, 0)
+    let nf_rel_mem = if(nf_m_cpu and bar_ord_cpu < bar_ord_mem, nf_w_cpu + nf_m_gap, 0) + if(nf_m_net and bar_ord_net < bar_ord_mem, nf_w_net + nf_m_gap, 0) + if(nf_m_clk and bar_ord_clock < bar_ord_mem, nf_w_clk + nf_m_gap, 0) + if(nf_m_date and bar_ord_date < bar_ord_mem, nf_w_date + nf_m_gap, 0) + if(nf_m_cd and bar_ord_cd < bar_ord_mem, nf_w_cd + nf_m_gap, 0)
+    let nf_rel_net = if(nf_m_cpu and bar_ord_cpu < bar_ord_net, nf_w_cpu + nf_m_gap, 0) + if(nf_m_mem and bar_ord_mem < bar_ord_net, nf_w_mem + nf_m_gap, 0) + if(nf_m_clk and bar_ord_clock < bar_ord_net, nf_w_clk + nf_m_gap, 0) + if(nf_m_date and bar_ord_date < bar_ord_net, nf_w_date + nf_m_gap, 0) + if(nf_m_cd and bar_ord_cd < bar_ord_net, nf_w_cd + nf_m_gap, 0)
+    let nf_rel_clk = if(nf_m_cpu and bar_ord_cpu < bar_ord_clock, nf_w_cpu + nf_m_gap, 0) + if(nf_m_mem and bar_ord_mem < bar_ord_clock, nf_w_mem + nf_m_gap, 0) + if(nf_m_net and bar_ord_net < bar_ord_clock, nf_w_net + nf_m_gap, 0) + if(nf_m_date and bar_ord_date < bar_ord_clock, nf_w_date + nf_m_gap, 0) + if(nf_m_cd and bar_ord_cd < bar_ord_clock, nf_w_cd + nf_m_gap, 0)
+    let nf_rel_date = if(nf_m_cpu and bar_ord_cpu < bar_ord_date, nf_w_cpu + nf_m_gap, 0) + if(nf_m_mem and bar_ord_mem < bar_ord_date, nf_w_mem + nf_m_gap, 0) + if(nf_m_net and bar_ord_net < bar_ord_date, nf_w_net + nf_m_gap, 0) + if(nf_m_clk and bar_ord_clock < bar_ord_date, nf_w_clk + nf_m_gap, 0) + if(nf_m_cd and bar_ord_cd < bar_ord_date, nf_w_cd + nf_m_gap, 0)
+    let nf_rel_cd = if(nf_m_cpu and bar_ord_cpu < bar_ord_cd, nf_w_cpu + nf_m_gap, 0) + if(nf_m_mem and bar_ord_mem < bar_ord_cd, nf_w_mem + nf_m_gap, 0) + if(nf_m_net and bar_ord_net < bar_ord_cd, nf_w_net + nf_m_gap, 0) + if(nf_m_clk and bar_ord_clock < bar_ord_cd, nf_w_clk + nf_m_gap, 0) + if(nf_m_date and bar_ord_date < bar_ord_cd, nf_w_date + nf_m_gap, 0)
+    prop nf_pos_cpu = 0 ~quick
+    follow nf_pos_cpu = nf_rel_cpu
+    prop nf_pos_mem = 0 ~quick
+    follow nf_pos_mem = nf_rel_mem
+    prop nf_pos_net = 0 ~quick
+    follow nf_pos_net = nf_rel_net
+    prop nf_pos_clk = 0 ~quick
+    follow nf_pos_clk = nf_rel_clk
+    prop nf_pos_date = 0 ~quick
+    follow nf_pos_date = nf_rel_date
+    prop nf_pos_cd = 0 ~quick
+    follow nf_pos_cd = nf_rel_cd
+    let nf_need_w = if(nf_stacked,
+        max(nf_clk_w, nf_date_w) + 40,
+        nf_strip_w + 36)
     prop nf_clock_w = 168 ~quick
     follow nf_clock_w = max(notch_clock_w, nf_need_w)
     prop nf_beat = 0 ~quick
     follow nf_beat = if(music_frame_on and music_on and not motion.reduced, clamp(bands.0, 0, 1), 0)
     prop nf_bulge_p = 0 ~sp_calm
     prop nf_bulge_x = 960 ~sp_lead
+    prop nf_cpu_s = 0 ~sp_calm
+    follow nf_cpu_s = sys_cpu
+    prop nf_mem_s = 0 ~sp_calm
+    follow nf_mem_s = sys_mem
+    prop nf_rx_s = 0 ~quick
+    follow nf_rx_s = bar_rx_act
+    prop nf_tx_s = 0 ~quick
+    follow nf_tx_s = bar_tx_act
+    prop nf_mon_pulse = 0 ~sp_pop
+    on change bar_mon_tick while (bar_show_cpu or bar_show_mem or bar_show_net) and not motion.reduced {
+        impulse nf_mon_pulse 110
+    }
 
     surface notch_frame {
         size: full, full
         anchor: top_left
         reserve: 0
-        level: top, overlay while panel_open or center_open or launch_open or nt_center
+        level: top, overlay while panel_open or center_open or launch_open or nt_center or (nt_has and not nt_drift)
         open: true
-        rate: 90, 60 while music_frame_on and music_on, 60 while panel_open or center_open or launch_open or nt_center, 15 while quiet
+        rate: 90, 60 while music_frame_on and music_on, 60 while panel_open or center_open or launch_open or nt_center or (nt_has and not nt_drift) or nt_np > 0.01, 15 while quiet
         keyboard: exclusive while launch_open or center_open or panel_open or nt_center
 
         let nf.w = notch_frame.width
         let nf.h = notch_frame.height
         let nf.cx = nf.w / 2
         let nf.clock_w = nf_clock_w + 4 * nf_beat
-        let nf.clock_h = notch_clock_h + 2.5 * nf_beat
+        let nf.clock_h = max(notch_clock_h, nf_fs + 10) + 2.5 * nf_beat
         let nf.settings_h = notch_clock_h + 820
         let nf.center_h = notch_clock_h + 720
         //  anchor:center places the row's top edge at y in plm.
-        //  To visually centre 19px text, shift up by ~half the text height.
-        let nf.inline_w = nf_clk_w + 16 + nf_date_w
-        let nf.inline_x = nf.cx - nf.inline_w / 2
-        let nf.clock_x = if(nf_inline, nf.inline_x + nf_clk_w / 2, nf.cx)
-        let nf.clock_y = if(nf_stacked, nf.clock_h / 2 - 22, nf.clock_h / 2 - 12)
-        let nf.clk_sep_x = nf.inline_x + nf_clk_w + 8
-        let nf.date_x = if(nf_inline, nf.inline_x + nf_clk_w + 16, nf.cx - nf_date_w / 2)
-        let nf.date_y = if(nf_stacked, nf.clock_h / 2 + 12, nf.clock_h / 2)
+        //  To visually centre text rows, shift up by ~0.62 * font size.
+        let nf.bar_x0 = nf.cx - nf_strip_w / 2
+        let nf.bar_cy = nf.clock_h / 2
+        let nf.ic_s = clamp((nf.clock_h - 6) / max(22, nf_ring_r * 2 + nf_ring_w + 2), 0.75, 1.1)
+        let nf.gm_gl = if(bar_num_style == 1, 1.0, if(bar_num_style == 2, 0.85, 0.92))
+        let nf.gm_rim = if(bar_num_style == 1, 0.78, if(bar_num_style == 2, 0.56, 0.90))
+        let nf.gm_fr = if(bar_num_style == 1, 0.45, if(bar_num_style == 2, 1.0, 0.65))
+        let nf.gm_op = if(bar_num_style == 1, 90%, if(bar_num_style == 2, 95%, 94%))
+        let nf.gm_col_a = if(bar_num_style == 3, primary, if(bar_num_style == 2, mix(tint, ink, 0.50), mix(ink, tint, 0.30)))
+        let nf.gm_col_b = if(bar_num_style == 3, secondary, if(bar_num_style == 2, mix(tint, ink, 0.46), mix(ink, tint, 0.34)))
+        let nf.clock_x = if(nf_stacked, nf.cx, nf.bar_x0 + nf_pos_clk + nf_w_clk / 2)
+        let nf.clock_y = if(nf_stacked, nf.clock_h / 2 - nf_fs * 1.1, nf.bar_cy - nf_fs * 0.62)
+        let nf.date_x = if(nf_stacked, nf.cx - nf_date_w / 2, nf.bar_x0 + nf_pos_date)
+        let nf.date_y = if(nf_stacked, nf.clock_h / 2 + 12, nf.bar_cy)
         let nf.rail = 8
         let nf.inner_r = 23
         let nf.over = 50
@@ -114,6 +181,18 @@ part NotchFrame {
         follow nf_bulge_p = if(nf.bulge_hot, 1, 0)
         follow nf_bulge_x = if(nf.bulge_hot, clamp(pointer.x, nf.cx - nf.clock_w / 2 + 28, nf.cx + nf.clock_w / 2 - 28), nf.cx)
         let nf.bulge_shift = if(nf_bulge_p > 0.01, 0, 30000)
+        let nf.nt_p = clamp(nt_np, 0, 1)
+        let nf.nt_dock_on = not nt_drift and (nt_has or nf.nt_p > 0.01)
+        let nf.nt_c_on = nf.nt_dock_on and nt_pos == 0
+        let nf.nt_r_on = nf.nt_dock_on and nt_pos == 1
+        let nf.nt_bell = 4 * min(1, nf.nt_p) * (1 - min(1, nf.nt_p)) * nf.neck_k
+        let nf.nt_wob = clamp(nt_wobble * nf.motion_k, -40, 40)
+        let nf.nt_cw = mix(nf.clock_w, 314, nf.nt_p) * (1 + nf.nt_bell * 0.06 * nf.motion_k - 0.06 * nf.nt_bell + 0.004 * nf.nt_wob)
+        let nf.nt_ch = (nf.clock_h + 124) * nf.nt_p * (1 - nf.nt_bell * 0.03 * nf.motion_k) + max(0, clamp(nt_sag, 0, 22)) * nf.motion_k * nf.nt_p
+        let nf.nt_c_shift = if(nf.nt_c_on, 0, 30000)
+        let nf.nt_rw = mix(36, 318, nf.nt_p) * (1 + nf.nt_bell * 0.05 * nf.motion_k + 0.003 * nf.nt_wob)
+        let nf.nt_rh = mix(24, 134, nf.nt_p) + max(0, clamp(nt_sag, 0, 18)) * nf.motion_k * nf.nt_p
+        let nf.nt_r_shift = if(nf.nt_r_on, 0, 30000)
         let nf.smoke_bg = mix(tint, #000000, glass_smoke * 0.65)
         let nf.frame_color = mix(nf.smoke_bg, primary,
             if(notch_tint_on, clamp(notch_tint_depth / 100, 0, 1), 0))
@@ -353,32 +432,43 @@ part NotchFrame {
         }
 
         //  Reference glyph measurements for stable inline/stacked width.
-        text "00:00" { at: nf.cx, nf.clock_h / 2; anchor: center; size: 19; weight: 600; color: aqua; opacity: 0%; family: "Space Grotesk"; measure: nf_clk_m }
-        text "·" { at: nf.cx, nf.clock_h / 2; anchor: center; size: 12.5; color: azure; opacity: 0%; family: "Noto Sans CJK SC"; measure: nf_dot_m }
+        text "00:00" { at: nf.cx, nf.clock_h / 2; anchor: center; size: nf_fs; weight: 600; color: aqua; opacity: 0%; family: "Space Grotesk"; measure: nf_clk_m }
+        text "·" { at: nf.cx, nf.clock_h / 2; anchor: center; size: nf_sub_fs; color: azure; opacity: 0%; family: "Noto Sans CJK SC"; measure: nf_dot_m }
 
-        //  Clock text vertically centred in the notch.
+        //  Clock: Plain type row OR Vitreus single-stroke Glass digits.
         row {
+            show: not nf_glass_on
             at: nf.clock_x, nf.clock_y
             anchor: center
             gap: 0
             align: end
-            text "{floor(tick.hour / 10)}" { size: 19; weight: 600; color: aqua; family: "Space Grotesk" }
-            text "{mod(tick.hour, 10)}" { size: 19; weight: 600; color: aqua; family: "Space Grotesk" }
-            text ":" { size: 19; weight: 600; color: azure; family: "Space Grotesk" }
-            text "{floor(tick.minute / 10)}" { size: 19; weight: 600; color: aqua; family: "Space Grotesk" }
-            text "{mod(tick.minute, 10)}" { size: 19; weight: 600; color: aqua; family: "Space Grotesk" }
+            text "{floor(tick.hour / 10)}" { size: nf_fs; weight: 600; color: aqua; family: "Space Grotesk" }
+            text "{mod(tick.hour, 10)}" { size: nf_fs; weight: 600; color: aqua; family: "Space Grotesk" }
+            text ":" { size: nf_fs; weight: 600; color: azure; family: "Space Grotesk" }
+            text "{floor(tick.minute / 10)}" { size: nf_fs; weight: 600; color: aqua; family: "Space Grotesk" }
+            text "{mod(tick.minute, 10)}" { size: nf_fs; weight: 600; color: aqua; family: "Space Grotesk" }
             space 1
-            text "{floor(tick.second / 10)}" { size: 11; weight: 600; color: azure; family: "Space Grotesk"; show: bar_show_secs; letter_move: 0, -3 + (1 - nf_sec_tens) * 4; letter_scale: 0.88 + 0.12 * nf_sec_tens }
-            text "{mod(tick.second, 10)}" { size: 11; weight: 600; color: azure; family: "Space Grotesk"; show: bar_show_secs; letter_move: 0, -3 + (1 - nf_sec_ones) * 4; letter_scale: 0.88 + 0.12 * nf_sec_ones }
+            text "{floor(tick.second / 10)}" { size: nf_fs * 0.58; weight: 600; color: azure; family: "Space Grotesk"; show: bar_show_secs; letter_move: 0, -3 + (1 - nf_sec_tens) * 4; letter_scale: 0.88 + 0.12 * nf_sec_tens }
+            text "{mod(tick.second, 10)}" { size: nf_fs * 0.58; weight: 600; color: azure; family: "Space Grotesk"; show: bar_show_secs; letter_move: 0, -3 + (1 - nf_sec_ones) * 4; letter_scale: 0.88 + 0.12 * nf_sec_ones }
         }
-        //  Inline divider between time and date when the notch is compact.
-        text "·" { at: nf.clk_sep_x, nf.date_y; anchor: center; size: 13; color: azure; opacity: 80%; family: "Noto Sans CJK SC"; show: nf_inline }
-        //  Date (same font & size as hour/minute), lunar date and weekday.
-        text bar_date_txt { at: nf.date_x, nf.date_y; anchor: left center; size: 19; weight: 600; color: aqua; family: "Space Grotesk"; measure: nf_date_m; show: bar_has_date }
-        text "·" { at: nf.date_x + nf_d_w + 5, nf.date_y; anchor: left center; size: 12.5; color: azure; opacity: 80%; family: "Noto Sans CJK SC"; show: nf_sep1 }
-        text bar_lunar_txt { at: nf.date_x + nf_d_w + if(nf_sep1, 10 + nf_dot_w, 0), nf.date_y; anchor: left center; size: 12.5; weight: 600; color: aqua; family: "Noto Sans CJK SC"; measure: nf_lunar_m; show: bar_has_lunar }
-        text "·" { at: nf.date_x + nf_before_week_w + 5, nf.date_y; anchor: left center; size: 12.5; color: azure; opacity: 80%; family: "Noto Sans CJK SC"; show: nf_sep2 }
-        text bar_weekday_txt { at: nf.date_x + nf_before_week_w + if(nf_sep2, 10 + nf_dot_w, 0), nf.date_y; anchor: left center; size: 12.5; weight: 500; color: azure; family: "Noto Sans CJK SC"; measure: nf_week_m; show: bar_has_weekday }
+        group {
+            show: nf_glass_on
+            let nf.g_cy = if(nf_stacked, nf.clock_h / 2 - nf_fs * 0.58, nf.bar_cy)
+            BarGlassPair(floor(tick.hour / 10), mod(tick.hour, 10), floor(tick.minute / 10), mod(tick.minute, 10), 0, nf.clock_x - nf_w_clk / 2, nf.g_cy, nf_g_h, nf_g_wt, nf.gm_col_a, nf.gm_gl, nf.gm_rim, nf.gm_fr, nf.gm_op)
+            group {
+                show: bar_show_secs
+                BarGlassNum2(floor(tick.second / 10), mod(tick.second, 10), nf.clock_x - nf_w_clk / 2 + nf_g_pair_w + 4, nf.g_cy + nf_fs * 0.16, nf_fs * 0.56, nf_g_wt, nf.gm_col_b, nf.gm_gl, nf.gm_rim, nf.gm_fr, nf.gm_op)
+            }
+        }
+        //  Date (Plain text or Vitreus Glass MM-DD), lunar date and weekday (`·周二`).
+        text bar_date_txt { at: nf.date_x, nf.date_y; anchor: left center; size: nf_fs; weight: 600; color: aqua; family: "Space Grotesk"; measure: nf_date_m; show: bar_has_date and not nf_glass_on }
+        group {
+            show: bar_has_date and nf_glass_on
+            BarGlassPair(bar_mon_d0, bar_mon_d1, bar_day_d0, bar_day_d1, 1, nf.date_x, nf.date_y, nf_g_h, nf_g_wt, nf.gm_col_b, nf.gm_gl, nf.gm_rim, nf.gm_fr, nf.gm_op)
+        }
+        text "·" { at: nf.date_x + nf_d_w + 5, nf.date_y; anchor: left center; size: nf_sub_fs; color: azure; opacity: 80%; family: "Noto Sans CJK SC"; show: nf_sep1 }
+        text bar_lunar_txt { at: nf.date_x + nf_d_w + if(nf_sep1, 10 + nf_dot_w, 0), nf.date_y; anchor: left center; size: nf_sub_fs; weight: 600; color: aqua; family: "Noto Sans CJK SC"; measure: nf_lunar_m; show: bar_has_lunar }
+        text bar_weekday_txt { at: nf.date_x + nf_before_week_w + if(nf_sep2, 6, 0), nf.date_y; anchor: left center; size: nf_sub_fs; weight: 500; color: azure; family: "Noto Sans CJK SC"; measure: nf_week_m; show: bar_has_weekday }
         on change tick.second while bar_show_secs and not motion.reduced {
             nf_sec_ones: 0 ~10ms
             nf_sec_ones: 1 ~190ms after 10ms
@@ -388,9 +478,118 @@ part NotchFrame {
             nf_sec_tens: 1 ~190ms after 10ms
         }
 
+        //  Centre bar modules: CPU, Memory, Network & nearest Countdown (ordered via bar_ord_*).
+        let nf.cpu_u = clamp(nf_cpu_s, 0, 1)
+        let nf.mem_u = clamp(nf_mem_s, 0, 1)
+        let nf.cpu_x = nf.bar_x0 + nf_pos_cpu
+        let nf.mem_x = nf.bar_x0 + nf_pos_mem
+        let nf.cpu_cx = nf.cpu_x + nf_ring_r + nf_ring_w / 2
+        let nf.mem_cx = nf.mem_x + nf_ring_r + nf_ring_w / 2
+        let nf.cpu_col = mix(primary, alert, clamp((nf.cpu_u - 0.80) / 0.20, 0, 1))
+        let nf.mem_col = mix(secondary, alert, clamp((nf.mem_u - 0.84) / 0.16, 0, 1))
+
+        //  Unoccupied track: muted neutral translucent hollow glass rings.
+        body {
+            show: nf_glass_on and (nf_m_cpu or nf_m_mem)
+            color: mix(deep, tint, 0.30)
+            glass: nf.gm_gl
+            lens: false
+            frost: nf.gm_fr * 0.55
+            rim: 45% * nf.gm_rim
+            shine: 0, 0
+            shadow: 0, 1, 5, 22%
+            opacity: 34%
+            ellipse { at: nf.cpu_cx + if(nf_m_cpu, 0, 30000), nf.bar_cy; radius: nf_ring_r * nf.ic_s; stroke: nf_ring_w * nf.ic_s }
+            ellipse { at: nf.mem_cx + if(nf_m_mem, 0, 30000), nf.bar_cy; radius: nf_ring_r * nf.ic_s; stroke: nf_ring_w * nf.ic_s }
+        }
+
+        //  CPU: hollow thick glass ring + percentage to its right
+        group {
+            show: nf_m_cpu
+            group {
+                move: nf.cpu_cx, nf.bar_cy
+                pivot: 0, 0
+                scale: nf.ic_s
+                ellipse { at: 0, 0; radius: nf_ring_r; stroke: nf_ring_w; color: mix(deep, ink, 0.18); opacity: 26%; show: not nf_glass_on }
+                group {
+                    glow: 4, 22%
+                    arc { at: 0, 0; radius: nf_ring_r; width: nf_ring_w + 0.2; span: 360deg * clamp(nf.cpu_u, 0.03, 1); rotate: 180deg * clamp(nf.cpu_u, 0.03, 1); color: nf.cpu_col; opacity: 100% }
+                }
+            }
+            text sys_cpu_txt { at: nf.cpu_cx + (nf_ring_r + nf_ring_w / 2) * nf.ic_s + 5, nf.bar_cy; anchor: left center; size: nf_sub_fs; weight: 700; color: mix(ink, nf.cpu_col, 0.30 + 0.45 * nf.cpu_u); family: "Space Grotesk"; measure: nf_cpu_m }
+        }
+
+        //  Memory: hollow thick glass ring + percentage to its right
+        group {
+            show: nf_m_mem
+            group {
+                move: nf.mem_cx, nf.bar_cy
+                pivot: 0, 0
+                scale: nf.ic_s
+                ellipse { at: 0, 0; radius: nf_ring_r; stroke: nf_ring_w; color: mix(deep, ink, 0.18); opacity: 26%; show: not nf_glass_on }
+                group {
+                    glow: 4, 22%
+                    arc { at: 0, 0; radius: nf_ring_r; width: nf_ring_w + 0.2; span: 360deg * clamp(nf.mem_u, 0.03, 1); rotate: 180deg * clamp(nf.mem_u, 0.03, 1); color: nf.mem_col; opacity: 100% }
+                }
+            }
+            text sys_mem_pct { at: nf.mem_cx + (nf_ring_r + nf_ring_w / 2) * nf.ic_s + 5, nf.bar_cy; anchor: left center; size: nf_sub_fs; weight: 700; color: mix(ink, nf.mem_col, 0.30 + 0.45 * nf.mem_u); family: "Space Grotesk"; measure: nf_mem_m }
+        }
+
+        //  Network: primary download chevron + secondary upload chevron
+        let nf.net_x = nf.bar_x0 + nf_pos_net
+        let nf.net_tx_x = nf.net_x + 12 + max(nf_rx_m.width, nf_sub_fs * 2.3) + 8
+        let nf.rx_nudge = 1.4 * clamp(nf_rx_s, 0, 1)
+        let nf.tx_nudge = -1.4 * clamp(nf_tx_s, 0, 1)
+        group {
+            show: nf_m_net
+            line { from: nf.net_x + 4, nf.bar_cy + nf.rx_nudge - 4; to: nf.net_x + 4, nf.bar_cy + nf.rx_nudge + 3.5; width: 1.6; color: primary; opacity: 58% + 42% * clamp(nf_rx_s, 0, 1) }
+            path { at: nf.net_x + 4, nf.bar_cy + nf.rx_nudge; stroke: 1.6; color: primary; opacity: 58% + 42% * clamp(nf_rx_s, 0, 1); move -3, 1; line 0, 4; line 3, 1 }
+            text bar_rx_txt { at: nf.net_x + 12, nf.bar_cy; anchor: left center; size: nf_sub_fs; weight: 600; color: mix(ink, primary, 0.22 + 0.45 * clamp(nf_rx_s, 0, 1)); family: "Space Grotesk"; measure: nf_rx_m }
+            line { from: nf.net_tx_x + 4, nf.bar_cy + nf.tx_nudge + 4; to: nf.net_tx_x + 4, nf.bar_cy + nf.tx_nudge - 3.5; width: 1.6; color: secondary; opacity: 58% + 42% * clamp(nf_tx_s, 0, 1) }
+            path { at: nf.net_tx_x + 4, nf.bar_cy + nf.tx_nudge; stroke: 1.6; color: secondary; opacity: 58% + 42% * clamp(nf_tx_s, 0, 1); move -3, -1; line 0, -4; line 3, -1 }
+            text bar_tx_txt { at: nf.net_tx_x + 12, nf.bar_cy; anchor: left center; size: nf_sub_fs; weight: 600; color: mix(ink, secondary, 0.28 + 0.45 * clamp(nf_tx_s, 0, 1)); family: "Space Grotesk"; measure: nf_tx_m }
+        }
+
+        //  Nearest anniversary / countdown (no icon; optional glass pill on days in Glass modes).
+        let nf.cd_x = nf.bar_x0 + nf_pos_cd
+        let nf.cd_col = if(bar_cd_urgent, primary, secondary)
+        body {
+            show: nf_glass_on and nf_m_cd
+            color: nf.gm_col_b
+            glass: nf.gm_gl
+            lens: false
+            frost: nf.gm_fr
+            rim: 100% * nf.gm_rim
+            shine: 0, 0
+            opacity: nf.gm_op * 0.85
+            box { from: nf.cd_x + nf_cd_t_m.width + 2, nf.bar_cy - (nf_sub_fs + 6) / 2; size: max(18, nf_cd_d_m.width + 10), nf_sub_fs + 6; corner: (nf_sub_fs + 6) / 2 }
+        }
+        group {
+            show: nf_m_cd
+            text bar_cd_title { at: nf.cd_x, nf.bar_cy; anchor: left center; size: nf_sub_fs; weight: 600; color: ink; family: "Noto Sans CJK SC"; measure: nf_cd_t_m }
+            text bar_cd_days { at: nf.cd_x + nf_cd_t_m.width + if(nf_glass_on, 7, 3), nf.bar_cy; anchor: left center; size: nf_sub_fs; weight: 700; color: nf.cd_col; family: "Noto Sans CJK SC"; measure: nf_cd_d_m }
+        }
+
+        //  Click anywhere outside an open drawer to dismiss it (inner panel shields sit above this).
+        zone box nf_drawer_dismiss { from: 0, 0; size: nf.w, nf.h; active: panel_open or center_open or launch_open or nt_center; label: "Close open drawer" }
+        on press nf_drawer_dismiss while audio_pick_open { emit ui_sound; audio_pick_open = false }
+        on press nf_drawer_dismiss while panel_open and not audio_pick_open { emit ui_sound; emit settings_close }
+        on press nf_drawer_dismiss while center_open and not audio_pick_open { emit ui_sound; emit center_close }
+        on press nf_drawer_dismiss while launch_open and not audio_pick_open { emit ui_sound; emit launch_close }
+        on press nf_drawer_dismiss while nt_center and not audio_pick_open { emit ui_sound; emit nt_center_close }
+
         zone box nf_clock { from: nf.cx - nf.clock_w / 2, 0; size: nf.clock_w, nf.clock_h; corner: 20; cursor: pointer; role: button; label: "Open centre panel" }
         on press nf_clock { ripple nf_clock; emit ui_sound; emit center_toggle }
         on key Escape while nt_center { nt_center = false }
+
+        zone box nf_cpu_hit { from: nf.cpu_x - 4, 0; size: max(1, nf_w_cpu + 8), nf.clock_h; corner: 12; cursor: pointer; active: nf_m_cpu; role: button; label: "Open system monitor" }
+        on press nf_cpu_hit { ripple nf_cpu_hit; emit ui_sound; emit ipc_open_center(1) }
+        zone box nf_mem_hit { from: nf.mem_x - 4, 0; size: max(1, nf_w_mem + 8), nf.clock_h; corner: 12; cursor: pointer; active: nf_m_mem; role: button; label: "Open system monitor" }
+        on press nf_mem_hit { ripple nf_mem_hit; emit ui_sound; emit ipc_open_center(1) }
+        zone box nf_net_hit { from: nf.net_x - 4, 0; size: max(1, nf_w_net + 8), nf.clock_h; corner: 12; cursor: pointer; active: nf_m_net; role: button; label: "Open system monitor" }
+        on press nf_net_hit { ripple nf_net_hit; emit ui_sound; emit ipc_open_center(1) }
+        zone box nf_cd_hit { from: nf.cd_x - 4, 0; size: max(1, nf_w_cd + 8), nf.clock_h; corner: 12; cursor: pointer; active: nf_m_cd; role: button; label: "Open calendar" }
+        on press nf_cd_hit { ripple nf_cd_hit; emit ui_sound; emit ipc_open_center(5) }
 
         group {
             show: panel_open or cp_np > 0.01
@@ -414,6 +613,24 @@ part NotchFrame {
             show: nt_center or ntc_p > 0.01
             NotchDrawerContent(ntc_p, 480, nf.notify_h, center_fx) {
                 NotificationCenterContent()
+            }
+        }
+        let nf.nt_dx = if(nt_pos == 0, nf.cx - 147, nf.w - nf.rail - 302)
+        let nf.nt_dy = if(nt_pos == 0, nf.clock_h + 6, nf.rail + 6)
+        group {
+            show: nf.nt_dock_on
+            move: nf.nt_dx, nf.nt_dy
+            pivot: 147, 0
+            scale: 0.90 + 0.10 * nf.nt_p, max(0.05, 0.85 + 0.15 * nf.nt_p)
+            opacity: clamp((nf.nt_p - 0.35) / 0.65, 0, 1)
+
+            zone box nt_dock_hit { from: 0, 0; size: 294, 112; active: nt_has and not nt_drift; cursor: pointer; label: "Dismiss notification" }
+            on press nt_dock_hit { emit ui_sound; emit nt_close }
+            clip inset 0 box { from: 0, 0; size: 294, 112; corner: 17 }
+            group {
+                scale: 0.7
+                pivot: 0, 0
+                NotificationToastCard(true)
             }
         }
     }

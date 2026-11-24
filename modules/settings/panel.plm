@@ -116,10 +116,18 @@ part ConfigPanel {
     measure m_gl_shad
     measure m_br_ch
     measure m_br_cw
+    measure m_br_fs
+    measure m_br_ns
+    measure m_br_nw
     measure m_br_date
     measure m_br_lunar
     measure m_br_week
     measure m_br_secs
+    measure m_br_ord
+    measure m_br_cpu
+    measure m_br_mem
+    measure m_br_net
+    measure m_br_cd
     measure m_br_snd
     measure m_br_role
     measure m_br_tint
@@ -1022,7 +1030,7 @@ part ConfigPanel {
         //  ═══════════════════════════════════════════════════════════════
         group {
             show: settings_page == 2
-            let br.h = 682
+            let br.h = 1372
             let br.max_s = max(1, br.h - cp.vh)
             let br.sc = clamp(cp_sc_br, 0, br.max_s)
             let br.off = floor(br.sc + 0.5)
@@ -1064,9 +1072,61 @@ part ConfigPanel {
                     on press cp_nf_clkw_track { notch_clock_w = clamp(round(120 + (pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 360), 120, 480) }
                     on drag  cp_nf_clkw_track { notch_clock_w = clamp(round(120 + (pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 360), 120, 480) }
 
-                    text "BAR DATE & TIME" { at: 250, 350; anchor: left center; size: 10.5; weight: 700; color: faint; family: "Space Grotesk" }
+                    text "BAR STYLE & NUMBERS" { at: 250, 350; anchor: left center; size: 10.5; weight: 700; color: faint; family: "Space Grotesk" }
 
-                    let y2 = 366
+                    let y_fs = 366
+                    let h_fs = max(cp_bar_fs_track.hover, cp_bar_fs_track.pressed)
+                    CpCard(250, y_fs, 570, 62)
+                    text "Bar font size" { at: 266, y_fs + 20; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk"; measure: m_br_fs }
+                    CpLeader(266 + m_br_fs.width + 10, cp.sl_x - 10, y_fs + 20, h_fs)
+                    text "调整顶栏数字、日期、指标圆环及文字大小。" { at: 266, y_fs + 44; anchor: left center; size: 12.5; color: faint; family: "Noto Sans CJK SC" }
+                    CpSlider(cp.sl_x, y_fs + 20, cp.sl_w, clamp((bar_font_size - 12) / 14, 0, 1), h_fs, cp.mint)
+                    text number(bar_font_size, 0, " px") { at: cp.rx, y_fs + 20; anchor: right center; size: 15; weight: 700; color: cp.mint; family: "Space Grotesk" }
+                    zone box cp_bar_fs_track { from: cp.sl_x - 6, y_fs + 8; size: cp.sl_w + 12, 24; cursor: pointer; active: (y_fs + 20) - br.off > 176 and (y_fs + 20) - br.off < 784; label: "Bar font size" }
+                    on scroll cp_bar_fs_track { cp_sc_br_to = clamp(cp_sc_br_to - wheel * 48, 0, br.max_s) }
+                    on press cp_bar_fs_track { bar_font_size = clamp(round(12 + (pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 14), 12, 26) }
+                    on drag  cp_bar_fs_track { bar_font_size = clamp(round(12 + (pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 14), 12, 26) }
+
+                    let y_ns = 434
+                    let h_ns = max(max(cp_bar_ns_0.hover, cp_bar_ns_1.hover), max(cp_bar_ns_2.hover, cp_bar_ns_3.hover))
+                    CpCard(250, y_ns, 570, 62)
+                    text "Number style" { at: 266, y_ns + 20; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk"; measure: m_br_ns }
+                    CpLeader(266 + m_br_ns.width + 10, 522, y_ns + 20, h_ns)
+                    text "顶栏数字与指标使用纯文本或 Vitreus 液态玻璃样式。" { at: 266, y_ns + 44; anchor: left center; size: 12.5; color: faint; family: "Noto Sans CJK SC" }
+                    CpSetPick(532, y_ns + 20, 272, 28, 4, bar_num_style, h_ns, cp.mint)
+                    text "Plain"   { at: 566, y_ns + 20; anchor: center; size: 11.5; weight: 700; color: if(bar_num_style == 0, cp.mint, faint); family: "Space Grotesk" }
+                    text "Glass"   { at: 634, y_ns + 20; anchor: center; size: 11.5; weight: 700; color: if(bar_num_style == 1, cp.mint, faint); family: "Space Grotesk" }
+                    text "Frosted" { at: 702, y_ns + 20; anchor: center; size: 11.5; weight: 700; color: if(bar_num_style == 2, cp.mint, faint); family: "Space Grotesk" }
+                    text "Tinted"  { at: 770, y_ns + 20; anchor: center; size: 11.5; weight: 700; color: if(bar_num_style == 3, cp.mint, faint); family: "Space Grotesk" }
+                    zone box cp_bar_ns_0 { from: 532, y_ns + 6; size: 68, 28; corner: 14; cursor: pointer; active: (y_ns + 20) - br.off > 176 and (y_ns + 20) - br.off < 784; label: "Plain style" }
+                    zone box cp_bar_ns_1 { from: 600, y_ns + 6; size: 68, 28; corner: 14; cursor: pointer; active: (y_ns + 20) - br.off > 176 and (y_ns + 20) - br.off < 784; label: "Glass style" }
+                    zone box cp_bar_ns_2 { from: 668, y_ns + 6; size: 68, 28; corner: 14; cursor: pointer; active: (y_ns + 20) - br.off > 176 and (y_ns + 20) - br.off < 784; label: "Frosted style" }
+                    zone box cp_bar_ns_3 { from: 736, y_ns + 6; size: 68, 28; corner: 14; cursor: pointer; active: (y_ns + 20) - br.off > 176 and (y_ns + 20) - br.off < 784; label: "Tinted style" }
+                    on scroll cp_bar_ns_0 { cp_sc_br_to = clamp(cp_sc_br_to - wheel * 48, 0, br.max_s) }
+                    on scroll cp_bar_ns_1 { cp_sc_br_to = clamp(cp_sc_br_to - wheel * 48, 0, br.max_s) }
+                    on scroll cp_bar_ns_2 { cp_sc_br_to = clamp(cp_sc_br_to - wheel * 48, 0, br.max_s) }
+                    on scroll cp_bar_ns_3 { cp_sc_br_to = clamp(cp_sc_br_to - wheel * 48, 0, br.max_s) }
+                    on press cp_bar_ns_0 { emit ui_sound; bar_num_style = 0 }
+                    on press cp_bar_ns_1 { emit ui_sound; bar_num_style = 1 }
+                    on press cp_bar_ns_2 { emit ui_sound; bar_num_style = 2 }
+                    on press cp_bar_ns_3 { emit ui_sound; bar_num_style = 3 }
+
+                    let y_nw = 502
+                    let h_nw = max(cp_bar_nw_track.hover, cp_bar_nw_track.pressed)
+                    CpCard(250, y_nw, 570, 62)
+                    text "Glass stroke" { at: 266, y_nw + 20; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk"; measure: m_br_nw }
+                    CpLeader(266 + m_br_nw.width + 10, cp.sl_x - 10, y_nw + 20, h_nw)
+                    text "调整液态玻璃数字笔画与指标圆环粗细。" { at: 266, y_nw + 44; anchor: left center; size: 12.5; color: faint; family: "Noto Sans CJK SC" }
+                    CpSlider(cp.sl_x, y_nw + 20, cp.sl_w, clamp((bar_num_weight - 70) / 75, 0, 1), h_nw, cp.mint)
+                    text number(bar_num_weight, 0, "%") { at: cp.rx, y_nw + 20; anchor: right center; size: 15; weight: 700; color: cp.mint; family: "Space Grotesk" }
+                    zone box cp_bar_nw_track { from: cp.sl_x - 6, y_nw + 8; size: cp.sl_w + 12, 24; cursor: pointer; active: (y_nw + 20) - br.off > 176 and (y_nw + 20) - br.off < 784; label: "Glass stroke weight" }
+                    on scroll cp_bar_nw_track { cp_sc_br_to = clamp(cp_sc_br_to - wheel * 48, 0, br.max_s) }
+                    on press cp_bar_nw_track { bar_num_weight = clamp(round(70 + (pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 75), 70, 145) }
+                    on drag  cp_bar_nw_track { bar_num_weight = clamp(round(70 + (pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 75), 70, 145) }
+
+                    text "BAR DATE & TIME" { at: 250, 584; anchor: left center; size: 10.5; weight: 700; color: faint; family: "Space Grotesk" }
+
+                    let y2 = 600
                     let h2 = max(cp_bar_date_switch.hover, cp_bar_date_switch.pressed)
                     CpCard(250, y2, 570, 62)
                     text "Gregorian date" { at: 266, y2 + 20; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk"; measure: m_br_date }
@@ -1077,7 +1137,7 @@ part ConfigPanel {
                     on scroll cp_bar_date_switch { cp_sc_br_to = clamp(cp_sc_br_to - wheel * 48, 0, br.max_s) }
                     on press cp_bar_date_switch { emit ui_sound; toggle bar_show_date }
 
-                    let y3 = 434
+                    let y3 = 668
                     let h3 = max(cp_bar_lunar_switch.hover, cp_bar_lunar_switch.pressed)
                     CpCard(250, y3, 570, 62)
                     text "Lunar date" { at: 266, y3 + 20; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk"; measure: m_br_lunar }
@@ -1088,7 +1148,7 @@ part ConfigPanel {
                     on scroll cp_bar_lunar_switch { cp_sc_br_to = clamp(cp_sc_br_to - wheel * 48, 0, br.max_s) }
                     on press cp_bar_lunar_switch { emit ui_sound; toggle bar_show_lunar }
 
-                    let y4 = 502
+                    let y4 = 736
                     let h4 = max(cp_bar_weekday_switch.hover, cp_bar_weekday_switch.pressed)
                     CpCard(250, y4, 570, 62)
                     text "Weekday" { at: 266, y4 + 20; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk"; measure: m_br_week }
@@ -1099,7 +1159,7 @@ part ConfigPanel {
                     on scroll cp_bar_weekday_switch { cp_sc_br_to = clamp(cp_sc_br_to - wheel * 48, 0, br.max_s) }
                     on press cp_bar_weekday_switch { emit ui_sound; toggle bar_show_weekday }
 
-                    let y5 = 570
+                    let y5 = 804
                     let h5 = max(cp_bar_sec_switch.hover, cp_bar_sec_switch.pressed)
                     CpCard(250, y5, 570, 62)
                     text "Seconds" { at: 266, y5 + 20; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk"; measure: m_br_secs }
@@ -1110,7 +1170,7 @@ part ConfigPanel {
                     on scroll cp_bar_sec_switch { cp_sc_br_to = clamp(cp_sc_br_to - wheel * 48, 0, br.max_s) }
                     on press cp_bar_sec_switch { emit ui_sound; toggle bar_show_secs }
 
-                    let y6 = 638
+                    let y6 = 872
                     let h6 = max(cp_snd_switch.hover, cp_snd_switch.pressed)
                     CpCard(250, y6, 570, 62)
                     text "Panel sound" { at: 266, y6 + 20; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk"; measure: m_br_snd }
@@ -1121,9 +1181,9 @@ part ConfigPanel {
                     on scroll cp_snd_switch { cp_sc_br_to = clamp(cp_sc_br_to - wheel * 48, 0, br.max_s) }
                     on press cp_snd_switch { emit ui_sound; toggle snd_on }
 
-                    text "PANEL TINT" { at: 250, 720; anchor: left center; size: 10.5; weight: 700; color: faint; family: "Space Grotesk" }
+                    text "PANEL TINT" { at: 250, 1376; anchor: left center; size: 10.5; weight: 700; color: faint; family: "Space Grotesk" }
 
-                    let y7 = 736
+                    let y7 = 1392
                     let h7 = max(cp_panel_role_primary.hover, cp_panel_role_secondary.hover)
                     CpCard(250, y7, 570, 62)
                     text "Panel colour" { at: 266, y7 + 20; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk"; measure: m_br_role }
@@ -1139,7 +1199,7 @@ part ConfigPanel {
                     on press cp_panel_role_primary   { emit ui_sound; panel_bg_role = 0 }
                     on press cp_panel_role_secondary { emit ui_sound; panel_bg_role = 1 }
 
-                    let y8 = 804
+                    let y8 = 1460
                     let h8 = max(cp_panel_tint_track.hover, cp_panel_tint_track.pressed)
                     CpCard(250, y8, 570, 62)
                     text "Tint depth" { at: 266, y8 + 20; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk"; measure: m_br_tint }
@@ -1151,6 +1211,83 @@ part ConfigPanel {
                     on scroll cp_panel_tint_track { cp_sc_br_to = clamp(cp_sc_br_to - wheel * 48, 0, br.max_s) }
                     on press cp_panel_tint_track { panel_bg_tint = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
                     on drag  cp_panel_tint_track { panel_bg_tint = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
+
+                    text "BAR WIDGETS" { at: 250, 954; anchor: left center; size: 10.5; weight: 700; color: faint; family: "Space Grotesk" }
+
+                    let y_ord = 970
+                    CpCard(250, y_ord, 570, 112)
+                    text "Module order" { at: 266, y_ord + 18; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk"; measure: m_br_ord }
+                    CpLeader(266 + m_br_ord.width + 10, 734, y_ord + 18, cp_ord_reset.hover)
+                    text "点击左右箭头调整顶栏中间各模块的排列顺序。" { at: 266, y_ord + 36; anchor: left center; size: 12; color: faint; family: "Noto Sans CJK SC" }
+                    box { from: 744, y_ord + 10; size: 60, 24; corner: 12; color: cp.mint; opacity: 12% + 14% * cp_ord_reset.hover }
+                    box { from: 744, y_ord + 10; size: 60, 24; corner: 12; stroke: 1; color: cp.mint; opacity: 32% + 28% * cp_ord_reset.hover }
+                    text "Reset" { at: 774, y_ord + 22; anchor: center; size: 11; weight: 700; color: cp.mint; family: "Space Grotesk" }
+                    zone box cp_ord_reset { from: 744, y_ord + 10; size: 60, 24; corner: 12; cursor: pointer; active: (y_ord + 22) - br.off > 176 and (y_ord + 22) - br.off < 784; label: "Reset module order" }
+                    on scroll cp_ord_reset { cp_sc_br_to = clamp(cp_sc_br_to - wheel * 48, 0, br.max_s) }
+                    on press cp_ord_reset { emit ui_sound; emit bar_order_reset }
+
+                    repeat k in 0..6 {
+                        let ox = 268 + k * 90
+                        box { from: ox, y_ord + 52; size: 84, 48; corner: 12; color: deep; opacity: 50% }
+                        box { from: ox, y_ord + 52; size: 84, 48; corner: 12; stroke: 1; color: if(bar_order_slots.$k.enabled, cp.mint, ink); opacity: if(bar_order_slots.$k.enabled, 42%, 14%) }
+                        text bar_order_slots.$k.label { at: ox + 42, y_ord + 66; anchor: center; size: 12.5; weight: 700; color: if(bar_order_slots.$k.enabled, ink, faint); family: "Noto Sans CJK SC" }
+
+                        box { from: ox + 5, y_ord + 78; size: 35, 18; corner: 9; color: ink; opacity: if(k > 0, 7% + 10% * cp_ord_l.$k.hover, 2%) }
+                        text "‹" { at: ox + 22.5, y_ord + 87; anchor: center; size: 13; weight: 700; color: if(k > 0, if(cp_ord_l.$k.hover > 0.5, cp.mint, ink), faint); opacity: if(k > 0, 92%, 25%); family: "Space Grotesk" }
+                        zone box cp_ord_l.$k { from: ox + 5, y_ord + 78; size: 35, 18; corner: 9; cursor: pointer; active: k > 0 and (y_ord + 87) - br.off > 176 and (y_ord + 87) - br.off < 784; label: "Move left" }
+                        on scroll cp_ord_l.$k { cp_sc_br_to = clamp(cp_sc_br_to - wheel * 48, 0, br.max_s) }
+                        on press cp_ord_l.$k { emit ui_sound; emit bar_order_move(k * 2) }
+
+                        box { from: ox + 44, y_ord + 78; size: 35, 18; corner: 9; color: ink; opacity: if(k < 5, 7% + 10% * cp_ord_r.$k.hover, 2%) }
+                        text "›" { at: ox + 61.5, y_ord + 87; anchor: center; size: 13; weight: 700; color: if(k < 5, if(cp_ord_r.$k.hover > 0.5, cp.mint, ink), faint); opacity: if(k < 5, 92%, 25%); family: "Space Grotesk" }
+                        zone box cp_ord_r.$k { from: ox + 44, y_ord + 78; size: 35, 18; corner: 9; cursor: pointer; active: k < 5 and (y_ord + 87) - br.off > 176 and (y_ord + 87) - br.off < 784; label: "Move right" }
+                        on scroll cp_ord_r.$k { cp_sc_br_to = clamp(cp_sc_br_to - wheel * 48, 0, br.max_s) }
+                        on press cp_ord_r.$k { emit ui_sound; emit bar_order_move(k * 2 + 1) }
+                    }
+
+                    let y_cpu = 1090
+                    let h_cpu = max(cp_bar_cpu_switch.hover, cp_bar_cpu_switch.pressed)
+                    CpCard(250, y_cpu, 570, 62)
+                    text "CPU monitor" { at: 266, y_cpu + 20; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk"; measure: m_br_cpu }
+                    CpLeader(266 + m_br_cpu.width + 10, 746, y_cpu + 20, h_cpu)
+                    text "在顶栏显示 CPU 占用玻璃圆环与数值。" { at: 266, y_cpu + 44; anchor: left center; size: 12.5; color: faint; family: "Noto Sans CJK SC" }
+                    CpSwitch(756, y_cpu + 8, 48, 24, if(bar_show_cpu, 1, 0), bar_cpu_knob, cp_bar_cpu_switch.hover, cp_bar_cpu_switch.pressed, cp.mint, ink, cp.track)
+                    zone box cp_bar_cpu_switch { from: 750, y_cpu + 4; size: 60, 32; corner: 16; cursor: pointer; active: (y_cpu + 20) - br.off > 176 and (y_cpu + 20) - br.off < 784; label: "Toggle CPU monitor" }
+                    on scroll cp_bar_cpu_switch { cp_sc_br_to = clamp(cp_sc_br_to - wheel * 48, 0, br.max_s) }
+                    on press cp_bar_cpu_switch { emit ui_sound; toggle bar_show_cpu }
+
+                    let y_mem = 1158
+                    let h_mem = max(cp_bar_mem_switch.hover, cp_bar_mem_switch.pressed)
+                    CpCard(250, y_mem, 570, 62)
+                    text "Memory monitor" { at: 266, y_mem + 20; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk"; measure: m_br_mem }
+                    CpLeader(266 + m_br_mem.width + 10, 746, y_mem + 20, h_mem)
+                    text "在顶栏显示内存占用玻璃圆环与数值。" { at: 266, y_mem + 44; anchor: left center; size: 12.5; color: faint; family: "Noto Sans CJK SC" }
+                    CpSwitch(756, y_mem + 8, 48, 24, if(bar_show_mem, 1, 0), bar_mem_knob, cp_bar_mem_switch.hover, cp_bar_mem_switch.pressed, cp.mint, ink, cp.track)
+                    zone box cp_bar_mem_switch { from: 750, y_mem + 4; size: 60, 32; corner: 16; cursor: pointer; active: (y_mem + 20) - br.off > 176 and (y_mem + 20) - br.off < 784; label: "Toggle memory monitor" }
+                    on scroll cp_bar_mem_switch { cp_sc_br_to = clamp(cp_sc_br_to - wheel * 48, 0, br.max_s) }
+                    on press cp_bar_mem_switch { emit ui_sound; toggle bar_show_mem }
+
+                    let y_net = 1226
+                    let h_net = max(cp_bar_net_switch.hover, cp_bar_net_switch.pressed)
+                    CpCard(250, y_net, 570, 62)
+                    text "Network speed" { at: 266, y_net + 20; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk"; measure: m_br_net }
+                    CpLeader(266 + m_br_net.width + 10, 746, y_net + 20, h_net)
+                    text "在顶栏显示实时网络上传与下载速度。" { at: 266, y_net + 44; anchor: left center; size: 12.5; color: faint; family: "Noto Sans CJK SC" }
+                    CpSwitch(756, y_net + 8, 48, 24, if(bar_show_net, 1, 0), bar_net_knob, cp_bar_net_switch.hover, cp_bar_net_switch.pressed, cp.mint, ink, cp.track)
+                    zone box cp_bar_net_switch { from: 750, y_net + 4; size: 60, 32; corner: 16; cursor: pointer; active: (y_net + 20) - br.off > 176 and (y_net + 20) - br.off < 784; label: "Toggle network monitor" }
+                    on scroll cp_bar_net_switch { cp_sc_br_to = clamp(cp_sc_br_to - wheel * 48, 0, br.max_s) }
+                    on press cp_bar_net_switch { emit ui_sound; toggle bar_show_net }
+
+                    let y_cd = 1294
+                    let h_cd = max(cp_bar_cd_switch.hover, cp_bar_cd_switch.pressed)
+                    CpCard(250, y_cd, 570, 62)
+                    text "Countdown" { at: 266, y_cd + 20; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk"; measure: m_br_cd }
+                    CpLeader(266 + m_br_cd.width + 10, 746, y_cd + 20, h_cd)
+                    text "在顶栏中间显示最近的倒计时日（如 恬恬3天）。" { at: 266, y_cd + 44; anchor: left center; size: 12.5; color: faint; family: "Noto Sans CJK SC" }
+                    CpSwitch(756, y_cd + 8, 48, 24, if(bar_show_countdown, 1, 0), bar_cd_knob, cp_bar_cd_switch.hover, cp_bar_cd_switch.pressed, cp.mint, ink, cp.track)
+                    zone box cp_bar_cd_switch { from: 750, y_cd + 4; size: 60, 32; corner: 16; cursor: pointer; active: (y_cd + 20) - br.off > 176 and (y_cd + 20) - br.off < 784; label: "Toggle bar countdown" }
+                    on scroll cp_bar_cd_switch { cp_sc_br_to = clamp(cp_sc_br_to - wheel * 48, 0, br.max_s) }
+                    on press cp_bar_cd_switch { emit ui_sound; toggle bar_show_countdown }
                 }
 
                 repeat f in 0..16 {
@@ -1350,7 +1487,7 @@ part ConfigPanel {
                 CpCard(250, y0, 570, 62)
                 text "Toast position" { at: 266, y0 + 20; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk"; measure: m_nt_pos }
                 CpLeader(266 + m_nt_pos.width + 10, 578, y0 + 20, h0, d_pos)
-                text "Where incoming banners anchor when Drift is off." { at: 266, y0 + 44; anchor: left center; size: 12.5; color: faint; family: "Space Grotesk" }
+                text "Merged into the top glass bar (center or top-right) when Drift is off." { at: 266, y0 + 44; anchor: left center; size: 12.5; color: faint; family: "Space Grotesk" }
                 CpSetPick(588, y0 + 20, 216, 28, 2, nt_pos, h0, cp.mint, d_pos)
                 text "Top center" { at: 642, y0 + 20; anchor: center; size: 11.5; weight: 700; color: if(nt_pos == 0, cp.mint, faint); family: "Space Grotesk" }
                 text "Top right"  { at: 750, y0 + 20; anchor: center; size: 11.5; weight: 700; color: if(nt_pos == 1, cp.mint, faint); family: "Space Grotesk" }

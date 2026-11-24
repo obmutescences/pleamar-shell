@@ -1,5 +1,6 @@
 language 0.9
 import "../modules/common/motion.plm"
+import "../modules/common/glass_digits.plm"
 scene Pleamar {
     permissions {
         run: "cava", "sh"

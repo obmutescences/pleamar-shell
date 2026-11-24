@@ -5,6 +5,9 @@ local M = {}
 local N_HIST = 60
 local hist = {}
 local proc = nil
+local proc_mode = nil
+local proc_cmd = nil
+local proc_gen = 0
 local root_of = nil
 local cal_off = 0
 local last_tab = 0
@@ -47,6 +50,18 @@ local function size(b)
     return string.format("%.2f %s", b, units[i])
 end
 local function rate(b) return size(b) .. "/s" end
+local function compact_rate(b)
+    b = math.max(0, number(b, 0))
+    if b < 1024 then return "0K" end
+    local k = b / 1024
+    if k < 10 then return string.format("%.1fK", k) end
+    if k < 1024 then return string.format("%.0fK", k) end
+    local m = k / 1024
+    if m < 10 then return string.format("%.1fM", m) end
+    if m < 1024 then return string.format("%.0fM", m) end
+    local g = m / 1024
+    return string.format(g < 10 and "%.1fG" or "%.0fG", g)
+end
 local function disk_rate(b)
     --  The disk card always speaks KB/s or MB/s; unlike network rates,
     --  a sub-kilobyte write is not interesting enough for its own unit.
@@ -120,7 +135,32 @@ end
 local function on_sys_line(line)
     local ok, d = pcall(json.decode, line)
     if not ok or type(d) ~= "table" or not d.cpu then return end
-    fact.sys_ready = true
+    local is_lite = d.lite == true
+    if not is_lite then
+        fact.sys_ready = true
+    end
+
+    local c = d.cpu
+    local total = c.total or 0
+    fact.sys_cpu = clamp(total / 100, 0, 1)
+    text.sys_cpu_txt = string.format("%d%%", math.floor(total + 0.5))
+
+    local m = d.mem or {}
+    local mt = math.max(m.total or 1, 1)
+    fact.sys_mem = clamp((m.used or 0) / mt, 0, 1)
+    fact.sys_cache = clamp((m.cache or 0) / mt, 0, 1)
+    text.sys_mem_pct = string.format("%d%%", math.floor(fact.sys_mem * 100 + 0.5))
+
+    local nt = d.net or {}
+    local rx = number(nt.rx, 0)
+    local tx = number(nt.tx, 0)
+    text.bar_rx_txt = compact_rate(rx)
+    text.bar_tx_txt = compact_rate(tx)
+    fact.bar_rx_act = clamp(math.log(1 + rx / 1024) / math.log(1 + 4096), 0, 1)
+    fact.bar_tx_act = clamp(math.log(1 + tx / 1024) / math.log(1 + 4096), 0, 1)
+    fact.bar_mon_tick = (math.floor(number(fact.bar_mon_tick, 0)) + 1) % 1000
+
+    if is_lite then return end
 
     if d.info then
         text.sys_host = d.info.host or "This machine"
@@ -129,10 +169,6 @@ local function on_sys_line(line)
         text.sys_threads = string.format("%d threads", d.info.threads or 0)
     end
 
-    local c = d.cpu
-    local total = c.total or 0
-    fact.sys_cpu = clamp(total / 100, 0, 1)
-    text.sys_cpu_txt = string.format("%d%%", math.floor(total + 0.5))
     local sum, n = 0, 0
     for _, f in ipairs(c.mhz or {}) do if f > 0 then sum = sum + f; n = n + 1 end end
     local meta = n > 0 and string.format("%.1f GHz", sum / n / 1000) or ""
@@ -149,12 +185,7 @@ local function on_sys_line(line)
     for i, p in ipairs(c.cores or {}) do cores[i] = { pct = clamp(p / 100, 0, 1) } end
     model.sys_cores = cores
 
-    local m = d.mem or {}
-    local mt = math.max(m.total or 1, 1)
-    fact.sys_mem = clamp((m.used or 0) / mt, 0, 1)
-    fact.sys_cache = clamp((m.cache or 0) / mt, 0, 1)
     fact.sys_swap = (m.swap_total or 0) > 0 and clamp((m.swap_used or 0) / m.swap_total, 0, 1) or 0
-    text.sys_mem_pct = string.format("%d%%", math.floor(fact.sys_mem * 100 + 0.5))
     text.sys_mem_total = kb(m.total) .. " installed"
     text.sys_mem_used = kb(m.used)
     text.sys_mem_cache = kb(m.cache)
@@ -177,7 +208,6 @@ local function on_sys_line(line)
         text.sys_gpu_clock = g.clock and string.format("%d MHz", math.floor(g.clock + 0.5)) or "—"
     end
 
-    local nt = d.net or {}
     text.sys_iface = nt.iface or ""
     fact.sys_net_up = (nt.iface or "") ~= ""
     if nt.iface ~= last_iface then
@@ -278,29 +308,50 @@ local function on_sys_line(line)
     text.sys_mem_hist = sparkline("mem", 60, 1)
 end
 
+local function bar_mon_wanted()
+    return truthy(fact.bar_show_cpu) or truthy(fact.bar_show_mem) or truthy(fact.bar_show_net)
+end
+
 local function stop_sys()
+    proc_gen = proc_gen + 1
     if proc then
         kill(proc, "term")
         proc = nil
     end
-    fact.sys_ready = false
+    proc_mode = nil
+    proc_cmd = nil
+    if not truthy(fact.center_open) then
+        fact.sys_ready = false
+    end
 end
 
 local function refresh_sys()
-    if not truthy(fact.center_open) then
+    if not root_of then return end
+    local want = truthy(fact.center_open) and "full" or (bar_mon_wanted() and "lite" or nil)
+    if not want then
         stop_sys()
+        fact.sys_ready = false
         return
     end
-    if proc then return end
-    local root = root_of and root_of() or ""
+    local root = root_of() or ""
     local path = root ~= "" and (root .. "/bin/pleamar-sysmon") or "pleamar-sysmon"
-    local mine
-    local ok, id = pcall(spawn, "sh", { "-c", shq(path) }, function(line)
-        if proc == mine then on_sys_line(line) end
+    local cmd = want == "lite" and (shq(path) .. " --lite") or shq(path)
+    if want == proc_mode and cmd == proc_cmd and proc then return end
+    stop_sys()
+    if want == "lite" then fact.sys_ready = false end
+    proc_gen = proc_gen + 1
+    local gen = proc_gen
+    local ok, id = pcall(spawn, "sh", { "-c", cmd }, function(line)
+        if gen == proc_gen then on_sys_line(line) end
     end, function()
-        if proc == mine then
+        if gen == proc_gen then
             proc = nil
+            proc_mode = nil
+            proc_cmd = nil
             fact.sys_ready = false
+            after(2000, function()
+                if gen == proc_gen and not proc then refresh_sys() end
+            end)
         end
     end)
     if not ok then
@@ -308,7 +359,8 @@ local function refresh_sys()
         fact.sys_ready = false
     else
         proc = id
-        mine = id
+        proc_mode = want
+        proc_cmd = cmd
     end
 end
 
@@ -319,6 +371,9 @@ local bar_today_date = ""
 local bar_today_lunar = ""
 local bar_today_weekday = ""
 local bar_last_ymd = ""
+local bar_cd_title = ""
+local bar_cd_days_txt = ""
+local bar_cd_days = 9999
 
 local function refresh_bar_date()
     local today = os.date("*t")
@@ -331,10 +386,21 @@ local function refresh_bar_date()
     local show_date = truthy(fact.bar_show_date)
     local show_lunar = truthy(fact.bar_show_lunar)
     local show_weekday = truthy(fact.bar_show_weekday)
+    local show_cd = truthy(fact.bar_show_countdown) and bar_cd_title ~= ""
 
     local date_txt = (show_date and bar_today_date ~= "") and bar_today_date or ""
     local lunar_txt = (show_lunar and bar_today_lunar ~= "") and bar_today_lunar or ""
-    local weekday_txt = (show_weekday and bar_today_weekday ~= "") and bar_today_weekday or ""
+    local weekday_txt = ""
+    if show_weekday and bar_today_weekday ~= "" then
+        weekday_txt = "·" .. bar_today_weekday:gsub("^星期", "周")
+    end
+    local mo_n, dy_n = bar_today_date:match("^(%d+)%-(%d+)$")
+    mo_n = tonumber(mo_n) or today.month
+    dy_n = tonumber(dy_n) or today.day
+    fact.bar_mon_d0 = math.floor(mo_n / 10)
+    fact.bar_mon_d1 = mo_n % 10
+    fact.bar_day_d0 = math.floor(dy_n / 10)
+    fact.bar_day_d1 = dy_n % 10
 
     text.bar_date_txt = date_txt
     text.bar_lunar_txt = lunar_txt
@@ -343,6 +409,10 @@ local function refresh_bar_date()
     fact.bar_has_lunar = lunar_txt ~= ""
     fact.bar_has_weekday = weekday_txt ~= ""
     fact.bar_date_any = date_txt ~= "" or lunar_txt ~= "" or weekday_txt ~= ""
+    text.bar_cd_title = show_cd and bar_cd_title or ""
+    text.bar_cd_days = show_cd and bar_cd_days_txt or ""
+    fact.bar_cd_urgent = show_cd and bar_cd_days <= 7
+    fact.bar_has_cd = show_cd
 end
 
 --  Fraction of the current month still ahead, today included.  The ring
@@ -461,6 +531,14 @@ local function apply_calendar(d)
     bar_today_date = tostring(td.date or string.format("%02d-%02d", now_t.month, now_t.day))
     bar_today_lunar = tostring(td.lunar or "")
     bar_today_weekday = tostring(td.weekday or WEEKDAYS[now_t.wday] or "")
+    local nc = type(d.next_countdown) == "table" and d.next_countdown or nil
+    if nc and tostring(nc.title or "") ~= "" then
+        bar_cd_title = tostring(nc.title)
+        bar_cd_days = math.floor(number(nc.days, 0))
+        bar_cd_days_txt = tostring(nc.days_txt or (bar_cd_days == 0 and "今天" or (tostring(bar_cd_days) .. "天")))
+    else
+        bar_cd_title, bar_cd_days_txt, bar_cd_days = "", "", 9999
+    end
     refresh_bar_date()
     local progress = tonumber(td.month_progress)
     if progress == nil then
@@ -697,7 +775,7 @@ local function close()
     fact.audio_pick_open = false
     fact.tray_menu_open = false
     fact.tray_submenu_open = false
-    stop_sys()
+    refresh_sys()
 end
 
 local function dismiss_top()
@@ -762,7 +840,7 @@ function M.start(root_getter)
             fact.tray_menu_open = false
             fact.tray_submenu_open = false
             fact.center_cal_hover = -1
-            stop_sys()
+            refresh_sys()
         end
     end)
     on("center_toggle", function()
@@ -1287,13 +1365,15 @@ function M.refresh_bar_date()
     refresh_bar_date()
 end
 
+function M.refresh_sys()
+    refresh_sys()
+end
+
 function M.refresh_root()
     --  The first calendar() runs before PLEAMAR_SHELL_ROOT is known, so it
     --  falls back to a lunar-less grid.  Reload it once the root arrives.
     calendar()
-    if truthy(fact.center_open) then
-        refresh_sys()
-    end
+    refresh_sys()
 end
 
 function M.close() close() end

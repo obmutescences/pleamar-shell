@@ -203,6 +203,38 @@ part Common {
     text bar_date_txt = ""
     text bar_lunar_txt = ""
     text bar_weekday_txt = ""
+    //  Bar system monitors & nearest countdown toggles (Settings › Bar).
+    fact bar_show_cpu = true
+    fact bar_show_mem = true
+    fact bar_show_net = true
+    fact bar_show_countdown = true
+    fact bar_has_cd = false
+    fact bar_cd_urgent = false
+    fact bar_rx_act: number = 0
+    fact bar_tx_act: number = 0
+    fact bar_mon_tick: number = 0
+    text bar_rx_txt = "0K"
+    text bar_tx_txt = "0K"
+    text bar_cd_title = ""
+    text bar_cd_days = ""
+    //  Display order inside the center top bar (0..5).
+    fact bar_ord_cpu: number = 0
+    fact bar_ord_mem: number = 1
+    fact bar_ord_net: number = 2
+    fact bar_ord_clock: number = 3
+    fact bar_ord_date: number = 4
+    fact bar_ord_cd: number = 5
+    model bar_order_slots max 6 { key: text; label: text; enabled: bool }
+    event bar_order_move ->
+    event bar_order_reset ->
+    //  Bar typography & Vitreus-style glass numeric rendering (Settings › Bar).
+    fact bar_font_size: number = 18        // 12..26 px
+    fact bar_num_style: number = 1         // 0 Plain · 1 Glass · 2 Frosted · 3 Tinted
+    fact bar_num_weight: number = 105      // 70..145 % stroke weight for glass digits & rings
+    fact bar_mon_d0: number = 0
+    fact bar_mon_d1: number = 1
+    fact bar_day_d0: number = 0
+    fact bar_day_d1: number = 1
 
     //  Lock screen settings.  The lock scene is a separate process, so these
     //  live in the shell config and are pushed to it when it opens.
@@ -364,6 +396,14 @@ part Common {
         impulse la_sag 220
         impulse la_wobble -260
     }
+    prop nt_np = 0 ~notch_drop
+    prop nt_sag = 0 ~notch_hang
+    prop nt_wobble = 0 ~notch_splash
+    follow nt_np = nt_has and not nt_drift
+    on change nt_np > 0.97 while nt_np > 0.97 and not motion.reduced {
+        impulse nt_sag 140
+        impulse nt_wobble -180
+    }
     prop music_frame_knob = 0 ~quick
     follow music_frame_knob = music_frame_on
     prop notch_tint_knob = 0 ~quick
@@ -386,6 +426,14 @@ part Common {
     follow bar_weekday_knob = bar_show_weekday
     prop bar_sec_knob = 0 ~quick
     follow bar_sec_knob = bar_show_secs
+    prop bar_cpu_knob = 1 ~quick
+    follow bar_cpu_knob = bar_show_cpu
+    prop bar_mem_knob = 1 ~quick
+    follow bar_mem_knob = bar_show_mem
+    prop bar_net_knob = 1 ~quick
+    follow bar_net_knob = bar_show_net
+    prop bar_cd_knob = 1 ~quick
+    follow bar_cd_knob = bar_show_countdown
     prop nt_snd_knob = 0 ~quick
     follow nt_snd_knob = nt_snd_on
     prop nt_drift_knob = 0 ~quick

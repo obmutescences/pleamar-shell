@@ -59,7 +59,7 @@ fn shade(s: Shader) -> vec4<f32> {
     offset += dir * sin(entry_phase) * s.a.y * envelope;
 
     // Always-on water: a shallow ambient tide plus three independent random
-    // ripples, staggered so there is no quiet gap between them.
+    // ripples while locked with the screen on (`spin time` pauses on DPMS off).
     offset += vec2<f32>(
         sin(uv.y * 8.0 + s.time * 0.45),
         cos(uv.x * 6.5 + s.time * 0.34)

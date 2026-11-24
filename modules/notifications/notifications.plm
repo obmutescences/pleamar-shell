@@ -13,7 +13,6 @@ part Notifications {
     prop nt_ring = 1 ~600ms
     prop nt_sw = 1 ~2400ms
     image nt_img = from nt_icon, 48, 48
-    measure nt.title_m
     on change nt_new while nt_new > 0 {
         nt_fill: 1 ~1ms
         nt_fly: 0 ~0ms
@@ -25,7 +24,7 @@ part Notifications {
         nt_sw: 1 ~2400ms after 450ms
     }
     prop nt_p = 0 ~quick
-    follow nt_p = nt_has
+    follow nt_p = nt_has and nt_drift
     //  Drift: 0 at the left edge, 1 at the right.  It advances at the toast
     //  countdown's rate, so a drift takes exactly `nt_secs` seconds; the
     //  nt_new rule puts it back to 0 for each new card.  Urgent notifications
@@ -40,180 +39,163 @@ part Notifications {
     prop ntc_p = 0 ~gentle
     follow ntc_p = nt_center
 
-    //  The toast: one glass card under the bar.  The surface is the full
-    //  monitor width and the card itself is moved inside it: that is what lets
-    //  the Drift switch carry the same card from the left edge to the right
-    //  while Top center and Top right stay at fixed positions.  Only the card
-    //  has a zone, so the transparent rest of the strip still passes clicks
-    //  through.
+    //  Shared 420×160 toast card body used by both the floating Drift surface
+    //  and the top-bar docked drawer in NotchFrame.
+    component NotificationToastCard(docked: bool) {
+        measure title_m
+        group {
+            show: not docked
+            PanelBackdrop(0, 0, 420, 160, 24)
+        }
+        body {
+            show: not docked and not glass_frost_auto
+            color: panel_bg
+            glass: if(glass_on, 1% * glass_mix, 0%)
+            opacity: 1% * max(glass_tint, 86)
+            tint: glass_color_tint / 100
+            lens: glass_on and glass_bend
+            frost: glass_frost / 100
+            refraction: glass_refr
+            dispersion: glass_disp
+            dome: glass_dome
+            milk: glass_milk
+            smoke: glass_smoke
+            vivid: glass_vivid
+            mirror: glass_mirror
+            highlight: glass_highlight
+            ripple: glass_ripple
+            border: 1.5 * glass_border / 100, ink
+            rim: 1% * glass_edge
+            shine: if(glass_shine, pointer.x, 0), if(glass_shine, pointer.y, 0)
+            shadow: 0, 6, 18, 1% * glass_shadow_amt, glass_shadow
+            box { from: 0, 0; size: 420, 160; corner: 24 }
+        }
+        body {
+            show: not docked and glass_frost_auto
+            color: panel_bg
+            glass: if(glass_on, 1% * glass_mix, 0%)
+            opacity: 1% * max(glass_tint, 86)
+            tint: glass_color_tint / 100
+            lens: glass_on and glass_bend
+            frost: auto
+            refraction: glass_refr
+            dispersion: glass_disp
+            dome: glass_dome
+            milk: glass_milk
+            smoke: glass_smoke
+            vivid: glass_vivid
+            mirror: glass_mirror
+            highlight: glass_highlight
+            ripple: glass_ripple
+            border: 1.5 * glass_border / 100, ink
+            rim: 1% * glass_edge
+            shine: if(glass_shine, pointer.x, 0), if(glass_shine, pointer.y, 0)
+            shadow: 0, 6, 18, 1% * glass_shadow_amt, glass_shadow
+            box { from: 0, 0; size: 420, 160; corner: 24 }
+        }
+        box { from: 0, 0; size: 420, 160; corner: 24; stroke: 1.8; color: if(nt_urgent, alert, ink); opacity: if(nt_urgent, 32%, 16%); show: not docked }
+        box { from: 5, 5; size: 410, 150; corner: 20; color: ink; opacity: 4%; show: not docked }
+        line { from: 24, 6; to: 396, 6; width: 1; color: ink; opacity: 9%; show: not docked }
+
+        //  ── icon tile ─────────────────────────────────────────────────
+        group {
+            move: 0, -24
+        box { from: 18, 68; size: 48, 48; corner: 14; color: ink; opacity: 7%; show: not docked }
+        ellipse { at: 42, 92; radius: 24 + 24 * clamp(nt_ring, 0, 1); stroke: 1.6; color: if(nt_urgent, alert, aqua); opacity: 75% * (1 - clamp(nt_ring, 0, 1)) }
+        group {
+            show: nt_icon_on
+            pivot: 42, 92
+            rotate: 16deg * (1 - clamp(nt_sw, 0, 1)) * sin(clamp(nt_sw, 0, 1) * 2000)
+            scale: 1 + 0.07 * (1 - clamp(nt_sw, 0, 1)) * sin(clamp(nt_sw, 0, 1) * 2600 + 40)
+            image nt_img { at: 18, 68; size: 48, 48 }
+        }
+        group {
+            show: not nt_icon_on
+            pivot: 42, 92
+            scale: 1.16
+            let bq = clamp(nt_sw, 0, 1)
+            let bsw = (1 - bq) * sin(bq * 2000)
+            let bfr = floor(time * 8)
+            repeat r in 0..6 {
+                let bang = r * 60 + time * 30
+                let br0 = 20
+                let br1 = br0 + 2 + 1.5 * (1 - bq) + sin(time * 200 + r * 90)
+                line { from: 42 + br0 * cos(bang), 92 + br0 * sin(bang); to: 42 + br1 * cos(bang), 92 + br1 * sin(bang); width: 1.4; color: if(nt_urgent, alert, aqua); opacity: (30% + 50% * (1 - bq)) }
+            }
+            group {
+                pivot: 42, 80
+                rotate: 20deg * bsw
+                repeat bp in 0..2 {
+                    let bo = bp * 0.7
+                    let bj = 0.5 * sin(bfr * 53 + bp * 137)
+                    let bk = 0.5 * sin(bfr * 61 + bp * 71 + 40)
+                    path { at: 42 + bo, 92 + bo * 0.5; stroke: if(bp == 0, 1.8, 1.3); color: ink; opacity: if(bp == 0, 90%, 34%)
+                        move -10 + bj, 6 + bk
+                        curve -5.5 + bk, -6 + bj via -6.5, 2
+                        curve 5.5 + bj, -6 + bk via 0, -15 + bj
+                        curve 10 + bk, 6 + bj via 6.5, 2
+                        line -10 + bj, 6 + bk }
+                }
+                path { at: 42, 92; color: if(nt_urgent, alert, aqua); opacity: 30%; move -10, 6; curve -5.5, -6 via -6.5, 2; curve 5.5, -6 via 0, -15; curve 10, 6 via 6.5, 2; close }
+                ellipse { at: 42 + 0.4 * sin(bfr * 67), 79.7; radius: 1.5; color: ink }
+                repeat bc in 0..3 {
+                    line { from: 36 + bc * 2, 89 + bc * 1.5 + 0.4 * sin(bfr * 47 + bc * 60); to: 37 + bc * 2, 94 + 0.4 * sin(bfr * 53 + bc * 70); width: 1.1; color: if(nt_urgent, alert, aqua); opacity: 65% }
+                }
+                ellipse { at: 42 - 3.5 * bsw + 0.4 * sin(bfr * 59), 102; radius: 2.2; color: if(nt_urgent, alert, aqua) }
+            }
+        }
+        }
+
+        //  ── words ─────────────────────────────────────────────────────
+        text nt_app { at: 82, if(docked, 20, 24); anchor: left center; size: if(docked, 13, 11); weight: 600; color: nt.app_tone; width: 300; lines: 1; family: "Space Grotesk" }
+        text nt_title { at: 82, if(docked, 34, 40); anchor: left top; size: if(docked, 20, 16); weight: 600; color: nt.title_tone; width: 302; lines: 2; line_height: 1.15; measure: title_m; family: "Space Grotesk" }
+        text nt_body { at: 82, if(docked, 34, 40) + title_m.height + 5; anchor: left top; size: if(docked, 18, 13); weight: 400; color: mix(ink, faint, if(docked, 0.25, 0.85)); width: 306; lines: 2; line_height: 1.2; family: "Space Grotesk" }
+
+        //  ── auto-close countdown ─────────────────────────────────────
+        group {
+            show: nt_timed
+            let fill_v = clamp(nt_fill, 0, 1)
+            ellipse { at: 42, 68; radius: 29.5; stroke: 1.5; color: primary; opacity: 9% }
+            arc { at: 42, 68; radius: 29.5; width: 6; span: 360deg * fill_v; rotate: 180deg * fill_v; color: primary; opacity: 12% * fill_v }
+            arc { at: 42, 68; radius: 29.5; width: 2.4; span: 360deg * fill_v; rotate: 180deg * fill_v; color: primary; opacity: 62% + 24% * fill_v }
+            text nt_countdown { at: 42, 105; anchor: center; size: 9; weight: 700; color: primary; opacity: 82%; family: "Space Grotesk" }
+        }
+
+        line { from: 390, 16; to: 400, 26; width: 1.4; color: ink; opacity: 55% + 45% * nt_x.hover }
+        line { from: 400, 16; to: 390, 26; width: 1.4; color: ink; opacity: 55% + 45% * nt_x.hover }
+        zone box nt_x { from: 384, 8; size: 28, 28; corner: 14; cursor: pointer; label: "Dismiss notification" }
+        on press nt_x { emit ui_sound; emit nt_close }
+    }
+
+    //  The toast: one glass card under the bar when Drift is enabled.
     surface nt_toast {
         size: full, 220
         anchor: top
-        //  Offset dynamically by `notch_clock_h` inside the surface so the
-        //  toast sits snugly under any configured notch height (10..96 px).
         margin: 0, 0, 0, 0
         level: overlay
-        open: nt_has or nt_p > 0.01
-        //  Only a moving drift needs the full cadence.  A static toast keeps
-        //  the old quiet rate, and the strip drops back once it is closed.
+        open: (nt_has and nt_drift) or nt_p > 0.01
         rate: 120, 30 while quiet and not (nt_has and nt_drift)
 
         let nt.w = 294
         let nt.gap = 56
         let nt.start = nt.gap
         let nt.end = max(nt.start, nt_toast.width - nt.w - nt.gap)
-        //  In Drift, nt_fly is the exact countdown progress; reduced motion
-        //  places the card at the destination instead of sliding it.
         let nt.fly = if(motion.reduced, 1, clamp(nt_fly, 0, 1))
-        let nt.x = if(nt_drift,
-            nt.start + (nt.end - nt.start) * nt.fly,
-            if(nt_pos == 0,
-                (nt_toast.width - nt.w) / 2,
-                nt.end))
+        let nt.x = nt.start + (nt.end - nt.start) * nt.fly
         let nt.y = notch_clock_h + 10
 
         group {
             move: nt.x, nt.y
 
-        zone box nt_toast_hit { from: 0, 0; size: nt.w, 112; active: nt_has; label: "Dismiss notification" }
+        zone box nt_toast_hit { from: 0, 0; size: nt.w, 112; active: nt_has and nt_drift; label: "Dismiss notification" }
         on press nt_toast_hit { emit nt_close }
 
         PanelPop(toast_fx, nt_p, nt.w, 112) {
-            //  A rounded clip: without it the full-screen lens draws its
-            //  sampled backdrop as a square, which showed behind the card.
             clip inset 0 box { from: 0, 0; size: 294, 112; corner: 17 }
-            //  The toast was designed on a 420×160 grid.  Scaling the whole
-            //  card by 0.7 keeps every detail proportional while the surface
-            //  itself is 30% smaller.
             group {
                 scale: 0.7
                 pivot: 0, 0
-            PanelBackdrop(0, 0, 420, 160, 24)
-            body {
-                show: not glass_frost_auto
-                color: panel_bg
-                glass: if(glass_on, 1% * glass_mix, 0%)
-                opacity: 1% * max(glass_tint, 86)
-                tint: glass_color_tint / 100
-                lens: glass_on and glass_bend
-                frost: glass_frost / 100
-                refraction: glass_refr
-                dispersion: glass_disp
-                dome: glass_dome
-                milk: glass_milk
-                smoke: glass_smoke
-                vivid: glass_vivid
-                mirror: glass_mirror
-                highlight: glass_highlight
-                ripple: glass_ripple
-                border: 1.5 * glass_border / 100, ink
-                rim: 1% * glass_edge
-                shine: if(glass_shine, pointer.x, 0), if(glass_shine, pointer.y, 0)
-                shadow: 0, 6, 18, 1% * glass_shadow_amt, glass_shadow
-                box { from: 0, 0; size: 420, 160; corner: 24 }
-            }
-            body {
-                show: glass_frost_auto
-                color: panel_bg
-                glass: if(glass_on, 1% * glass_mix, 0%)
-                opacity: 1% * max(glass_tint, 86)
-                tint: glass_color_tint / 100
-                lens: glass_on and glass_bend
-                frost: auto
-                refraction: glass_refr
-                dispersion: glass_disp
-                dome: glass_dome
-                milk: glass_milk
-                smoke: glass_smoke
-                vivid: glass_vivid
-                mirror: glass_mirror
-                highlight: glass_highlight
-                ripple: glass_ripple
-                border: 1.5 * glass_border / 100, ink
-                rim: 1% * glass_edge
-                shine: if(glass_shine, pointer.x, 0), if(glass_shine, pointer.y, 0)
-                shadow: 0, 6, 18, 1% * glass_shadow_amt, glass_shadow
-                box { from: 0, 0; size: 420, 160; corner: 24 }
-            }
-            box { from: 0, 0; size: 420, 160; corner: 24; stroke: 1.8; color: if(nt_urgent, alert, ink); opacity: if(nt_urgent, 32%, 16%) }
-            box { from: 5, 5; size: 410, 150; corner: 20; color: ink; opacity: 4% }
-            line { from: 24, 6; to: 396, 6; width: 1; color: ink; opacity: 9% }
-
-            //  ── icon tile ─────────────────────────────────────────────────
-            //  The tile is centred on the title/body block, not on the
-            //  whole card: at y=92 it sat below the words and the countdown
-            //  ring exaggerated the asymmetry.
-            group {
-                move: 0, -24
-            box { from: 18, 68; size: 48, 48; corner: 14; color: ink; opacity: 7% }
-            ellipse { at: 42, 92; radius: 24 + 24 * clamp(nt_ring, 0, 1); stroke: 1.6; color: if(nt_urgent, alert, aqua); opacity: 75% * (1 - clamp(nt_ring, 0, 1)) }
-            group {
-                show: nt_icon_on
-                pivot: 42, 92
-                rotate: 16deg * (1 - clamp(nt_sw, 0, 1)) * sin(clamp(nt_sw, 0, 1) * 2000)
-                scale: 1 + 0.07 * (1 - clamp(nt_sw, 0, 1)) * sin(clamp(nt_sw, 0, 1) * 2600 + 40)
-                image nt_img { at: 18, 68; size: 48, 48 }
-            }
-            group {
-                show: not nt_icon_on
-                pivot: 42, 92
-                scale: 1.16
-                let bq = clamp(nt_sw, 0, 1)
-                let bsw = (1 - bq) * sin(bq * 2000)
-                let bfr = floor(time * 8)
-                repeat r in 0..6 {
-                    let bang = r * 60 + time * 30
-                    let br0 = 20
-                    let br1 = br0 + 2 + 1.5 * (1 - bq) + sin(time * 200 + r * 90)
-                    line { from: 42 + br0 * cos(bang), 92 + br0 * sin(bang); to: 42 + br1 * cos(bang), 92 + br1 * sin(bang); width: 1.4; color: if(nt_urgent, alert, aqua); opacity: (30% + 50% * (1 - bq)) }
-                }
-                group {
-                    pivot: 42, 80
-                    rotate: 20deg * bsw
-                    repeat bp in 0..2 {
-                        let bo = bp * 0.7
-                        let bj = 0.5 * sin(bfr * 53 + bp * 137)
-                        let bk = 0.5 * sin(bfr * 61 + bp * 71 + 40)
-                        path { at: 42 + bo, 92 + bo * 0.5; stroke: if(bp == 0, 1.8, 1.3); color: ink; opacity: if(bp == 0, 90%, 34%)
-                            move -10 + bj, 6 + bk
-                            curve -5.5 + bk, -6 + bj via -6.5, 2
-                            curve 5.5 + bj, -6 + bk via 0, -15 + bj
-                            curve 10 + bk, 6 + bj via 6.5, 2
-                            line -10 + bj, 6 + bk }
-                    }
-                    path { at: 42, 92; color: if(nt_urgent, alert, aqua); opacity: 30%; move -10, 6; curve -5.5, -6 via -6.5, 2; curve 5.5, -6 via 0, -15; curve 10, 6 via 6.5, 2; close }
-                    ellipse { at: 42 + 0.4 * sin(bfr * 67), 79.7; radius: 1.5; color: ink }
-                    repeat bc in 0..3 {
-                        line { from: 36 + bc * 2, 89 + bc * 1.5 + 0.4 * sin(bfr * 47 + bc * 60); to: 37 + bc * 2, 94 + 0.4 * sin(bfr * 53 + bc * 70); width: 1.1; color: if(nt_urgent, alert, aqua); opacity: 65% }
-                    }
-                    ellipse { at: 42 - 3.5 * bsw + 0.4 * sin(bfr * 59), 102; radius: 2.2; color: if(nt_urgent, alert, aqua) }
-                }
-            }
-            }
-
-            //  ── words ─────────────────────────────────────────────────────
-            text nt_app { at: 82, 24; anchor: left center; size: 11; weight: 600; color: nt.app_tone; width: 300; lines: 1; family: "Space Grotesk" }
-            text nt_title { at: 82, 40; anchor: left top; size: 16; weight: 600; color: nt.title_tone; width: 300; lines: 2; line_height: 1.2; measure: nt.title_m; family: "Space Grotesk" }
-            text nt_body { at: 82, 40 + nt.title_m.height + 4; anchor: left top; size: 13; weight: 400; color: mix(faint, ink, 0.15); width: 300; lines: 2; line_height: 1.25; family: "Space Grotesk" }
-
-            //  ── auto-close countdown ─────────────────────────────────────
-            //  The ring hugs the icon tile: a faint primary track stays put
-            //  while the bright arc retracts toward twelve o'clock.  The
-            //  seconds sit under the tile, so the countdown belongs to the
-            //  icon instead of adding a separate bar at the bottom.
-            group {
-                show: nt_timed
-                let nt.fill = clamp(nt_fill, 0, 1)
-                ellipse { at: 42, 68; radius: 29.5; stroke: 1.5; color: primary; opacity: 9% }
-                arc { at: 42, 68; radius: 29.5; width: 6; span: 360deg * nt.fill; rotate: 180deg * nt.fill; color: primary; opacity: 12% * nt.fill }
-                arc { at: 42, 68; radius: 29.5; width: 2.4; span: 360deg * nt.fill; rotate: 180deg * nt.fill; color: primary; opacity: 62% + 24% * nt.fill }
-                text nt_countdown { at: 42, 105; anchor: center; size: 9; weight: 700; color: primary; opacity: 82%; family: "Space Grotesk" }
-            }
-
-            line { from: 390, 16; to: 400, 26; width: 1.4; color: ink; opacity: 55% + 45% * nt_x.hover }
-            line { from: 400, 16; to: 390, 26; width: 1.4; color: ink; opacity: 55% + 45% * nt_x.hover }
-            zone box nt_x { from: 384, 8; size: 28, 28; corner: 14; cursor: pointer; label: "Dismiss notification" }
-            on press nt_x { emit nt_close }
+                NotificationToastCard(false)
             }
         }
         }

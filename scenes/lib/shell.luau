@@ -139,6 +139,14 @@ function M.start(layout)
         bar_show_lunar = true,
         bar_show_weekday = true,
         bar_show_secs = true,
+        bar_show_cpu = true,
+        bar_show_mem = true,
+        bar_show_net = true,
+        bar_show_countdown = true,
+        bar_order = { "cpu", "mem", "net", "clock", "date", "countdown" },
+        bar_font_size = 18,
+        bar_num_style = 1,
+        bar_num_weight = 105,
         lock_blur = 36,
         lock_12h = true,
         lock_ampm = true,
@@ -222,6 +230,55 @@ function M.start(layout)
         return h .. (h == 1 and " hour" or " hours") .. (m % 60 > 0 and (" " .. (m % 60) .. " min") or "")
     end
 
+    local BAR_ORDER_DEFAULT = { "cpu", "mem", "net", "clock", "date", "countdown" }
+    local BAR_ORDER_META = {
+        cpu = { fact = "bar_ord_cpu", label = "CPU" },
+        mem = { fact = "bar_ord_mem", label = "内存" },
+        net = { fact = "bar_ord_net", label = "网速" },
+        clock = { fact = "bar_ord_clock", label = "时间" },
+        date = { fact = "bar_ord_date", label = "日期" },
+        countdown = { fact = "bar_ord_cd", label = "倒计时" },
+    }
+    local function normalize_bar_order(list)
+        local out, seen = {}, {}
+        if type(list) == "table" then
+            for _, k in ipairs(list) do
+                if type(k) == "string" and BAR_ORDER_META[k] and not seen[k] then
+                    seen[k] = true
+                    out[#out + 1] = k
+                end
+            end
+        end
+        for _, k in ipairs(BAR_ORDER_DEFAULT) do
+            if not seen[k] then
+                seen[k] = true
+                out[#out + 1] = k
+            end
+        end
+        return out
+    end
+    local function bar_slot_enabled(k)
+        if k == "cpu" then return truthy(fact.bar_show_cpu) end
+        if k == "mem" then return truthy(fact.bar_show_mem) end
+        if k == "net" then return truthy(fact.bar_show_net) end
+        if k == "clock" then return true end
+        if k == "date" then
+            return truthy(fact.bar_show_date) or truthy(fact.bar_show_lunar) or truthy(fact.bar_show_weekday)
+        end
+        if k == "countdown" then return truthy(fact.bar_show_countdown) end
+        return false
+    end
+    local function sync_bar_order()
+        cfg.bar_order = normalize_bar_order(cfg.bar_order)
+        local slots = {}
+        for idx, k in ipairs(cfg.bar_order) do
+            local meta = BAR_ORDER_META[k]
+            fact[meta.fact] = idx - 1
+            slots[idx] = { key = k, label = meta.label, enabled = bar_slot_enabled(k) }
+        end
+        model.bar_order_slots = slots
+    end
+
     local function apply(saved)
         if type(saved.font_family) == "string" and saved.font_family ~= "" then
             cfg.font_family = saved.font_family
@@ -285,6 +342,14 @@ function M.start(layout)
         if type(saved.bar_show_lunar) == "boolean" then cfg.bar_show_lunar = saved.bar_show_lunar end
         if type(saved.bar_show_weekday) == "boolean" then cfg.bar_show_weekday = saved.bar_show_weekday end
         if type(saved.bar_show_secs) == "boolean" then cfg.bar_show_secs = saved.bar_show_secs end
+        if type(saved.bar_show_cpu) == "boolean" then cfg.bar_show_cpu = saved.bar_show_cpu end
+        if type(saved.bar_show_mem) == "boolean" then cfg.bar_show_mem = saved.bar_show_mem end
+        if type(saved.bar_show_net) == "boolean" then cfg.bar_show_net = saved.bar_show_net end
+        if type(saved.bar_show_countdown) == "boolean" then cfg.bar_show_countdown = saved.bar_show_countdown end
+        if type(saved.bar_order) == "table" then cfg.bar_order = normalize_bar_order(saved.bar_order) end
+        cfg.bar_font_size = clamp(number(saved.bar_font_size, cfg.bar_font_size), 12, 26)
+        cfg.bar_num_style = math.floor(clamp(number(saved.bar_num_style, cfg.bar_num_style), 0, 3))
+        cfg.bar_num_weight = math.floor(clamp(number(saved.bar_num_weight, cfg.bar_num_weight), 70, 145))
         cfg.lock_blur = clamp(number(saved.lock_blur, cfg.lock_blur), 0, 120)
         if type(saved.lock_12h) == "boolean" then cfg.lock_12h = saved.lock_12h end
         if type(saved.lock_ampm) == "boolean" then cfg.lock_ampm = saved.lock_ampm end
@@ -380,7 +445,16 @@ function M.start(layout)
         fact.bar_show_lunar = cfg.bar_show_lunar
         fact.bar_show_weekday = cfg.bar_show_weekday
         fact.bar_show_secs = cfg.bar_show_secs
+        fact.bar_show_cpu = cfg.bar_show_cpu
+        fact.bar_show_mem = cfg.bar_show_mem
+        fact.bar_show_net = cfg.bar_show_net
+        fact.bar_show_countdown = cfg.bar_show_countdown
+        fact.bar_font_size = cfg.bar_font_size
+        fact.bar_num_style = cfg.bar_num_style
+        fact.bar_num_weight = cfg.bar_num_weight
+        sync_bar_order()
         center.refresh_bar_date()
+        center.refresh_sys()
         fact.lock_blur = cfg.lock_blur
         fact.lock_12h = cfg.lock_12h
         fact.lock_ampm = cfg.lock_ampm
@@ -471,6 +545,14 @@ function M.start(layout)
             bar_show_lunar = truthy(fact.bar_show_lunar),
             bar_show_weekday = truthy(fact.bar_show_weekday),
             bar_show_secs = truthy(fact.bar_show_secs),
+            bar_show_cpu = truthy(fact.bar_show_cpu),
+            bar_show_mem = truthy(fact.bar_show_mem),
+            bar_show_net = truthy(fact.bar_show_net),
+            bar_show_countdown = truthy(fact.bar_show_countdown),
+            bar_order = normalize_bar_order(cfg.bar_order),
+            bar_font_size = number(fact.bar_font_size, 18),
+            bar_num_style = math.floor(clamp(number(fact.bar_num_style, 1), 0, 3)),
+            bar_num_weight = math.floor(clamp(number(fact.bar_num_weight, 105), 70, 145)),
             lock_blur = number(fact.lock_blur, 36),
             lock_12h = truthy(fact.lock_12h),
             lock_ampm = truthy(fact.lock_ampm),
@@ -614,7 +696,7 @@ function M.start(layout)
         end
         local pitch = 0.97 + math.random() * 0.06
         if type(sound) == "table" then
-            if sound.play and pcall(sound.play, "sfx/panel.wav", { volume = 0.28, pitch = pitch, pan = pan }) then
+            if sound.play and pcall(sound.play, "sfx/panel.wav", { volume = 0.5, pitch = pitch, pan = pan }) then
                 return
             end
             if sound.tone and pcall(sound.tone, { wave = "sine", freq = 720 * pitch, to = 1040 * pitch, ms = 34, attack = 3, release = 28, volume = 0.14, pan = pan }) then
@@ -622,7 +704,7 @@ function M.start(layout)
             end
         end
         if shell_root == "" then return end
-        run("sh", { "-c", "pw-play --volume 0.25 " .. sq(shell_root .. "/assets/panel.wav") .. " >/dev/null 2>&1" }, function(_, code)
+        run("sh", { "-c", "pw-play --volume 0.5 " .. sq(shell_root .. "/assets/panel.wav") .. " >/dev/null 2>&1" }, function(_, code)
             if code ~= 0 then log("panel sound could not play") end
         end)
     end
@@ -991,6 +1073,7 @@ function M.start(layout)
             nt_timer = nil
         end
     end
+    local recompute_quiet
     local function nt_finish()
         local n = nt_now
         nt_cancel_timer()
@@ -1000,6 +1083,7 @@ function M.start(layout)
         fact.nt_left = 1
         text.nt_countdown = ""
         if n then pcall(sys.call, "notifications.dismiss", n.id) end
+        if recompute_quiet then recompute_quiet() end
         --  The queue is pumped by the timer below; calling a timer API from
         --  the close event handler has been unreliable here.
     end
@@ -1046,8 +1130,10 @@ function M.start(layout)
             fact.nt_has = false
             nt_now = nil
             pcall(sys.call, "notifications.dismiss", n.id)
+            if recompute_quiet then recompute_quiet() end
             return
         end
+        if recompute_quiet then recompute_quiet() end
         nt_sound(fact.nt_sound)
         if not truthy(fact.nt_urgent) then
             nt_total = math.floor(clamp(number(fact.nt_secs, cfg.nt_secs), 2, 60))
@@ -1097,10 +1183,10 @@ function M.start(layout)
     after(500, function() nt_set_sound_name() end)
 
     --  ── quiet: the scene only runs hot while the water can move ─────────
-    local function recompute_quiet()
+    recompute_quiet = function()
         local wave_wanted = truthy(fact.music_frame_on)
         local playing = wave_wanted and truthy(fact.music_on)
-        local open = truthy(fact.panel_open) or truthy(fact.launch_open) or truthy(fact.center_open)
+        local open = truthy(fact.panel_open) or truthy(fact.launch_open) or truthy(fact.center_open) or truthy(fact.nt_has)
         local q = (not playing) and (not open)
         if truthy(fact.quiet) ~= q then fact.quiet = q end
     end
@@ -1865,10 +1951,34 @@ function M.start(layout)
     on("fact:music_frame_cols",   function() save() end)
     on("fact:notch_clock_h",      function() save() end)
     on("fact:notch_clock_w",      function() save() end)
-    on("fact:bar_show_date",      function() center.refresh_bar_date(); save() end)
-    on("fact:bar_show_lunar",     function() center.refresh_bar_date(); save() end)
-    on("fact:bar_show_weekday",   function() center.refresh_bar_date(); save() end)
+    on("fact:bar_font_size",      function() save() end)
+    on("fact:bar_num_style",      function() save() end)
+    on("fact:bar_num_weight",     function() save() end)
+    on("fact:bar_show_date",      function() center.refresh_bar_date(); sync_bar_order(); save() end)
+    on("fact:bar_show_lunar",     function() center.refresh_bar_date(); sync_bar_order(); save() end)
+    on("fact:bar_show_weekday",   function() center.refresh_bar_date(); sync_bar_order(); save() end)
     on("fact:bar_show_secs",      function() save() end)
+    on("fact:bar_show_cpu",       function() center.refresh_sys(); sync_bar_order(); save() end)
+    on("fact:bar_show_mem",       function() center.refresh_sys(); sync_bar_order(); save() end)
+    on("fact:bar_show_net",       function() center.refresh_sys(); sync_bar_order(); save() end)
+    on("fact:bar_show_countdown", function() center.refresh_bar_date(); sync_bar_order(); save() end)
+    on("bar_order_move", function(code)
+        code = math.floor(number(code, -1) + 0.5)
+        local slot = math.floor(code / 2) + 1
+        local dir = (code % 2 == 0) and -1 or 1
+        local target = slot + dir
+        cfg.bar_order = normalize_bar_order(cfg.bar_order)
+        if slot >= 1 and slot <= #cfg.bar_order and target >= 1 and target <= #cfg.bar_order then
+            cfg.bar_order[slot], cfg.bar_order[target] = cfg.bar_order[target], cfg.bar_order[slot]
+            sync_bar_order()
+            save()
+        end
+    end)
+    on("bar_order_reset", function()
+        cfg.bar_order = normalize_bar_order(BAR_ORDER_DEFAULT)
+        sync_bar_order()
+        save()
+    end)
     on("fact:lock_blur", function() save() end)
     on("fact:lock_12h", function() save() end)
     on("fact:lock_ampm", function() save() end)

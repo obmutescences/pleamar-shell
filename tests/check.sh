@@ -65,15 +65,35 @@ grep -q '^render · slow frame' "$tmp/unfiltered" || { echo "PLEAMAR_RENDER_LOG 
 grep -q '^render · failed to import capture' "$tmp/filtered" || { echo "render filter ate a failure" >&2; exit 1; }
 grep -q '^render · captures of a glass' "$tmp/unfiltered" || { echo "PLEAMAR_RENDER_LOG did not restore capture notices" >&2; exit 1; }
 grep -q '^render · the compositor is not showing this surface' "$tmp/unfiltered" || { echo "PLEAMAR_RENDER_LOG did not restore compositor notices" >&2; exit 1; }
-bash -n "$root/bin/pleamar-lock" "$root/bin/pleamar-lock-keeper" "$root/bin/pleamar-settingskeys"
+bash -n "$root/bin/pleamar-shell" "$root/bin/pleamar-lock" "$root/bin/pleamar-lock-keeper" "$root/bin/pleamar-settingskeys"
+
+#  lockscreen.plm must declare `screens: all` unquoted (quoted `"all"` matches a
+#  literal monitor name and breaks ext-session-lock on DPMS wake).
+grep -qE '^[[:space:]]*screens:[[:space:]]*all([[:space:]]|$)' "$root/lockscreen/lockscreen.plm"
 
 #  The centre panel's System page is fed by this helper; a broken JSON line
 #  would silently blank the whole monitor.
-"$root/bin/pleamar-sysmon" --once | python3 -c '
+"$root/bin/pleamar-sysmon" --once | python3 -B -c '
 import json, sys
 row = json.load(sys.stdin)
 assert "cpu" in row and "mem" in row and "net" in row and "disk" in row
 '
+
+#  Bar widgets use --lite mode: ensure its first JSON line arrives promptly.
+python3 -B - "$root/bin/pleamar-sysmon" <<'PY'
+import json, subprocess, sys
+proc = subprocess.Popen([sys.argv[1], "--lite"], stdout=subprocess.PIPE, text=True)
+try:
+    line = proc.stdout.readline()
+finally:
+    proc.terminate()
+    proc.wait(timeout=4)
+row = json.loads(line)
+assert row.get("lite") is True, row
+assert "cpu" in row and "total" in row["cpu"], row
+assert "mem" in row and "total" in row["mem"] and "used" in row["mem"], row
+assert "net" in row and "rx" in row["net"] and "tx" in row["net"], row
+PY
 
 #  The calendar's countdown follows the month on screen, not the month of
 #  today, and keeps an anniversary that has just passed (marked 已过).  The
@@ -119,6 +139,11 @@ nxt = build(next_year, next_month)
 assert nxt["countdown_title"] == f"{next_month}月倒计时", nxt["countdown_title"]
 nxt_item = next(c for c in nxt["countdowns"] if c["title"] == "NextTest")
 assert nxt_item["days"] > 0
+ncd = cur.get("next_countdown")
+assert ncd is not None, cur
+expected_title = "PastTest" if today.day == 1 else "NextTest"
+assert ncd["title"] == expected_title, ncd
+assert ncd["days"] >= 0 and ncd["days_txt"] and ncd["label"].startswith(expected_title), ncd
 assert len(nxt["days"]) == 42
 assert all(c["hover"] for c in nxt["days"])
 if shutil.which("ccal"):

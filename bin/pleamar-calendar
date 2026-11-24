@@ -224,7 +224,7 @@ def lunar_label(lunar):
 def build(year, month):
     today = date.today()
     view = date(year, month, 1)
-    years = {today.year, view.year - 1, view.year, view.year + 1}
+    years = {today.year, today.year + 1, view.year - 1, view.year, view.year + 1}
     maps = {y: read_ccal(y) for y in years}
     #  The 42-cell grid borrows days from the neighbouring years as well as
     #  months; merge them so hovering a leading/trailing day still knows its
@@ -268,6 +268,32 @@ def build(year, month):
             "days": delta,
         })
     countdowns.sort(key=lambda row: row["days"])
+
+    upcoming = []
+    for item in items:
+        title = anniversary_title(item)
+        if not title:
+            continue
+        when = anniversary_on(item, today.year, maps)
+        if when is None or (when - today).days < 0:
+            when = anniversary_on(item, today.year + 1, maps)
+        if when is None:
+            continue
+        delta = (when - today).days
+        if delta >= 0:
+            upcoming.append((delta, when, title))
+    upcoming.sort(key=lambda row: (row[0], row[2]))
+    next_countdown = None
+    if upcoming:
+        delta, when, title = upcoming[0]
+        days_txt = "今天" if delta == 0 else f"{delta}天"
+        next_countdown = {
+            "title": title,
+            "days": delta,
+            "days_txt": days_txt,
+            "date": f"{when.month}月{when.day}日",
+            "label": f"{title}{days_txt}",
+        }
 
     # Monday-first grid, six rows, including the surrounding month's days.
     first = date(view.year, view.month, 1)
@@ -351,6 +377,7 @@ def build(year, month):
         "countdown_title": ("本月倒计时" if (view.year, view.month) == (today.year, today.month)
                             else f"{view.month}月倒计时"),
         "countdowns": countdowns[:2],
+        "next_countdown": next_countdown,
     }
 
 

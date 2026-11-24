@@ -16,7 +16,7 @@ scene Lockscreen {
 
     permissions {
         services: "clock", "clock.seconds", "battery", "media", "media.*", "auth", "files", "files.write", "session.*", "env"
-        run: "cat", "magick", "getent", "mkdir", "rm", "ls", "cp", "printenv", "niri"
+        run: "cat", "magick", "getent", "mkdir", "rm", "ls", "cp", "printenv", "niri", "loginctl", "touch"
     }
 
     service clock as now { hour: number }
@@ -99,12 +99,11 @@ scene Lockscreen {
     event palette_sync ->
 
     image avatar = from avatar_path, 200, 200
-    image wall_sharp = from wp_sharp, 0, 0
+    image wall_sharp = from wp_sharp, 1280, 720
     image wall_blur = from wp_blur, 960, 540
     figure shp = file "shapes.svg"
     shader lockwave = file "lockwave.wgsl"
     shader glow = file "glow.wgsl"
-    shader blob = file "blob.wgsl"
     spring wobble = 520, 11
     spring pop = 420, 14
 
@@ -145,7 +144,7 @@ scene Lockscreen {
     //  ── the lock ─────────────────────────────────────────────────────────────
     surface lk {
         kind: lock
-        screens: "all"
+        screens: all
         size: 640, 440
         rate: 30, 1 while not screen_on
         open: locked

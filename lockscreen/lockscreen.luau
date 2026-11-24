@@ -105,10 +105,11 @@ sys.watch("clock", function(c)
     last_clock = c
     show_clock(c)
 end)
--- Every second, but only while there is something to draw: a clock with seconds, on a locked screen.
+-- Keep last_clock fresh every second so locking shows the exact second on
+-- frame 0, while updating scene text only when seconds are shown on a live lock.
 sys.watch("clock.seconds", function(c)
-    if cfg.show_seconds and fact.locked then
-        last_clock = c
+    last_clock = c
+    if cfg.show_seconds and fact.locked and fact.screen_on then
         show_clock(c)
     end
 end)
@@ -164,7 +165,31 @@ on("text:cfg_date", function(t)
 end)
 
 -- ── Who is locked in ─────────────────────────────────────────────────────────────────────────────────
-local home, user = "", ""
+local home, user, runtime_dir = "", "", ""
+
+local function lock_mark_path()
+    if runtime_dir ~= "" then return runtime_dir .. "/pleamar-lock-held" end
+    return nil
+end
+
+local function set_lock_mark(held)
+    local p = lock_mark_path()
+    if not p then return end
+    if held then
+        run("touch", { p }, function() end)
+    else
+        run("rm", { "-f", p }, function() end)
+    end
+end
+
+local function unlock_logind_session()
+    local ok_s, sid = pcall(sys.ask, "env", "XDG_SESSION_ID")
+    if ok_s and type(sid) == "string" and sid ~= "" then
+        run("loginctl", { "unlock-session", sid:gsub("%s+$", "") }, function() end)
+    else
+        run("loginctl", { "unlock-session" }, function() end)
+    end
+end
 
 -- The lock scene is warmed at shell startup, but wallpaper colours can change
 -- afterwards.  Keep the palette in a function so `pleamar-lock sync` can push
@@ -226,6 +251,15 @@ end
 do
     local ok_h, env_h = pcall(sys.ask, "env", "HOME")
     local ok_u, env_u = pcall(sys.ask, "env", "USER")
+    local ok_r, env_r = pcall(sys.ask, "env", "XDG_RUNTIME_DIR")
+    if ok_r and type(env_r) == "string" and env_r ~= "" then
+        runtime_dir = env_r:gsub("%s+$", "")
+    else
+        run("printenv", { "XDG_RUNTIME_DIR" }, function(rout)
+            rout = (rout or ""):gsub("%s+$", "")
+            if rout ~= "" then runtime_dir = rout end
+        end)
+    end
     if ok_h and type(env_h) == "string" and env_h ~= "" then
         init_user(env_h, (ok_u and type(env_u) == "string") and env_u or "")
     else
@@ -273,6 +307,7 @@ local prep_busy = false
 local prep_started = 0
 local prep_pending = false
 local made_key = nil
+local failed_key = nil
 
 local function hash(str)
     local h = 5381
@@ -284,23 +319,26 @@ end
 -- wallpaper's pictures and asked for again by a version on the end of the path (`blur.jpg?7`): that is how pleamar
 -- is told a file written under the same name has changed. (A scene that instead was pointed at a new file
 -- name each time, and had the old files deleted, drew nothing on the lock: it went on asking for a path that
--- was gone.) The pictures made for each wallpaper are kept under their own names, one pair at a time.
+-- was gone.) Both files are bounded (1280x720 sharp, 960x540 blur) so the 2048x2048 atlas is never exhausted.
 local publish_count = 0
 
-local function publish(sharp_src, b, done)
+local function publish(s, b, done)
     local dir = home .. "/.cache/pleamar-shell/lockscreen"
+    local fs = dir .. "/sharp.jpg"
     local fb = dir .. "/blur.jpg"
-    run("cp", { "-f", b, fb }, function(_, c2)
-        if c2 == 0 then
-            publish_count = publish_count + 1
-            local version = "?" .. (os.time() * 100 + publish_count % 100)
-            text.wp_sharp = sharp_src
-            text.wp_blur = fb .. version
-            fact.has_wall = true
-        else
-            log("lock wallpaper: publish failed (" .. tostring(c2) .. ")")
-        end
-        if done then done() end
+    run("cp", { "-f", s, fs }, function(_, c1)
+        run("cp", { "-f", b, fb }, function(_, c2)
+            if c1 == 0 and c2 == 0 then
+                publish_count = publish_count + 1
+                local version = "?" .. (os.time() * 100 + publish_count % 100)
+                text.wp_sharp = fs .. version
+                text.wp_blur = fb .. version
+                fact.has_wall = true
+            else
+                log("lock wallpaper: publish failed (" .. tostring(c1) .. ", " .. tostring(c2) .. ")")
+            end
+            if done then done() end
+        end)
     end)
 end
 
@@ -338,42 +376,51 @@ prepare_wallpaper = function(force)
         local path = ok and type(data) == "table" and data.wallpaper or nil
         if type(path) ~= "string" or path == "" then return done() end
         run("niri", { "msg", "outputs" }, function(oout)
-        local geo = (oout or ""):match("Logical size: (%d+x%d+)") or "2560x1440"
-        local sigma = cfg.blur / 4              -- the blurred picture is made at 480 wide, a quarter of the screen
-        local key = hash(string.format("5 %g %s", sigma, geo) .. path)
-        if key == made_key then return done() end
-        local b = dir .. "/blur-" .. key .. ".jpg"
-        -- the blurred pictures of earlier wallpapers are no longer needed
-        local function forget_old()
-            run("ls", { dir }, function(listing)
-                for name in (listing or ""):gmatch("[^\n]+") do
-                    if (name:match("^sharp%-%d+%.jpg$") or name:match("^blur%-%d+%.jpg$")) and not name:find("-" .. key .. ".jpg", 1, true) then
-                        run("rm", { "-f", dir .. "/" .. name }, function() end)
-                    end
-                end
-            end)
-        end
-        run("ls", { b }, function(_, code)
-            if code == 0 then
-                made_key = key
-                publish(path, b, done)
-                return
-            end
-            run("mkdir", { "-p", dir }, function()
-                run("magick", { path, "-resize", geo .. "^", "-gravity", "center", "-extent", geo, "-resize", "480x", "-blur", "0x" .. sigma, "-resize", "960x540!", "-quality", "95", "-sampling-factor", "4:4:4", b }, function(_, c2)
-                    if c2 == 0 then
-                        made_key = key
-                        publish(path, b, function()
-                            forget_old()
-                            done()
-                        end)
-                    else
-                        log("lock wallpaper: blur render failed (" .. tostring(c2) .. ")")
-                        done()
+            local geo = (oout or ""):match("Logical size: (%d+x%d+)") or "2560x1440"
+            local sigma = cfg.blur / 4          -- the blurred picture is made at 480 wide, a quarter of the screen
+            local key = hash(string.format("6 %g %s", sigma, geo) .. path)
+            if key == made_key or key == failed_key then return done() end
+            local s = dir .. "/sharp-" .. key .. ".jpg"
+            local b = dir .. "/blur-" .. key .. ".jpg"
+            -- the pictures of earlier wallpapers are no longer needed
+            local function forget_old()
+                run("ls", { dir }, function(listing)
+                    for name in (listing or ""):gmatch("[^\n]+") do
+                        if (name:match("^sharp%-%d+%.jpg$") or name:match("^blur%-%d+%.jpg$")) and not name:find("-" .. key .. ".jpg", 1, true) then
+                            run("rm", { "-f", dir .. "/" .. name }, function() end)
+                        end
                     end
                 end)
+            end
+            run("ls", { s, b }, function(_, code)
+                if code == 0 then
+                    made_key = key
+                    failed_key = nil
+                    publish(s, b, done)
+                    return
+                end
+                run("mkdir", { "-p", dir }, function()
+                    run("magick", {
+                        path, "-resize", geo .. "^", "-gravity", "center", "-extent", geo,
+                        "-write", "mpr:crop", "+delete",
+                        "mpr:crop", "-resize", "1280x720!", "-quality", "92", "-sampling-factor", "4:4:4", "-write", s, "+delete",
+                        "mpr:crop", "-resize", "480x", "-blur", "0x" .. sigma, "-resize", "960x540!", "-quality", "95", "-sampling-factor", "4:4:4", b,
+                    }, function(_, c2)
+                        if c2 == 0 then
+                            made_key = key
+                            failed_key = nil
+                            publish(s, b, function()
+                                forget_old()
+                                done()
+                            end)
+                        else
+                            failed_key = key
+                            log("lock wallpaper: sharp/blur render failed (" .. tostring(c2) .. ")")
+                            done()
+                        end
+                    end)
+                end)
             end)
-        end)
         end)
     end)
 end
@@ -383,6 +430,7 @@ on("fact:cfg_blur", function(v)
     cfg.blur = math.max(0, math.min(120, n))
     save_cfg()
     made_key = nil                          -- the blurred picture is made again, at the new blur
+    failed_key = nil
     prepare_wallpaper(true)
 end)
 --  The cache is the last pair the lock actually drew. Show it immediately on
@@ -396,12 +444,16 @@ local function seed_wallpaper()
     local dir = home .. "/.cache/pleamar-shell/lockscreen"
     run("ls", { dir .. "/blur.jpg" }, function(_, code)
         if code == 0 then
-            text.wp_sharp = dir .. "/blur.jpg"
-            text.wp_blur = dir .. "/blur.jpg"
-            fact.has_wall = true
-            log("lock wallpaper: cache seed")
+            run("ls", { dir .. "/sharp.jpg" }, function(_, c_sharp)
+                text.wp_sharp = (c_sharp == 0) and (dir .. "/sharp.jpg") or (dir .. "/blur.jpg")
+                text.wp_blur = dir .. "/blur.jpg"
+                fact.has_wall = true
+                log("lock wallpaper: cache seed")
+                prepare_wallpaper(true)
+            end)
+        else
+            prepare_wallpaper(true)
         end
-        prepare_wallpaper(true)
     end)
 end
 after(800, seed_wallpaper)
@@ -413,7 +465,9 @@ end)
 --  what grows niri's heap. `screen_on` stops the clock's spin; the keeper also
 --  pushes it, so this works even when the scene has gone idle.
 local function check_screen()
+    if not fact.locked then return end
     run("ls", { "/sys/class/drm" }, function(listing)
+        if not fact.locked then return end
         local any, pending = false, 0
         for name in (listing or ""):gmatch("[^\n]+") do
             if name:match("^card%d+%-") and not name:find("Writeback") then
@@ -428,13 +482,10 @@ local function check_screen()
         if pending == 0 then fact.screen_on = false end
     end)
 end
-after(1000, check_screen)
 every(2000, check_screen)
-
 on("fact:screen_on", function(v)
-    if truthy(v) then
-        made_key = nil
-        prepare_wallpaper(true)
+    if truthy(v) and fact.locked and last_clock then
+        show_clock(last_clock)
     end
 end)
 
@@ -555,21 +606,34 @@ local function after_unlock()
     reset()
     fact.settled = false
     fact.safe = false                        -- a test lock (safe: Esc or a minute opens it) is a test of one lock only
+    set_lock_mark(false)
+    unlock_logind_session()
     --  This also runs when the logic itself unlocks (the password), where the
     --  `fact:locked` handler below does not fire.  The wallpaper may have
     --  changed while the lock was up.
-    after(300, prepare_wallpaper)
+    after(300, function() prepare_wallpaper(false) end)
 end
 
+local lock_gen = 0
+
 on("fact:locked", function(v)
-    if v then
+    lock_gen = lock_gen + 1
+    local gen = lock_gen
+    if truthy(v) then
         reset()
         fact.settled = false
+        fact.screen_on = true
+        if not truthy(fact.safe) then set_lock_mark(true) end
+        if last_clock then show_clock(last_clock) end
+        check_screen()
+        failed_key = nil
         --  A fresh scene can be told to lock before its first wallpaper tick.
         --  Prepare now so the lock never falls back to an older cache.
         prepare_wallpaper(true)
-        -- the entrance is 2.2 s; after that nothing on the screen needs the clock any more
-        after(2400, function() fact.settled = true end)
+        -- the entrance is 2.2 s; after that only the ambient clock/water remain
+        after(2400, function()
+            if gen == lock_gen and fact.locked then fact.settled = true end
+        end)
     else
         after_unlock()
     end
@@ -577,14 +641,16 @@ end)
 
 on("tryauth", function()
     local pw = text.password
-    if fact.authing or fact.right or pw == "" then return end
+    if fact.authing or fact.right or fact.wrong or pw == "" then return end
     fact.authing = true
     text.status = "Verifying..."
-    local ok = sys.ask("auth.check", pw)
+    local ok_ask, res = pcall(sys.ask, "auth.check", pw)
     fact.authing = false
-    if ok then
+    if ok_ask and res == true then
         fact.right = true
         text.status = "Unlocked!"
+        set_lock_mark(false)
+        unlock_logind_session()
         after(320, function()
             fact.locked = false
             after_unlock()

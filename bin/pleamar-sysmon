@@ -290,12 +290,42 @@ def info():
 
 def main():
     once = "--once" in sys.argv
+    lite = "--lite" in sys.argv
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     signal.signal(signal.SIGPIPE, lambda *_: sys.exit(0))
     iface = default_iface()
     t0 = time.time()
     c0 = cpu_times()
     net0 = net_counters(iface) if iface else None
+    if lite:
+        time.sleep(0.25 if once else 0.4)
+        while True:
+            now = time.time()
+            dt = max(now - t0, 0.001)
+            c1 = cpu_times()
+            a, b = c0.get("cpu"), c1.get("cpu")
+            total = 0.0 if (not a or not b or b[1] == a[1]) else max(0.0, min(100.0, (b[0] - a[0]) * 100.0 / (b[1] - a[1])))
+            rx = tx = 0
+            cur = default_iface()
+            if cur != iface:
+                iface = cur
+                net0 = None
+            net1 = net_counters(iface) if iface else None
+            if net0 and net1:
+                rx, tx = max(0.0, (net1[0] - net0[0]) / dt), max(0.0, (net1[1] - net0[1]) / dt)
+            mem = meminfo()
+            line = {
+                "lite": True,
+                "cpu": {"total": round(total, 1)},
+                "mem": mem,
+                "net": {"iface": iface or "", "rx": round(rx), "tx": round(tx)},
+            }
+            sys.stdout.write(json.dumps(line, separators=(",", ":")) + "\n")
+            sys.stdout.flush()
+            if once:
+                return 0
+            c0, net0, t0 = c1, net1, now
+            time.sleep(max(0.1, 1.0 - (time.time() - now)))
     dk0 = disk_counters()
     p0, _ = procs({}, None, 0, 1)
     tp = t0
