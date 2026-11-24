@@ -114,12 +114,12 @@ part NotchFrame {
         let nf.bar_x0 = nf.cx - nf_strip_w / 2
         let nf.bar_cy = nf.clock_h / 2
         let nf.ic_s = clamp((nf.clock_h - 6) / max(22, nf_ring_r * 2 + nf_ring_w + 2), 0.75, 1.1)
-        let nf.gm_gl = if(bar_num_style == 1, 1.0, if(bar_num_style == 2, 0.85, 0.92))
-        let nf.gm_rim = if(bar_num_style == 1, 0.78, if(bar_num_style == 2, 0.56, 0.90))
-        let nf.gm_fr = if(bar_num_style == 1, 0.45, if(bar_num_style == 2, 1.0, 0.65))
-        let nf.gm_op = if(bar_num_style == 1, 90%, if(bar_num_style == 2, 95%, 94%))
-        let nf.gm_col_a = if(bar_num_style == 3, primary, if(bar_num_style == 2, mix(tint, ink, 0.50), mix(ink, tint, 0.30)))
-        let nf.gm_col_b = if(bar_num_style == 3, secondary, if(bar_num_style == 2, mix(tint, ink, 0.46), mix(ink, tint, 0.34)))
+        let nf.gm_gl = if(bar_num_style == 1, 0.28, if(bar_num_style == 2, 0.26, 0.27))
+        let nf.gm_rim = if(bar_num_style == 1, 0.30, if(bar_num_style == 2, 0.16, 0.24))
+        let nf.gm_fr = if(bar_num_style == 1, 0.35, if(bar_num_style == 2, 0.85, 0.45))
+        let nf.gm_op = if(bar_num_style == 1, 88%, if(bar_num_style == 2, 90%, 96%))
+        let nf.gm_col_a = if(bar_num_style == 3, primary, if(bar_num_style == 2, mix(ink, primary, 0.10), mix(ink, primary, 0.18)))
+        let nf.gm_col_b = if(bar_num_style == 3, secondary, if(bar_num_style == 2, mix(faint, secondary, 0.32), mix(ink, secondary, 0.22)))
         let nf.clock_x = if(nf_stacked, nf.cx, nf.bar_x0 + nf_pos_clk + nf_w_clk / 2)
         let nf.clock_y = if(nf_stacked, nf.clock_h / 2 - nf_fs * 1.1, nf.bar_cy - nf_fs * 0.62)
         let nf.date_x = if(nf_stacked, nf.cx - nf_date_w / 2, nf.bar_x0 + nf_pos_date)
@@ -494,11 +494,11 @@ part NotchFrame {
             color: mix(deep, tint, 0.30)
             glass: nf.gm_gl
             lens: false
+            tint: 0.72
             frost: nf.gm_fr * 0.55
-            rim: 45% * nf.gm_rim
+            rim: 75% * nf.gm_rim
             shine: 0, 0
-            shadow: 0, 1, 5, 22%
-            opacity: 34%
+            opacity: 38%
             ellipse { at: nf.cpu_cx + if(nf_m_cpu, 0, 30000), nf.bar_cy; radius: nf_ring_r * nf.ic_s; stroke: nf_ring_w * nf.ic_s }
             ellipse { at: nf.mem_cx + if(nf_m_mem, 0, 30000), nf.bar_cy; radius: nf_ring_r * nf.ic_s; stroke: nf_ring_w * nf.ic_s }
         }
@@ -556,12 +556,13 @@ part NotchFrame {
         body {
             show: nf_glass_on and nf_m_cd
             color: nf.gm_col_b
-            glass: nf.gm_gl
+            glass: if(bar_num_style == 1, 0.85, if(bar_num_style == 2, 0.75, 0.80))
             lens: false
+            tint: if(bar_num_style == 3, 0.42, 0.30)
             frost: nf.gm_fr
-            rim: 100% * nf.gm_rim
+            rim: 72%
             shine: 0, 0
-            opacity: nf.gm_op * 0.85
+            opacity: 52%
             box { from: nf.cd_x + nf_cd_t_m.width + 2, nf.bar_cy - (nf_sub_fs + 6) / 2; size: max(18, nf_cd_d_m.width + 10), nf_sub_fs + 6; corner: (nf_sub_fs + 6) / 2 }
         }
         group {
