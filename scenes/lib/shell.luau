@@ -121,6 +121,21 @@ function M.start(layout)
         glass_border = 0,
         panel_gradient = 0,
         panel_gradient_strength = 55,
+        panel_water_on = true,
+        panel_water_style = 0,
+        panel_water_strength = 42,
+        panel_water_speed = 100,
+        panel_water_color_mix = 50,
+        panel_water_pointer = 50,
+        pw_caustic_scale = 100,
+        pw_caustic_sharp = 55,
+        pw_caustic_ripple = 55,
+        pw_rip_rate = 100,
+        pw_rip_rings = 60,
+        pw_rip_gloss = 65,
+        pw_drop_size = 100,
+        pw_drop_density = 60,
+        pw_drop_trails = 65,
         glass_tint = 58,
         glass_frost = 100,
         glass_edge = 34,
@@ -324,6 +339,21 @@ function M.start(layout)
         cfg.glass_border = clamp(number(saved.glass_border, cfg.glass_border), 0, 100)
         cfg.panel_gradient = math.floor(clamp(number(saved.panel_gradient, cfg.panel_gradient), 0, 2))
         cfg.panel_gradient_strength = clamp(number(saved.panel_gradient_strength, cfg.panel_gradient_strength), 0, 100)
+        if type(saved.panel_water_on) == "boolean" then cfg.panel_water_on = saved.panel_water_on end
+        cfg.panel_water_style = math.floor(clamp(number(saved.panel_water_style, cfg.panel_water_style), 0, 2))
+        cfg.panel_water_strength = clamp(number(saved.panel_water_strength, cfg.panel_water_strength), 0, 100)
+        cfg.panel_water_speed = clamp(number(saved.panel_water_speed, cfg.panel_water_speed), 0, 200)
+        cfg.panel_water_color_mix = clamp(number(saved.panel_water_color_mix, cfg.panel_water_color_mix), 0, 100)
+        cfg.panel_water_pointer = clamp(number(saved.panel_water_pointer, cfg.panel_water_pointer), 0, 100)
+        cfg.pw_caustic_scale = clamp(number(saved.pw_caustic_scale, cfg.pw_caustic_scale), 40, 200)
+        cfg.pw_caustic_sharp = clamp(number(saved.pw_caustic_sharp, cfg.pw_caustic_sharp), 0, 100)
+        cfg.pw_caustic_ripple = clamp(number(saved.pw_caustic_ripple, cfg.pw_caustic_ripple), 0, 100)
+        cfg.pw_rip_rate = clamp(number(saved.pw_rip_rate, cfg.pw_rip_rate), 20, 200)
+        cfg.pw_rip_rings = clamp(number(saved.pw_rip_rings, cfg.pw_rip_rings), 0, 100)
+        cfg.pw_rip_gloss = clamp(number(saved.pw_rip_gloss, cfg.pw_rip_gloss), 0, 100)
+        cfg.pw_drop_size = clamp(number(saved.pw_drop_size, cfg.pw_drop_size), 50, 180)
+        cfg.pw_drop_density = clamp(number(saved.pw_drop_density, cfg.pw_drop_density), 0, 100)
+        cfg.pw_drop_trails = clamp(number(saved.pw_drop_trails, cfg.pw_drop_trails), 0, 100)
         cfg.glass_tint = clamp(number(saved.glass_tint, cfg.glass_tint), 20, 100)
         cfg.glass_frost = clamp(number(saved.glass_frost, cfg.glass_frost), 0, 100)
         cfg.glass_edge = clamp(number(saved.glass_edge, cfg.glass_edge), 0, 100)
@@ -427,6 +457,21 @@ function M.start(layout)
         fact.glass_border = cfg.glass_border
         fact.panel_gradient = cfg.panel_gradient
         fact.panel_gradient_strength = cfg.panel_gradient_strength
+        fact.panel_water_on = cfg.panel_water_on
+        fact.panel_water_style = cfg.panel_water_style
+        fact.panel_water_strength = cfg.panel_water_strength
+        fact.panel_water_speed = cfg.panel_water_speed
+        fact.panel_water_color_mix = cfg.panel_water_color_mix
+        fact.panel_water_pointer = cfg.panel_water_pointer
+        fact.pw_caustic_scale = cfg.pw_caustic_scale
+        fact.pw_caustic_sharp = cfg.pw_caustic_sharp
+        fact.pw_caustic_ripple = cfg.pw_caustic_ripple
+        fact.pw_rip_rate = cfg.pw_rip_rate
+        fact.pw_rip_rings = cfg.pw_rip_rings
+        fact.pw_rip_gloss = cfg.pw_rip_gloss
+        fact.pw_drop_size = cfg.pw_drop_size
+        fact.pw_drop_density = cfg.pw_drop_density
+        fact.pw_drop_trails = cfg.pw_drop_trails
         fact.glass_tint = cfg.glass_tint
         fact.glass_frost = cfg.glass_frost
         fact.glass_edge = cfg.glass_edge
@@ -527,6 +572,21 @@ function M.start(layout)
             glass_border = number(fact.glass_border, 0),
             panel_gradient = number(fact.panel_gradient, 0),
             panel_gradient_strength = number(fact.panel_gradient_strength, 55),
+            panel_water_on = truthy(fact.panel_water_on),
+            panel_water_style = math.floor(clamp(number(fact.panel_water_style, 0), 0, 2)),
+            panel_water_strength = number(fact.panel_water_strength, 42),
+            panel_water_speed = number(fact.panel_water_speed, 100),
+            panel_water_color_mix = number(fact.panel_water_color_mix, 50),
+            panel_water_pointer = number(fact.panel_water_pointer, 50),
+            pw_caustic_scale = number(fact.pw_caustic_scale, 100),
+            pw_caustic_sharp = number(fact.pw_caustic_sharp, 55),
+            pw_caustic_ripple = number(fact.pw_caustic_ripple, 55),
+            pw_rip_rate = number(fact.pw_rip_rate, 100),
+            pw_rip_rings = number(fact.pw_rip_rings, 60),
+            pw_rip_gloss = number(fact.pw_rip_gloss, 65),
+            pw_drop_size = number(fact.pw_drop_size, 100),
+            pw_drop_density = number(fact.pw_drop_density, 60),
+            pw_drop_trails = number(fact.pw_drop_trails, 65),
             glass_tint = number(fact.glass_tint, 58),
             glass_frost = number(fact.glass_frost, 100),
             glass_edge = number(fact.glass_edge, 34),
@@ -1612,7 +1672,7 @@ function M.start(layout)
     local COMMANDS = {
         { "Settings: Wallpaper", "open", open_page(4), "background picture image colors palette" },
         { "Settings: Glass", "open", open_page(1), "blur transparency frosted glass look" },
-        { "Settings: Theme", "open", open_page(10), "theme material preset gradient light border smoke vivid" },
+        { "Settings: Theme", "open", open_page(10), "theme material preset water caustic ripple droplet rain liquid gradient light border smoke vivid" },
         { "Settings: Bar", "open", open_page(2), "notch height width date lunar weekday seconds sound panel" },
         { "Settings: Frame music", "open", open_page(0), "wave water amplitude sensitivity columns" },
         { "Settings: Font", "open", open_page(3), "typeface text" },
@@ -1899,6 +1959,21 @@ function M.start(layout)
     on("fact:glass_border", function() save() end)
     on("fact:panel_gradient", function() save() end)
     on("fact:panel_gradient_strength", function() save() end)
+    on("fact:panel_water_on", function() save() end)
+    on("fact:panel_water_style", function() save() end)
+    on("fact:panel_water_strength", function() save() end)
+    on("fact:panel_water_speed", function() save() end)
+    on("fact:panel_water_color_mix", function() save() end)
+    on("fact:panel_water_pointer", function() save() end)
+    on("fact:pw_caustic_scale", function() save() end)
+    on("fact:pw_caustic_sharp", function() save() end)
+    on("fact:pw_caustic_ripple", function() save() end)
+    on("fact:pw_rip_rate", function() save() end)
+    on("fact:pw_rip_rings", function() save() end)
+    on("fact:pw_rip_gloss", function() save() end)
+    on("fact:pw_drop_size", function() save() end)
+    on("fact:pw_drop_density", function() save() end)
+    on("fact:pw_drop_trails", function() save() end)
 
     --  Material presets: one event sets the shared glass values.  The sliders
     --  remain authoritative afterwards; this is only a starting point.

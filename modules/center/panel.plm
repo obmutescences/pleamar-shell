@@ -7,6 +7,13 @@ part CenterPanel {
     prop ct_clk = 0
     spin ct_clk by if(center_open, 1, 0)
 
+    prop ct_act_clk = 0
+    spin ct_act_clk by if(center_open and center_tab == 6 and not motion.reduced, 1, 0)
+    event ct_act_run ->
+    event ct_key_flash ->
+    event ct_med_run ->
+    event ct_med_flash ->
+
     prop ct_sky_t = 0
     spin ct_sky_t by if(center_open and center_tab == 0 and wx_ready and not motion.reduced, 1, 0)
 
@@ -248,6 +255,146 @@ part CenterPanel {
         arc { at: x, y; radius: radius; span: span; width: width + 9; color: mix(accent, ct.secondary, 0.36); opacity: 9%; rotate: rotate }
         arc { at: x, y; radius: radius; span: span; width: width + 4; color: mix(accent, ct.secondary, 0.22); opacity: 18%; rotate: rotate }
         arc { at: x, y; radius: radius; span: span; width: width; color: accent; opacity: 95%; rotate: rotate }
+    }
+
+    //  Floating optical-glass shortcut keycap badge with staggered levitation,
+    //  subtle micro-jitter, carved crystal bevel, and keystroke pop recoil.
+    component CtKeyCap(bx: number, by: number, key_ch: text, idx: number, accent: color, hot: number = 0, active: number = 0) {
+        prop kc_hit = 0 ~sp_pop
+        on ct_key_flash(k) while k == idx {
+            kc_hit: 1 ~0ms
+            kc_hit: 0 ~340ms after 30ms
+        }
+
+        let kc.mv = if(center_open and center_tab == 6 and not motion.reduced, 1, 0)
+        let kc.ph = idx * 47 + 19
+        let kc.ho = clamp(hot, 0, 1)
+        let kc.ac = clamp(active, 0, 1)
+        let kc.hi = clamp(max(kc.ho, max(kc.ac * 0.65, kc_hit)), 0, 1)
+        let kc.tw = 0.5 + 0.5 * sin(ct_act_clk * 210 + kc.ph)
+
+        let kc.dx = (0.75 * sin(ct_act_clk * 540 + kc.ph * 1.37) + 0.40 * cos(ct_act_clk * 1180 + kc.ph * 2.11)) * (1 + 0.35 * kc.ho) * kc.mv
+        let kc.dy = (-1.65 * sin(ct_act_clk * 155 + kc.ph) + 0.60 * sin(ct_act_clk * 710 + kc.ph * 1.73)) * (1 + 0.25 * kc.ho) * kc.mv - 2.4 * kc.ho - 1.5 * kc_hit
+        let kc.rot = (2.1 * sin(ct_act_clk * 190 + kc.ph * 0.91) + 1.1 * sin(ct_act_clk * 790 + kc.ph * 2.27)) * (1 + 0.40 * kc.ho) * kc.mv * 1deg
+        let kc.sc = 1 + 0.08 * kc.ho + 0.20 * kc_hit
+
+        group {
+            pivot: bx, by
+            move: kc.dx, kc.dy
+            rotate: kc.rot
+            scale: kc.sc
+
+            ellipse {
+                at: bx, by + 1
+                radius: 17 + 3 * kc.ho + 6 * kc_hit
+                color: accent
+                opacity: 10% + 7% * kc.tw + 16% * kc.hi
+            }
+            ellipse {
+                at: bx, by
+                radius: 15 + 14 * (1 - kc_hit)
+                stroke: 1.5
+                color: accent
+                opacity: 72% * kc_hit
+                show: kc_hit > 0.02
+            }
+
+            body {
+                color: if(glass_on, #ffffff, #1b2630)
+                glass: if(glass_on, 100%, 0%)
+                opacity: if(glass_on, 46% + 14% * kc.hi, 78% + 14% * kc.hi)
+                lens: glass_on and glass_bend
+                frost: 0.06
+                tint: 0.06 + 0.05 * kc.hi
+                smoke: 0.14 - 0.06 * kc.hi
+                milk: 0.07 + 0.06 * kc.hi
+                refraction: 1.48 + 0.32 * kc.hi
+                dispersion: 2.05 + 0.45 * kc.hi
+                dome: 0.25 + 0.07 * kc.hi
+                mirror: 1.65 + 0.30 * kc.hi
+                highlight: 1.75 + 0.40 * kc.hi
+                ripple: glass_ripple * 0.65
+                rim: 66% + 26% * kc.hi
+                border: 0.95 + 0.35 * kc.hi, mix(#ffffff58, accent, 0.35 + 0.50 * kc.hi)
+                shine: if(glass_shine, pointer.x, bx - 10), if(glass_shine, pointer.y, by - 14)
+                shadow: 0, 5, 13, 30% + 12% * kc.ho
+                box { at: bx, by; size: 28, 28; corner: 9 }
+            }
+
+            box { at: bx, by - 0.6; size: 20, 20; corner: 5.5; color: #09131a; opacity: 16% + 6% * kc.hi }
+            box { at: bx, by - 0.6; size: 20, 20; corner: 5.5; stroke: 0.6; color: #ffffff; opacity: 24% + 22% * kc.hi }
+            box { at: bx, by - 10.6; size: 12, 1.4; corner: 0.7; color: #ffffff; opacity: 40% + 24% * kc.tw + 20% * kc.ho }
+            box { at: bx, by + 10.4; size: 10 + 5 * kc.hi, 2; corner: 1; color: accent; opacity: 72% + 28% * kc.hi }
+
+            text key_ch {
+                at: bx, by - 1.2
+                anchor: center
+                size: 12.5
+                weight: 700
+                color: mix(ink, accent, 0.22 + 0.55 * kc.hi)
+                shadow: 0, 1, 3, 45%, #000000
+                family: "Space Grotesk"
+            }
+        }
+    }
+
+    //  Micro optical-glass keycap legend & shockwave halo for Media transport orbs.
+    component CtMedKeyPill(cx: number, cy: number, orb_y: number, orb_r: number, w: number, key_ch: text, idx: number, accent: color, hot: number = 0, active: number = 0) {
+        prop km_hit = 0 ~sp_pop
+        on ct_med_flash(k) while k == idx {
+            km_hit: 1 ~0ms
+            km_hit: 0 ~340ms after 30ms
+        }
+
+        let km.ho = clamp(hot, 0, 1)
+        let km.ac = clamp(active, 0, 1)
+        let km.hi = clamp(max(km.ho, max(km.ac * 0.45, km_hit)), 0, 1)
+
+        ellipse {
+            at: cx, orb_y
+            radius: orb_r + 3 + 12 * (1 - km_hit)
+            stroke: 1.8
+            color: accent
+            opacity: 82% * km_hit
+            show: km_hit > 0.02
+        }
+
+        group {
+            pivot: cx, cy
+            move: 0, -1.5 * km_hit - 1.2 * km.ho
+            scale: 1 + 0.06 * km.ho + 0.14 * km_hit
+
+            body {
+                color: if(glass_on, #ffffff, #1b2630)
+                glass: if(glass_on, 100%, 0%)
+                opacity: if(glass_on, 36% + 14% * km.hi, 68% + 16% * km.hi)
+                lens: glass_on and glass_bend
+                frost: 0.08
+                tint: 0.05 + 0.05 * km.hi
+                smoke: 0.18 - 0.06 * km.hi
+                milk: 0.05 + 0.05 * km.hi
+                refraction: 1.32 + 0.22 * km.hi
+                dispersion: 1.65 + 0.35 * km.hi
+                dome: 0.18 + 0.06 * km.hi
+                mirror: 1.35 + 0.25 * km.hi
+                highlight: 1.45 + 0.35 * km.hi
+                rim: 54% + 26% * km.hi
+                border: 0.85 + 0.3 * km.hi, mix(#ffffff38, accent, 0.25 + 0.55 * km.hi)
+                shine: if(glass_shine, pointer.x, cx - 8), if(glass_shine, pointer.y, cy - 10)
+                shadow: 0, 3, 9, 24% + 12% * km.ho
+                box { at: cx, cy; size: w, 19; corner: 6.5 }
+            }
+
+            box { at: cx, cy + 7.5; size: w * 0.42 + 4 * km.hi, 1.5; corner: 0.75; color: accent; opacity: 56% + 42% * km.hi }
+            text key_ch {
+                at: cx, cy - 0.8
+                anchor: center
+                size: 9.5
+                weight: 700
+                color: mix(faint, mix(ink, accent, 0.55), 0.35 + 0.65 * km.hi)
+                family: "Space Grotesk"
+            }
+        }
     }
 
     component CtTrayRow(r: record, open: number, sel: number, activate: event, menu: event) {
@@ -1288,25 +1435,31 @@ part CenterPanel {
                 text "LIVE" { at: 510, 453; anchor: left center; size: 10; weight: 700; color: alert; family: "Space Grotesk" }
             }
 
-            //  Large Crystal-Glass Transport Orbs with ripple
+            //  Large Crystal-Glass Transport Orbs with ripple + key legends
             GlassOrb(508, 548, 22, ct_media_prev.hover)
             path { at: 508, 548; color: ink; move 5, -6; line -6, 0; line 5, 6; close }
             line { from: 501, 542; to: 501, 554; width: 2; color: ink }
+            CtMedKeyPill(508, 594, 548, 22, 28, "←", 0, ct.secondary, ct_media_prev.hover)
             zone box ct_media_prev { from: 484, 524; size: 48, 48; corner: 24; cursor: pointer; label: "Previous track" }
-            on press ct_media_prev { ripple ct_media_prev; emit ui_sound; emit center_media(0) }
+            on press ct_media_prev { emit ct_med_run(0) }
+            on ct_med_run(k) while k == 0 { emit ct_med_flash(0); ripple ct_media_prev; emit ui_sound; emit center_media(0) }
 
             GlassOrb(572, 548, 28, max(ct_media_play.hover, if(med.playing, 0.45, 0)))
             ellipse { at: 572, 548; radius: 31; stroke: 1.5; color: ct.primary; opacity: 32% + 48% * ct_media_play.hover }
             group { show: not med.playing; path { at: 574, 548; color: ct.primary; move -6, -8; line 8, 0; line -6, 8; close } }
             group { show: med.playing; box { from: 565, 540; size: 4.5, 16; corner: 2; color: ct.primary }; box { from: 575, 540; size: 4.5, 16; corner: 2; color: ct.primary } }
+            CtMedKeyPill(572, 594, 548, 28, 54, "SPACE", 1, ct.primary, ct_media_play.hover, if(med.playing, 1, 0))
             zone box ct_media_play { from: 542, 518; size: 60, 60; corner: 30; cursor: pointer; label: "Play or pause" }
-            on press ct_media_play { ripple ct_media_play; emit ui_sound; emit center_media(1) }
+            on press ct_media_play { emit ct_med_run(1) }
+            on ct_med_run(k) while k == 1 { emit ct_med_flash(1); ripple ct_media_play; emit ui_sound; emit center_media(1) }
 
             GlassOrb(636, 548, 22, ct_media_next.hover)
             path { at: 636, 548; color: ink; move -5, -6; line 6, 0; line -5, 6; close }
             line { from: 643, 542; to: 643, 554; width: 2; color: ink }
+            CtMedKeyPill(636, 594, 548, 22, 28, "→", 2, ct.secondary, ct_media_next.hover)
             zone box ct_media_next { from: 612, 524; size: 48, 48; corner: 24; cursor: pointer; label: "Next track" }
-            on press ct_media_next { ripple ct_media_next; emit ui_sound; emit center_media(2) }
+            on press ct_media_next { emit ct_med_run(2) }
+            on ct_med_run(k) while k == 2 { emit ct_med_flash(2); ripple ct_media_next; emit ui_sound; emit center_media(2) }
         }
 
         //  ═══════════════════════════════════════════════════════════════
@@ -1544,12 +1697,12 @@ part CenterPanel {
         }
 
         //  ═══════════════════════════════════════════════════════════════
-        //  TAB 6 · ACTIONS (Surface ripples + Radial Q-fill + 1s Hold-to-Confirm)
+        //  TAB 6 · ACTIONS (Floating glass keycaps + Surface ripples + 1s Hold)
         //  ═══════════════════════════════════════════════════════════════
         group {
             show: center_tab == 6
             text "QUICK ACTIONS" { at: 36, 120; anchor: left center; size: 10; weight: 700; color: ct.secondary; family: "Space Grotesk" }
-            text "Jump straight to a surface, flip toggles, or hold 1 s on a session card." { at: 36, 140; anchor: left center; size: 13; color: faint; family: "Space Grotesk" }
+            text "Jump to a surface, flip toggles, hold 1 s — or press the floating key on any card." { at: 36, 140; anchor: left center; size: 13; color: faint; family: "Space Grotesk" }
 
             //  1. Surface Launcher Row (Pure Optical Crystal Glass Cards)
             text "SURFACES" { at: 36, 168; anchor: left center; size: 9.5; weight: 700; color: faint; family: "Space Grotesk" }
@@ -1558,31 +1711,39 @@ part CenterPanel {
             line { from: 75, 223; to: 83, 231; width: 1.8; color: ct.primary }
             text "Search" { at: 54, 250; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk" }
             text "Apps, clipboard & web" { at: 54, 268; anchor: left center; size: 10.5; color: faint; family: "Space Grotesk" }
+            CtKeyCap(36 + 230, 184 + 8, "F", 0, ct.primary, ct_action_search.hover)
             zone box ct_action_search { from: 36, 184; size: 244, 100; corner: 16; cursor: pointer; label: "Search" }
-            on press ct_action_search { ripple ct_action_search; emit ui_sound; emit ipc_open_search }
+            on press ct_action_search { emit ct_act_run(0) }
+            on ct_act_run(k) while k == 0 { emit ct_key_flash(0); ripple ct_action_search; emit ui_sound; emit ipc_open_search }
 
             GlassCard(290, 184, 244, 100, 16, ct_action_settings.hover)
             ellipse { at: 320, 214; radius: 11; stroke: 1.7; color: ct.secondary }
             ellipse { at: 320, 214; radius: 4; stroke: 1.4; color: ct.secondary }
             text "Settings" { at: 308, 250; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk" }
             text "Glass, frame & theme" { at: 308, 268; anchor: left center; size: 10.5; color: faint; family: "Space Grotesk" }
+            CtKeyCap(290 + 230, 184 + 8, "S", 1, ct.secondary, ct_action_settings.hover)
             zone box ct_action_settings { from: 290, 184; size: 244, 100; corner: 16; cursor: pointer; label: "Settings" }
-            on press ct_action_settings { ripple ct_action_settings; emit ui_sound; emit ipc_open_settings }
+            on press ct_action_settings { emit ct_act_run(1) }
+            on ct_act_run(k) while k == 1 { emit ct_key_flash(1); ripple ct_action_settings; emit ui_sound; emit ipc_open_settings }
 
             GlassCard(544, 184, 244, 100, 16, ct_action_notifications.hover)
             path { at: 574, 216; stroke: 1.7; color: ct.primary; move -8, 6; line -8, -1; curve 8, -1 via 0, -13; line 8, 6; close }
             text "Notifications" { at: 562, 250; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk" }
             text "History & DND" { at: 562, 268; anchor: left center; size: 10.5; color: faint; family: "Space Grotesk" }
+            CtKeyCap(544 + 230, 184 + 8, "N", 2, ct.primary, ct_action_notifications.hover)
             zone box ct_action_notifications { from: 544, 184; size: 244, 100; corner: 16; cursor: pointer; label: "Notifications" }
-            on press ct_action_notifications { ripple ct_action_notifications; emit ui_sound; emit ipc_open_notifications }
+            on press ct_action_notifications { emit ct_act_run(2) }
+            on ct_act_run(k) while k == 2 { emit ct_key_flash(2); ripple ct_action_notifications; emit ui_sound; emit ipc_open_notifications }
 
             GlassCard(798, 184, 244, 100, 16, ct_action_lock.hover)
             box { from: 816, 212; size: 18, 13; corner: 3; stroke: 1.6; color: ct.secondary }
             path { at: 825, 212; stroke: 1.6; color: ct.secondary; move -5, 0; line -5, -5; curve 5, -5 via 0, -10; line 5, 0 }
             text "Lock" { at: 816, 250; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk" }
             text "Lock screen now" { at: 816, 268; anchor: left center; size: 10.5; color: faint; family: "Space Grotesk" }
+            CtKeyCap(798 + 230, 184 + 8, "L", 3, ct.secondary, ct_action_lock.hover)
             zone box ct_action_lock { from: 798, 184; size: 244, 100; corner: 16; cursor: pointer; label: "Lock" }
-            on press ct_action_lock { ripple ct_action_lock; emit ui_sound; emit lock_now }
+            on press ct_action_lock { emit ct_act_run(3) }
+            on ct_act_run(k) while k == 3 { emit ct_key_flash(3); ripple ct_action_lock; emit ui_sound; emit lock_now }
 
             //  2. Quick Controls: Pure Crystal Glass Cards (glass clarity & rim intensify when active)
             text "QUICK CONTROLS" { at: 36, 308; anchor: left center; size: 9.5; weight: 700; color: faint; family: "Space Grotesk" }
@@ -1604,8 +1765,10 @@ part CenterPanel {
                 box { from: qx + 200, qy + 66 + 0.8 * ps; size: 30, 16 - 1.6 * ps; corner: 8; color: mix(#0c151d, q_col, q_k); opacity: 48% + 44% * q_k }
                 box { from: qx + 200, qy + 66 + 0.8 * ps; size: 30, 16 - 1.6 * ps; corner: 8; stroke: 0.9; color: mix(#ffffff, q_col, q_k); opacity: 24% + 36% * q_k }
                 box { at: qx + 208 + 14 * q_k, qy + 74; size: (11 + 5 * m) * (1 + 0.14 * ps), (11 - 2 * m) * (1 - 0.14 * ps); corner: 5.5; color: mix(#ffffff, #071014, q_k) }
+                CtKeyCap(qx + 230, qy + 8, pick(q, "M", "G", "B", "W"), 4 + q, q_col, ct_action_quick.$q.hover, if(q_on, 1, 0))
                 zone box ct_action_quick.$q { from: qx, qy; size: 244, 96; corner: 16; cursor: pointer; role: toggle; checked: q_on; label: pick(q, "Frame music", "Glass", "Bluetooth", "Wallpaper rotation") }
-                on press ct_action_quick.$q { emit ui_sound; emit center_quick(q) }
+                on press ct_action_quick.$q { emit ct_act_run(4 + q) }
+                on ct_act_run(k) while k == 4 + q { emit ct_key_flash(4 + q); ripple ct_action_quick.$q; emit ui_sound; emit center_quick(q) }
             }
 
             //  3. Session Safety Row: Pure Crystal Glass Cards + 1s Hold Liquid Rise + Particle Shatter
@@ -1633,13 +1796,15 @@ part CenterPanel {
                 text "Hold " .. number(max(0, 1 - pw_hp0), 1, " s") { at: 102, 490; anchor: left center; size: 17; weight: 700; color: ct.primary; show: pw_hp0 >= 0.03; family: "Space Grotesk" }
                 text "Hold 1 s to log out" { at: 102, 490; anchor: left center; size: 15.5; weight: 700; color: ct.primary; show: pwt0; family: "Space Grotesk" }
                 text "End niri session cleanly" { at: 102, 514; anchor: left center; size: 11; color: faint; family: "Space Grotesk" }
+                CtKeyCap(36 + 316, 462 + 8, "Q", 8, ct.primary, max(ct_pwr_0.hover, pw_hp0), clamp(pw_hp0 * 2, 0, 1))
             }
             particles { at: 201, 514; area: 280, 84; count: 28; life: 0.45s .. 0.9s; speed: 80 .. 240; spread: 360deg
                 gravity: 0, 380; drag: 1.3; size: 6, 2; colors: ct.primary, ink; opacity: 100%, 0%; shape: square; burst: pw_shatter0 }
             zone box ct_pwr_0 { from: 36, 462; size: 330, 104; corner: 16; cursor: pointer; label: "Hold 1 second to log out" }
             on press   ct_pwr_0 { pw_s0 = ct_clk; pw_d0 = true; pw_h0 = -10 }
             on release ct_pwr_0 { pw_d0 = false; pw_h0 = if(ct_clk - pw_s0 < 0.98 and (ct_clk - pw_b0 > 1.0), ct_clk, -10) }
-            on hold    ct_pwr_0 for 1000ms { pw_d0 = false; pw_h0 = -10; pw_b0 = ct_clk; emit ui_sound; emit pw_shatter0; emit center_power_exec(0) }
+            on hold    ct_pwr_0 for 1000ms { pw_d0 = false; pw_h0 = -10; pw_b0 = ct_clk; emit ct_key_flash(8); emit ui_sound; emit pw_shatter0; emit center_power_exec(0) }
+            on ct_act_run(k) while k == 8 { emit ct_key_flash(8); ripple ct_pwr_0; emit ui_sound; emit center_power_ask(0) }
 
             //  Card 1: Restart
             let pwx1 = sin(ct_clk * 4200 + 1.7) * 3.5 * pw_hp1 * if(motion.reduced, 0, 1)
@@ -1663,13 +1828,15 @@ part CenterPanel {
                 text "Hold " .. number(max(0, 1 - pw_hp1), 1, " s") { at: 452, 490; anchor: left center; size: 17; weight: 700; color: ct.secondary; show: pw_hp1 >= 0.03; family: "Space Grotesk" }
                 text "Hold 1 s to restart" { at: 452, 490; anchor: left center; size: 15.5; weight: 700; color: ct.secondary; show: pwt1; family: "Space Grotesk" }
                 text "Reboot this computer" { at: 452, 514; anchor: left center; size: 11; color: faint; family: "Space Grotesk" }
+                CtKeyCap(386 + 316, 462 + 8, "R", 9, ct.secondary, max(ct_pwr_1.hover, pw_hp1), clamp(pw_hp1 * 2, 0, 1))
             }
             particles { at: 551, 514; area: 280, 84; count: 28; life: 0.45s .. 0.9s; speed: 80 .. 240; spread: 360deg
                 gravity: 0, 380; drag: 1.3; size: 6, 2; colors: ct.secondary, ink; opacity: 100%, 0%; shape: square; burst: pw_shatter1 }
             zone box ct_pwr_1 { from: 386, 462; size: 330, 104; corner: 16; cursor: pointer; label: "Hold 1 second to restart" }
             on press   ct_pwr_1 { pw_s1 = ct_clk; pw_d1 = true; pw_h1 = -10 }
             on release ct_pwr_1 { pw_d1 = false; pw_h1 = if(ct_clk - pw_s1 < 0.98 and (ct_clk - pw_b1 > 1.0), ct_clk, -10) }
-            on hold    ct_pwr_1 for 1000ms { pw_d1 = false; pw_h1 = -10; pw_b1 = ct_clk; emit ui_sound; emit pw_shatter1; emit center_power_exec(1) }
+            on hold    ct_pwr_1 for 1000ms { pw_d1 = false; pw_h1 = -10; pw_b1 = ct_clk; emit ct_key_flash(9); emit ui_sound; emit pw_shatter1; emit center_power_exec(1) }
+            on ct_act_run(k) while k == 9 { emit ct_key_flash(9); ripple ct_pwr_1; emit ui_sound; emit center_power_ask(1) }
 
             //  Card 2: Shut down
             let pwx2 = sin(ct_clk * 4200 + 3.1) * 3.5 * pw_hp2 * if(motion.reduced, 0, 1)
@@ -1693,22 +1860,61 @@ part CenterPanel {
                 text "Hold " .. number(max(0, 1 - pw_hp2), 1, " s") { at: 802, 490; anchor: left center; size: 17; weight: 700; color: alert; show: pw_hp2 >= 0.03; family: "Space Grotesk" }
                 text "Hold 1 s to shut down" { at: 802, 490; anchor: left center; size: 15.5; weight: 700; color: alert; show: pwt2; family: "Space Grotesk" }
                 text "Power off hardware safely" { at: 802, 514; anchor: left center; size: 11; color: faint; family: "Space Grotesk" }
+                CtKeyCap(736 + 316, 462 + 8, "P", 10, alert, max(ct_pwr_2.hover, pw_hp2), clamp(pw_hp2 * 2, 0, 1))
             }
             particles { at: 901, 514; area: 280, 84; count: 28; life: 0.45s .. 0.9s; speed: 80 .. 240; spread: 360deg
                 gravity: 0, 380; drag: 1.3; size: 6, 2; colors: alert, ct.primary; opacity: 100%, 0%; shape: square; burst: pw_shatter2 }
             zone box ct_pwr_2 { from: 736, 462; size: 330, 104; corner: 16; cursor: pointer; label: "Hold 1 second to shut down" }
             on press   ct_pwr_2 { pw_s2 = ct_clk; pw_d2 = true; pw_h2 = -10 }
             on release ct_pwr_2 { pw_d2 = false; pw_h2 = if(ct_clk - pw_s2 < 0.98 and (ct_clk - pw_b2 > 1.0), ct_clk, -10) }
-            on hold    ct_pwr_2 for 1000ms { pw_d2 = false; pw_h2 = -10; pw_b2 = ct_clk; emit ui_sound; emit pw_shatter2; emit center_power_exec(2) }
+            on hold    ct_pwr_2 for 1000ms { pw_d2 = false; pw_h2 = -10; pw_b2 = ct_clk; emit ct_key_flash(10); emit ui_sound; emit pw_shatter2; emit center_power_exec(2) }
+            on ct_act_run(k) while k == 10 { emit ct_key_flash(10); ripple ct_pwr_2; emit ui_sound; emit center_power_ask(2) }
 
-            text "**Session cards** require a continuous 1-second hold so an accidental tap won't sign you out. No suspend or sleep action lives here." { at: 36, 610; anchor: left center; size: 11; color: faint; family: "Space Grotesk"; markdown: true; selectable: true }
-            text "Esc or the cross closes the panel." { at: 1064, 610; anchor: right center; size: 10; color: faint; opacity: 70%; family: "Space Grotesk" }
+            text "**Session cards** require a continuous 1-second hold (or press Q / R / P for a confirmation dialog). No suspend or sleep action lives here." { at: 36, 610; anchor: left center; size: 11; color: faint; family: "Space Grotesk"; markdown: true; selectable: true }
+            text "Press any glowing key · Esc or the cross closes." { at: 1064, 610; anchor: right center; size: 10; color: faint; opacity: 84%; family: "Space Grotesk" }
         }
     }
 
-    //  Keyboard hint & Escape handling
-    text "1–7  TABS   ·   TAB  NEXT   ·   ESC  CLOSE" { at: 36, 697; anchor: left center; size: 9; weight: 700; color: faint; opacity: 45%; family: "Space Grotesk" }
+    //  Keyboard hint, Media transport triggers, Tab 6 letter triggers & Escape/Modal handling
+    text pick(if(center_tab == 3, 1, if(center_tab == 6, 2, 0)),
+        "1–7  TABS   ·   TAB  NEXT   ·   ESC  CLOSE",
+        "1–7  TABS   ·   TAB  NEXT   ·   ← / →  TRACK   ·   SPACE  PLAY / PAUSE   ·   ESC  CLOSE",
+        "1–7  TABS   ·   TAB  NEXT   ·   LETTER  ACTION   ·   ESC  CLOSE") { at: 36, 697; anchor: left center; size: 9; weight: 700; color: faint; opacity: 64%; family: "Space Grotesk" }
     on key Escape while center_open { emit center_key_escape }
+
+    let ct.med_ready = center_open and center_tab == 3 and center_power_confirm < 0 and not audio_pick_open
+    on key Left     while ct.med_ready { emit ct_med_run(0) }
+    on key KP_Left  while ct.med_ready { emit ct_med_run(0) }
+    on key space    while ct.med_ready { emit ct_med_run(1) }
+    on key KP_Space while ct.med_ready { emit ct_med_run(1) }
+    on key Right    while ct.med_ready { emit ct_med_run(2) }
+    on key KP_Right while ct.med_ready { emit ct_med_run(2) }
+
+    let ct.act_ready = center_open and center_tab == 6 and center_power_confirm < 0 and not audio_pick_open
+    on key f while ct.act_ready { emit ct_act_run(0) }
+    on key F while ct.act_ready { emit ct_act_run(0) }
+    on key s while ct.act_ready { emit ct_act_run(1) }
+    on key S while ct.act_ready { emit ct_act_run(1) }
+    on key n while ct.act_ready { emit ct_act_run(2) }
+    on key N while ct.act_ready { emit ct_act_run(2) }
+    on key l while ct.act_ready { emit ct_act_run(3) }
+    on key L while ct.act_ready { emit ct_act_run(3) }
+    on key m while ct.act_ready { emit ct_act_run(4) }
+    on key M while ct.act_ready { emit ct_act_run(4) }
+    on key g while ct.act_ready { emit ct_act_run(5) }
+    on key G while ct.act_ready { emit ct_act_run(5) }
+    on key b while ct.act_ready { emit ct_act_run(6) }
+    on key B while ct.act_ready { emit ct_act_run(6) }
+    on key w while ct.act_ready { emit ct_act_run(7) }
+    on key W while ct.act_ready { emit ct_act_run(7) }
+    on key q while ct.act_ready { emit ct_act_run(8) }
+    on key Q while ct.act_ready { emit ct_act_run(8) }
+    on key r while ct.act_ready { emit ct_act_run(9) }
+    on key R while ct.act_ready { emit ct_act_run(9) }
+    on key p while ct.act_ready { emit ct_act_run(10) }
+    on key P while ct.act_ready { emit ct_act_run(10) }
+    on key Return while center_open and center_power_confirm >= 0 { emit ui_sound; emit center_power_do }
+    on key KP_Enter while center_open and center_power_confirm >= 0 { emit ui_sound; emit center_power_do }
 
     //  ── External Power Fallback Modal (Sculpted Frosted Crystal Sheet) ──
     group {
@@ -1736,6 +1942,7 @@ part CenterPanel {
             text "Confirm" { at: 467, 211; anchor: center; size: 12; weight: 700; color: alert; family: "Space Grotesk" }
             zone box ct_power_confirm { from: 402, 194; size: 130, 34; corner: 17; cursor: pointer; role: button; agent: no; label: "Confirm power action" }
             on press ct_power_confirm { emit ui_sound; emit center_power_do }
+            text "Esc cancel · Enter confirm" { at: 300, 239; anchor: center; size: 9.5; color: faint; opacity: 84%; family: "Space Grotesk" }
         }
     }
 

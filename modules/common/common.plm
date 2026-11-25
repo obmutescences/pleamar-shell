@@ -79,6 +79,23 @@ part Common {
     //  is unchanged until the Theme page turns it on.
     fact panel_gradient: number = 0          // 0 off, 1 linear, 2 radial
     fact panel_gradient_strength: number = 55
+    //  Optical water / liquid backdrop shader shared across all drawers.
+    shader panel_water_fx = file "shaders/panel_water.wgsl"
+    fact panel_water_on = true
+    fact panel_water_style: number = 0       // 0 caustics, 1 ripples, 2 droplets
+    fact panel_water_strength: number = 42   // 0..100%
+    fact panel_water_speed: number = 100     // 0..200%
+    fact panel_water_color_mix: number = 50  // 0..100% (primary -> secondary)
+    fact panel_water_pointer: number = 50    // 0..100%
+    fact pw_caustic_scale: number = 100      // 40..200%
+    fact pw_caustic_sharp: number = 55       // 0..100%
+    fact pw_caustic_ripple: number = 55      // 0..100%
+    fact pw_rip_rate: number = 100           // 20..200%
+    fact pw_rip_rings: number = 60           // 0..100%
+    fact pw_rip_gloss: number = 65           // 0..100%
+    fact pw_drop_size: number = 100          // 50..180%
+    fact pw_drop_density: number = 60        // 0..100%
+    fact pw_drop_trails: number = 65         // 0..100%
     //  Shared panel background: 0 uses primary, 1 uses secondary; the depth
     //  is how much of that role is mixed into the panel card.
     fact panel_bg_role: number = 0
@@ -89,8 +106,7 @@ part Common {
     let bar_bg = mix(tint, pick(panel_bg_role, primary, secondary), panel_bg_tint / 100)
 
     //  Panel backdrop inside every Notches drawer: optional role tint,
-    //  wallpaper-derived gradient, and soft top inner light.  All three render
-    //  inside the drawer's rounded clip over the unified frame glass.
+    //  wallpaper-derived gradient, live water shader, and soft top inner light.
     component PanelBackdrop(x: number, y: number, w: number, h: number, corner: number) {
         let pb.role = pick(panel_bg_role, primary, secondary)
         let pb.a = mix(panel_bg, primary, 0.55)
@@ -113,6 +129,17 @@ part Common {
             gradient: radial x + w / 2, y + h / 2 radius max(w, h) / 2, pb.a, pb.b 55%, pb.c
             opacity: clamp(panel_gradient_strength / 100, 0, 1) * 0.48
             box { from: x, y; size: w, h; corner: corner }
+        }
+        let pb.wd1 = pick(panel_water_style, clamp(pw_caustic_scale / 100, 0.4, 2), clamp(pw_rip_rate / 100, 0.2, 2), clamp(pw_drop_size / 100, 0.5, 1.8))
+        let pb.wd2 = pick(panel_water_style, clamp(pw_caustic_sharp / 100, 0, 1), clamp(pw_rip_rings / 100, 0, 1), clamp(pw_drop_density / 100, 0, 1))
+        let pb.wd3 = pick(panel_water_style, clamp(pw_caustic_ripple / 100, 0, 1), clamp(pw_rip_gloss / 100, 0, 1), clamp(pw_drop_trails / 100, 0, 1))
+        shader panel_water_fx {
+            at: x, y
+            size: w, h
+            corner: corner
+            show: panel_water_on and panel_water_strength > 0.5
+            values: panel_water_style, clamp(panel_water_strength / 100, 0, 1), if(motion.reduced, 0, clamp(panel_water_speed / 100, 0, 2)), clamp(panel_water_color_mix / 100, 0, 1), clamp(panel_water_pointer / 100, 0, 1), pb.wd1, pb.wd2, pb.wd3
+            colors: primary, secondary
         }
         body {
             show: glass_light > 0.01
@@ -599,6 +626,8 @@ part Common {
     follow nt_dnd_knob = nt_dnd
     prop panel_grad_knob = 0 ~quick
     follow panel_grad_knob = panel_gradient != 0
+    prop panel_water_knob = 1 ~quick
+    follow panel_water_knob = panel_water_on
     prop frame_wave_knob = 0 ~quick
     follow frame_wave_knob = frame_wave_on
 

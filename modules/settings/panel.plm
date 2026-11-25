@@ -158,6 +158,21 @@ part ConfigPanel {
     measure m_id_off
     measure m_th_fill
     measure m_th_pre
+    measure m_th_wat
+    measure m_th_wst
+    measure m_th_wstr
+    measure m_th_wspd
+    measure m_th_wmix
+    measure m_th_wptr
+    measure m_th_wc0
+    measure m_th_wc1
+    measure m_th_wc2
+    measure m_th_wf0
+    measure m_th_wf1
+    measure m_th_wf2
+    measure m_th_ws0
+    measure m_th_ws1
+    measure m_th_ws2
     measure m_th_grad
     measure m_th_gshp
     measure m_th_gstr
@@ -189,6 +204,19 @@ part ConfigPanel {
     let cp.light_pct = clamp(glass_light, 0, 1)
     let cp.border_pct = clamp(glass_border / 100, 0, 1)
     let cp.grad_pct = clamp(panel_gradient_strength / 100, 0, 1)
+    let cp.wstr_pct = clamp(panel_water_strength / 100, 0, 1)
+    let cp.wspd_pct = clamp(panel_water_speed / 200, 0, 1)
+    let cp.wmix_pct = clamp(panel_water_color_mix / 100, 0, 1)
+    let cp.wptr_pct = clamp(panel_water_pointer / 100, 0, 1)
+    let cp.wc0_pct = clamp((pw_caustic_scale - 40) / 160, 0, 1)
+    let cp.wc1_pct = clamp(pw_caustic_sharp / 100, 0, 1)
+    let cp.wc2_pct = clamp(pw_caustic_ripple / 100, 0, 1)
+    let cp.wf0_pct = clamp((pw_rip_rate - 20) / 180, 0, 1)
+    let cp.wf1_pct = clamp(pw_rip_rings / 100, 0, 1)
+    let cp.wf2_pct = clamp(pw_rip_gloss / 100, 0, 1)
+    let cp.ws0_pct = clamp((pw_drop_size - 50) / 130, 0, 1)
+    let cp.ws1_pct = clamp(pw_drop_density / 100, 0, 1)
+    let cp.ws2_pct = clamp(pw_drop_trails / 100, 0, 1)
     let cp.motion_pct = clamp(drawer_motion / 200, 0, 1)
     let cp.neck_pct = clamp(drawer_neck / 200, 0, 1)
     let cp.pop_pct = clamp(drawer_pop / 200, 0, 1)
@@ -623,7 +651,7 @@ part ConfigPanel {
             "Interactive mask bar preview, blur, clock and lock controls.",
             "Automatic lock and screen-off timers across the idle ladder.",
             "City lookup used by the Center Panel Overview weather card.",
-            "Material presets, slider fill texture, panel gradient and finish."
+            "Material presets, water backdrop, slider texture, gradient and finish."
         ) { at: 250, 144; anchor: left center; size: 13.5; color: faint; width: 570; lines: 1; family: "Space Grotesk" }
 
         //  ═══════════════════════════════════════════════════════════════
@@ -2097,7 +2125,7 @@ part ConfigPanel {
         //  ═══════════════════════════════════════════════════════════════
         group {
             show: settings_page == 10
-            let th.h = 918
+            let th.h = 1586
             let th.max_s = max(1, th.h - cp.vh)
             let th.sc = clamp(cp_sc_th, 0, th.max_s)
             let th.off = floor(th.sc + 0.5)
@@ -2184,10 +2212,235 @@ part ConfigPanel {
                     on press cp_gp3 { emit ui_sound; emit glass_preset(3) }
                     on press cp_gp4 { emit ui_sound; emit glass_preset(4) }
 
-                    text "BACKING GRADIENT" { at: 250, 434; anchor: left center; size: 10.5; weight: 700; color: faint; family: "Space Grotesk" }
+                    text "WATER BACKDROP" { at: 250, 434; anchor: left center; size: 10.5; weight: 700; color: faint; family: "Space Grotesk" }
 
-                    //  10.3 Gradient switch
-                    let y2 = 450
+                    //  10.3a Live Water Backdrop master switch
+                    let w0 = 450
+                    let hw0 = max(cp_wat_switch.hover, cp_wat_switch.pressed)
+                    CpCard(250, w0, 570, 62)
+                    text "Water backdrop" { at: 266, w0 + 20; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_wat }
+                    CpLeader(266 + m_th_wat.width + 10, 746, w0 + 20, hw0)
+                    text "Animated optical water & liquid light flowing behind every glass panel." { at: 266, w0 + 44; anchor: left center; size: 12.5; color: faint; family: "Space Grotesk" }
+                    CpSwitch(756, w0 + 8, 48, 24, if(panel_water_on, 1, 0), panel_water_knob, cp_wat_switch.hover, cp_wat_switch.pressed, cp.mint, ink, cp.track)
+                    zone box cp_wat_switch { from: 750, w0 + 4; size: 60, 32; corner: 16; cursor: pointer; active: (w0 + 20) - th.off > 176 and (w0 + 20) - th.off < 784; label: "Toggle water backdrop" }
+                    on scroll cp_wat_switch { cp_sc_th_to = clamp(cp_sc_th_to - wheel * 48, 0, th.max_s) }
+                    on press cp_wat_switch { emit ui_sound; toggle panel_water_on }
+
+                    //  10.3b Water style, common sliders & per-wave detail sliders
+                    let d_pw = if(panel_water_on, 0, 1)
+                    group {
+                        opacity: if(panel_water_on, 1, 0.42)
+
+                        let w1 = 518
+                        let hw1 = max(cp_ws_0.hover, max(cp_ws_1.hover, cp_ws_2.hover))
+                        CpCard(250, w1, 570, 62)
+                        text "Wave style" { at: 266, w1 + 20; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_wst }
+                        CpLeader(266 + m_th_wst.width + 10, 524, w1 + 20, hw1, d_pw)
+                        text pick(panel_water_style,
+                            "Sunlit underwater caustic web with gentle expanding rings.",
+                            "3D concentric raindrop ripples interfering on dark mirror water.",
+                            "3D crystal raindrops sliding down glass with dew & wet trails."
+                        ) { at: 266, w1 + 44; anchor: left center; size: 12.5; color: faint; family: "Space Grotesk" }
+                        CpSetPick(534, w1 + 20, 270, 28, 3, panel_water_style, hw1, cp.mint, d_pw)
+                        text "Caustics" { at: 579, w1 + 20; anchor: center; size: 11.5; weight: 700; color: if(panel_water_style == 0, cp.mint, faint); family: "Space Grotesk" }
+                        text "Ripples"  { at: 669, w1 + 20; anchor: center; size: 11.5; weight: 700; color: if(panel_water_style == 1, cp.mint, faint); family: "Space Grotesk" }
+                        text "Droplets" { at: 759, w1 + 20; anchor: center; size: 11.5; weight: 700; color: if(panel_water_style == 2, cp.mint, faint); family: "Space Grotesk" }
+                        zone box cp_ws_0 { from: 534, w1 + 6; size: 90, 28; corner: 14; cursor: pointer; active: panel_water_on and (w1 + 20) - th.off > 176 and (w1 + 20) - th.off < 784; label: "Caustics water style" }
+                        zone box cp_ws_1 { from: 624, w1 + 6; size: 90, 28; corner: 14; cursor: pointer; active: panel_water_on and (w1 + 20) - th.off > 176 and (w1 + 20) - th.off < 784; label: "Ripples water style" }
+                        zone box cp_ws_2 { from: 714, w1 + 6; size: 90, 28; corner: 14; cursor: pointer; active: panel_water_on and (w1 + 20) - th.off > 176 and (w1 + 20) - th.off < 784; label: "Droplets water style" }
+                        on scroll cp_ws_0 { cp_sc_th_to = clamp(cp_sc_th_to - wheel * 48, 0, th.max_s) }
+                        on scroll cp_ws_1 { cp_sc_th_to = clamp(cp_sc_th_to - wheel * 48, 0, th.max_s) }
+                        on scroll cp_ws_2 { cp_sc_th_to = clamp(cp_sc_th_to - wheel * 48, 0, th.max_s) }
+                        on press cp_ws_0 { emit ui_sound; panel_water_style = 0 }
+                        on press cp_ws_1 { emit ui_sound; panel_water_style = 1 }
+                        on press cp_ws_2 { emit ui_sound; panel_water_style = 2 }
+
+                        let w2 = 586
+                        let hw2 = max(cp_wstr_track.hover, cp_wstr_track.pressed)
+                        CpCard(250, w2, 570, 56)
+                        text "Intensity" { at: 266, w2 + 19; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_wstr }
+                        CpLeader(266 + m_th_wstr.width + 10, cp.sl_x - 10, w2 + 19, hw2, d_pw)
+                        text "Overall visibility of the liquid light layer behind glass cards." { at: 266, w2 + 40; anchor: left center; size: 12; color: faint; family: "Space Grotesk" }
+                        CpSlider(cp.sl_x, w2 + 19, cp.sl_w, cp.wstr_pct, hw2, cp.mint, d_pw)
+                        text number(panel_water_strength, 0, "%") { at: cp.rx, w2 + 19; anchor: right center; size: 14.5; weight: 700; color: cp.mint; family: "Space Grotesk" }
+                        zone box cp_wstr_track { from: cp.sl_x - 6, w2 + 7; size: cp.sl_w + 12, 24; cursor: pointer; active: panel_water_on and (w2 + 19) - th.off > 176 and (w2 + 19) - th.off < 784; label: "Water intensity" }
+                        on scroll cp_wstr_track { cp_sc_th_to = clamp(cp_sc_th_to - wheel * 48, 0, th.max_s) }
+                        on press cp_wstr_track { panel_water_strength = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
+                        on drag  cp_wstr_track { panel_water_strength = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
+
+                        let w3 = 648
+                        let hw3 = max(cp_wspd_track.hover, cp_wspd_track.pressed)
+                        CpCard(250, w3, 570, 56)
+                        text "Flow speed" { at: 266, w3 + 19; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_wspd }
+                        CpLeader(266 + m_th_wspd.width + 10, cp.sl_x - 10, w3 + 19, hw3, d_pw)
+                        text "Drift tempo of ripples, currents and swells (0% freezes still)." { at: 266, w3 + 40; anchor: left center; size: 12; color: faint; family: "Space Grotesk" }
+                        CpSlider(cp.sl_x, w3 + 19, cp.sl_w, cp.wspd_pct, hw3, cp.mint, d_pw)
+                        text number(panel_water_speed, 0, "%") { at: cp.rx, w3 + 19; anchor: right center; size: 14.5; weight: 700; color: cp.mint; family: "Space Grotesk" }
+                        zone box cp_wspd_track { from: cp.sl_x - 6, w3 + 7; size: cp.sl_w + 12, 24; cursor: pointer; active: panel_water_on and (w3 + 19) - th.off > 176 and (w3 + 19) - th.off < 784; label: "Water flow speed" }
+                        on scroll cp_wspd_track { cp_sc_th_to = clamp(cp_sc_th_to - wheel * 48, 0, th.max_s) }
+                        on press cp_wspd_track { panel_water_speed = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 200), 0, 200) }
+                        on drag  cp_wspd_track { panel_water_speed = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 200), 0, 200) }
+
+                        let w4 = 710
+                        let hw4 = max(cp_wmix_track.hover, cp_wmix_track.pressed)
+                        CpCard(250, w4, 570, 56)
+                        text "Colour mix" { at: 266, w4 + 19; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_wmix }
+                        CpLeader(266 + m_th_wmix.width + 10, cp.sl_x - 10, w4 + 19, hw4, d_pw)
+                        text "Balance between wallpaper primary (0%) and secondary (100%)." { at: 266, w4 + 40; anchor: left center; size: 12; color: faint; family: "Space Grotesk" }
+                        CpSlider(cp.sl_x, w4 + 19, cp.sl_w, cp.wmix_pct, hw4, cp.mint, d_pw)
+                        text number(panel_water_color_mix, 0, "%") { at: cp.rx, w4 + 19; anchor: right center; size: 14.5; weight: 700; color: cp.mint; family: "Space Grotesk" }
+                        zone box cp_wmix_track { from: cp.sl_x - 6, w4 + 7; size: cp.sl_w + 12, 24; cursor: pointer; active: panel_water_on and (w4 + 19) - th.off > 176 and (w4 + 19) - th.off < 784; label: "Water colour mix" }
+                        on scroll cp_wmix_track { cp_sc_th_to = clamp(cp_sc_th_to - wheel * 48, 0, th.max_s) }
+                        on press cp_wmix_track { panel_water_color_mix = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
+                        on drag  cp_wmix_track { panel_water_color_mix = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
+
+                        let w5 = 772
+                        let hw5 = max(cp_wptr_track.hover, cp_wptr_track.pressed)
+                        CpCard(250, w5, 570, 56)
+                        text "Pointer ripple" { at: 266, w5 + 19; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_wptr }
+                        CpLeader(266 + m_th_wptr.width + 10, cp.sl_x - 10, w5 + 19, hw5, d_pw)
+                        text "Interactive ripple & specular wake following your cursor." { at: 266, w5 + 40; anchor: left center; size: 12; color: faint; family: "Space Grotesk" }
+                        CpSlider(cp.sl_x, w5 + 19, cp.sl_w, cp.wptr_pct, hw5, cp.mint, d_pw)
+                        text number(panel_water_pointer, 0, "%") { at: cp.rx, w5 + 19; anchor: right center; size: 14.5; weight: 700; color: cp.mint; family: "Space Grotesk" }
+                        zone box cp_wptr_track { from: cp.sl_x - 6, w5 + 7; size: cp.sl_w + 12, 24; cursor: pointer; active: panel_water_on and (w5 + 19) - th.off > 176 and (w5 + 19) - th.off < 784; label: "Water pointer ripple" }
+                        on scroll cp_wptr_track { cp_sc_th_to = clamp(cp_sc_th_to - wheel * 48, 0, th.max_s) }
+                        on press cp_wptr_track { panel_water_pointer = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
+                        on drag  cp_wptr_track { panel_water_pointer = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
+
+                        text pick(panel_water_style, "CAUSTICS DETAIL", "RIPPLES DETAIL", "DROPLETS DETAIL") { at: 250, 846; anchor: left center; size: 10.5; weight: 700; color: cp.mint; opacity: 82%; family: "Space Grotesk" }
+
+                        let w6 = 862
+                        let w7 = 924
+                        let w8 = 986
+
+                        //  Mode 0 · Caustics fine-tuning
+                        group {
+                            show: panel_water_style == 0
+
+                            let hwc0 = max(cp_wc0_track.hover, cp_wc0_track.pressed)
+                            CpCard(250, w6, 570, 56)
+                            text "Caustic scale" { at: 266, w6 + 19; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_wc0 }
+                            CpLeader(266 + m_th_wc0.width + 10, cp.sl_x - 10, w6 + 19, hwc0, d_pw)
+                            text "Cell size and density of interlocking caustic light ribbons." { at: 266, w6 + 40; anchor: left center; size: 12; color: faint; family: "Space Grotesk" }
+                            CpSlider(cp.sl_x, w6 + 19, cp.sl_w, cp.wc0_pct, hwc0, cp.mint, d_pw)
+                            text number(pw_caustic_scale, 0, "%") { at: cp.rx, w6 + 19; anchor: right center; size: 14.5; weight: 700; color: cp.mint; family: "Space Grotesk" }
+                            zone box cp_wc0_track { from: cp.sl_x - 6, w6 + 7; size: cp.sl_w + 12, 24; cursor: pointer; active: panel_water_on and panel_water_style == 0 and (w6 + 19) - th.off > 176 and (w6 + 19) - th.off < 784; label: "Caustic scale" }
+                            on scroll cp_wc0_track { cp_sc_th_to = clamp(cp_sc_th_to - wheel * 48, 0, th.max_s) }
+                            on press cp_wc0_track { pw_caustic_scale = clamp(round(40 + (pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 160), 40, 200) }
+                            on drag  cp_wc0_track { pw_caustic_scale = clamp(round(40 + (pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 160), 40, 200) }
+
+                            let hwc1 = max(cp_wc1_track.hover, cp_wc1_track.pressed)
+                            CpCard(250, w7, 570, 56)
+                            text "Filament sharpness" { at: 266, w7 + 19; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_wc1 }
+                            CpLeader(266 + m_th_wc1.width + 10, cp.sl_x - 10, w7 + 19, hwc1, d_pw)
+                            text "Soft underwater glow (0%) to crisp refractive filaments (100%)." { at: 266, w7 + 40; anchor: left center; size: 12; color: faint; family: "Space Grotesk" }
+                            CpSlider(cp.sl_x, w7 + 19, cp.sl_w, cp.wc1_pct, hwc1, cp.mint, d_pw)
+                            text number(pw_caustic_sharp, 0, "%") { at: cp.rx, w7 + 19; anchor: right center; size: 14.5; weight: 700; color: cp.mint; family: "Space Grotesk" }
+                            zone box cp_wc1_track { from: cp.sl_x - 6, w7 + 7; size: cp.sl_w + 12, 24; cursor: pointer; active: panel_water_on and panel_water_style == 0 and (w7 + 19) - th.off > 176 and (w7 + 19) - th.off < 784; label: "Caustic sharpness" }
+                            on scroll cp_wc1_track { cp_sc_th_to = clamp(cp_sc_th_to - wheel * 48, 0, th.max_s) }
+                            on press cp_wc1_track { pw_caustic_sharp = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
+                            on drag  cp_wc1_track { pw_caustic_sharp = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
+
+                            let hwc2 = max(cp_wc2_track.hover, cp_wc2_track.pressed)
+                            CpCard(250, w8, 570, 56)
+                            text "Ambient rings" { at: 266, w8 + 19; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_wc2 }
+                            CpLeader(266 + m_th_wc2.width + 10, cp.sl_x - 10, w8 + 19, hwc2, d_pw)
+                            text "Slow expanding concentric ripples blooming across the glass." { at: 266, w8 + 40; anchor: left center; size: 12; color: faint; family: "Space Grotesk" }
+                            CpSlider(cp.sl_x, w8 + 19, cp.sl_w, cp.wc2_pct, hwc2, cp.mint, d_pw)
+                            text number(pw_caustic_ripple, 0, "%") { at: cp.rx, w8 + 19; anchor: right center; size: 14.5; weight: 700; color: cp.mint; family: "Space Grotesk" }
+                            zone box cp_wc2_track { from: cp.sl_x - 6, w8 + 7; size: cp.sl_w + 12, 24; cursor: pointer; active: panel_water_on and panel_water_style == 0 and (w8 + 19) - th.off > 176 and (w8 + 19) - th.off < 784; label: "Ambient water rings" }
+                            on scroll cp_wc2_track { cp_sc_th_to = clamp(cp_sc_th_to - wheel * 48, 0, th.max_s) }
+                            on press cp_wc2_track { pw_caustic_ripple = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
+                            on drag  cp_wc2_track { pw_caustic_ripple = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
+                        }
+
+                        //  Mode 1 · 3D Concentric Pond Ripples fine-tuning
+                        group {
+                            show: panel_water_style == 1
+
+                            let hwf0 = max(cp_wf0_track.hover, cp_wf0_track.pressed)
+                            CpCard(250, w6, 570, 56)
+                            text "Drop frequency" { at: 266, w6 + 19; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_wf0 }
+                            CpLeader(266 + m_th_wf0.width + 10, cp.sl_x - 10, w6 + 19, hwf0, d_pw)
+                            text "Pace and overlap count of raindrops landing on the pond." { at: 266, w6 + 40; anchor: left center; size: 12; color: faint; family: "Space Grotesk" }
+                            CpSlider(cp.sl_x, w6 + 19, cp.sl_w, cp.wf0_pct, hwf0, cp.mint, d_pw)
+                            text number(pw_rip_rate, 0, "%") { at: cp.rx, w6 + 19; anchor: right center; size: 14.5; weight: 700; color: cp.mint; family: "Space Grotesk" }
+                            zone box cp_wf0_track { from: cp.sl_x - 6, w6 + 7; size: cp.sl_w + 12, 24; cursor: pointer; active: panel_water_on and panel_water_style == 1 and (w6 + 19) - th.off > 176 and (w6 + 19) - th.off < 784; label: "Ripple drop frequency" }
+                            on scroll cp_wf0_track { cp_sc_th_to = clamp(cp_sc_th_to - wheel * 48, 0, th.max_s) }
+                            on press cp_wf0_track { pw_rip_rate = clamp(round(20 + (pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 180), 20, 200) }
+                            on drag  cp_wf0_track { pw_rip_rate = clamp(round(20 + (pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 180), 20, 200) }
+
+                            let hwf1 = max(cp_wf1_track.hover, cp_wf1_track.pressed)
+                            CpCard(250, w7, 570, 56)
+                            text "Ring trains" { at: 266, w7 + 19; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_wf1 }
+                            CpLeader(266 + m_th_wf1.width + 10, cp.sl_x - 10, w7 + 19, hwf1, d_pw)
+                            text "Single crisp ring (0%) to multi-ring interference trains (100%)." { at: 266, w7 + 40; anchor: left center; size: 12; color: faint; family: "Space Grotesk" }
+                            CpSlider(cp.sl_x, w7 + 19, cp.sl_w, cp.wf1_pct, hwf1, cp.mint, d_pw)
+                            text number(pw_rip_rings, 0, "%") { at: cp.rx, w7 + 19; anchor: right center; size: 14.5; weight: 700; color: cp.mint; family: "Space Grotesk" }
+                            zone box cp_wf1_track { from: cp.sl_x - 6, w7 + 7; size: cp.sl_w + 12, 24; cursor: pointer; active: panel_water_on and panel_water_style == 1 and (w7 + 19) - th.off > 176 and (w7 + 19) - th.off < 784; label: "Ripple ring trains" }
+                            on scroll cp_wf1_track { cp_sc_th_to = clamp(cp_sc_th_to - wheel * 48, 0, th.max_s) }
+                            on press cp_wf1_track { pw_rip_rings = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
+                            on drag  cp_wf1_track { pw_rip_rings = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
+
+                            let hwf2 = max(cp_wf2_track.hover, cp_wf2_track.pressed)
+                            CpCard(250, w8, 570, 56)
+                            text "Mirror gloss" { at: 266, w8 + 19; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_wf2 }
+                            CpLeader(266 + m_th_wf2.width + 10, cp.sl_x - 10, w8 + 19, hwf2, d_pw)
+                            text "3D specular sheen and splash catchlights on wave slopes." { at: 266, w8 + 40; anchor: left center; size: 12; color: faint; family: "Space Grotesk" }
+                            CpSlider(cp.sl_x, w8 + 19, cp.sl_w, cp.wf2_pct, hwf2, cp.mint, d_pw)
+                            text number(pw_rip_gloss, 0, "%") { at: cp.rx, w8 + 19; anchor: right center; size: 14.5; weight: 700; color: cp.mint; family: "Space Grotesk" }
+                            zone box cp_wf2_track { from: cp.sl_x - 6, w8 + 7; size: cp.sl_w + 12, 24; cursor: pointer; active: panel_water_on and panel_water_style == 1 and (w8 + 19) - th.off > 176 and (w8 + 19) - th.off < 784; label: "Ripple mirror gloss" }
+                            on scroll cp_wf2_track { cp_sc_th_to = clamp(cp_sc_th_to - wheel * 48, 0, th.max_s) }
+                            on press cp_wf2_track { pw_rip_gloss = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
+                            on drag  cp_wf2_track { pw_rip_gloss = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
+                        }
+
+                        //  Mode 2 · 3D Crystal Raindrops & Condensation fine-tuning
+                        group {
+                            show: panel_water_style == 2
+
+                            let hws0 = max(cp_ws0_track.hover, cp_ws0_track.pressed)
+                            CpCard(250, w6, 570, 56)
+                            text "Drop size" { at: 266, w6 + 19; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_ws0 }
+                            CpLeader(266 + m_th_ws0.width + 10, cp.sl_x - 10, w6 + 19, hws0, d_pw)
+                            text "Delicate fine rain mist (50%) to bold crystal beads (180%)." { at: 266, w6 + 40; anchor: left center; size: 12; color: faint; family: "Space Grotesk" }
+                            CpSlider(cp.sl_x, w6 + 19, cp.sl_w, cp.ws0_pct, hws0, cp.mint, d_pw)
+                            text number(pw_drop_size, 0, "%") { at: cp.rx, w6 + 19; anchor: right center; size: 14.5; weight: 700; color: cp.mint; family: "Space Grotesk" }
+                            zone box cp_ws0_track { from: cp.sl_x - 6, w6 + 7; size: cp.sl_w + 12, 24; cursor: pointer; active: panel_water_on and panel_water_style == 2 and (w6 + 19) - th.off > 176 and (w6 + 19) - th.off < 784; label: "Droplet size" }
+                            on scroll cp_ws0_track { cp_sc_th_to = clamp(cp_sc_th_to - wheel * 48, 0, th.max_s) }
+                            on press cp_ws0_track { pw_drop_size = clamp(round(50 + (pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 130), 50, 180) }
+                            on drag  cp_ws0_track { pw_drop_size = clamp(round(50 + (pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 130), 50, 180) }
+
+                            let hws1 = max(cp_ws1_track.hover, cp_ws1_track.pressed)
+                            CpCard(250, w7, 570, 56)
+                            text "Condensation" { at: 266, w7 + 19; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_ws1 }
+                            CpLeader(266 + m_th_ws1.width + 10, cp.sl_x - 10, w7 + 19, hws1, d_pw)
+                            text "Density of sliding raindrops and static micro-dew beads." { at: 266, w7 + 40; anchor: left center; size: 12; color: faint; family: "Space Grotesk" }
+                            CpSlider(cp.sl_x, w7 + 19, cp.sl_w, cp.ws1_pct, hws1, cp.mint, d_pw)
+                            text number(pw_drop_density, 0, "%") { at: cp.rx, w7 + 19; anchor: right center; size: 14.5; weight: 700; color: cp.mint; family: "Space Grotesk" }
+                            zone box cp_ws1_track { from: cp.sl_x - 6, w7 + 7; size: cp.sl_w + 12, 24; cursor: pointer; active: panel_water_on and panel_water_style == 2 and (w7 + 19) - th.off > 176 and (w7 + 19) - th.off < 784; label: "Droplet condensation" }
+                            on scroll cp_ws1_track { cp_sc_th_to = clamp(cp_sc_th_to - wheel * 48, 0, th.max_s) }
+                            on press cp_ws1_track { pw_drop_density = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
+                            on drag  cp_ws1_track { pw_drop_density = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
+
+                            let hws2 = max(cp_ws2_track.hover, cp_ws2_track.pressed)
+                            CpCard(250, w8, 570, 56)
+                            text "Slide trails" { at: 266, w8 + 19; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_ws2 }
+                            CpLeader(266 + m_th_ws2.width + 10, cp.sl_x - 10, w8 + 19, hws2, d_pw)
+                            text "Trailing micro-beads and wet vertical tracks behind drops." { at: 266, w8 + 40; anchor: left center; size: 12; color: faint; family: "Space Grotesk" }
+                            CpSlider(cp.sl_x, w8 + 19, cp.sl_w, cp.ws2_pct, hws2, cp.mint, d_pw)
+                            text number(pw_drop_trails, 0, "%") { at: cp.rx, w8 + 19; anchor: right center; size: 14.5; weight: 700; color: cp.mint; family: "Space Grotesk" }
+                            zone box cp_ws2_track { from: cp.sl_x - 6, w8 + 7; size: cp.sl_w + 12, 24; cursor: pointer; active: panel_water_on and panel_water_style == 2 and (w8 + 19) - th.off > 176 and (w8 + 19) - th.off < 784; label: "Droplet slide trails" }
+                            on scroll cp_ws2_track { cp_sc_th_to = clamp(cp_sc_th_to - wheel * 48, 0, th.max_s) }
+                            on press cp_ws2_track { pw_drop_trails = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
+                            on drag  cp_ws2_track { pw_drop_trails = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
+                        }
+                    }
+
+                    text "BACKING GRADIENT" { at: 250, 1062; anchor: left center; size: 10.5; weight: 700; color: faint; family: "Space Grotesk" }
+
+                    //  10.4 Gradient switch
+                    let y2 = 1078
                     let h2 = max(cp_grad_switch.hover, cp_grad_switch.pressed)
                     CpCard(250, y2, 570, 62)
                     text "Panel gradient" { at: 266, y2 + 20; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_grad }
@@ -2198,11 +2451,11 @@ part ConfigPanel {
                     on scroll cp_grad_switch { cp_sc_th_to = clamp(cp_sc_th_to - wheel * 48, 0, th.max_s) }
                     on press cp_grad_switch { emit ui_sound; panel_gradient = if(panel_gradient == 0, 1, 0) }
 
-                    //  10.4..10.5 Gradient shape & strength (dimmed when panel_gradient == 0)
+                    //  10.5..10.6 Gradient shape & strength (dimmed when panel_gradient == 0)
                     let d_pg = if(panel_gradient > 0, 0, 1)
                     group {
                         opacity: if(panel_gradient > 0, 1, 0.42)
-                        let y3 = 518
+                        let y3 = 1146
                         let h3 = max(cp_grad_linear.hover, cp_grad_radial.hover)
                         CpCard(250, y3, 570, 62)
                         text "Gradient shape" { at: 266, y3 + 20; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_gshp }
@@ -2218,7 +2471,7 @@ part ConfigPanel {
                         on press cp_grad_linear { emit ui_sound; panel_gradient = 1 }
                         on press cp_grad_radial { emit ui_sound; panel_gradient = 2 }
 
-                        let y4 = 586
+                        let y4 = 1214
                         let h4 = max(cp_grad_track.hover, cp_grad_track.pressed)
                         CpCard(250, y4, 570, 62)
                         text "Gradient strength" { at: 266, y4 + 20; anchor: left center; size: 16; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_gstr }
@@ -2232,10 +2485,10 @@ part ConfigPanel {
                         on drag  cp_grad_track { panel_gradient_strength = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
                     }
 
-                    text "SURFACE FINISH" { at: 250, 668; anchor: left center; size: 10.5; weight: 700; color: faint; family: "Space Grotesk" }
+                    text "SURFACE FINISH" { at: 250, 1296; anchor: left center; size: 10.5; weight: 700; color: faint; family: "Space Grotesk" }
 
-                    //  10.6 Light
-                    let y5 = 684
+                    //  10.7 Light
+                    let y5 = 1312
                     let h5 = max(cp_light_track.hover, cp_light_track.pressed)
                     CpCard(250, y5, 570, 56)
                     text "Light" { at: 266, y5 + 19; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_lgt }
@@ -2248,8 +2501,8 @@ part ConfigPanel {
                     on press cp_light_track { glass_preset_i = -1; glass_light = clamp((pointer.x - cp.sx - cp.sl_x) / cp.sl_w, 0, 1) }
                     on drag  cp_light_track { glass_preset_i = -1; glass_light = clamp((pointer.x - cp.sx - cp.sl_x) / cp.sl_w, 0, 1) }
 
-                    //  10.7 Border
-                    let y6 = 746
+                    //  10.8 Border
+                    let y6 = 1374
                     let h6 = max(cp_border_track.hover, cp_border_track.pressed)
                     CpCard(250, y6, 570, 56)
                     text "Glass border" { at: 266, y6 + 19; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_brd }
@@ -2262,8 +2515,8 @@ part ConfigPanel {
                     on press cp_border_track { glass_preset_i = -1; glass_border = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
                     on drag  cp_border_track { glass_preset_i = -1; glass_border = clamp(round((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 100), 0, 100) }
 
-                    //  10.8 Smoke
-                    let y7 = 808
+                    //  10.9 Smoke
+                    let y7 = 1436
                     let h7 = max(cp_smoke_track.hover, cp_smoke_track.pressed)
                     CpCard(250, y7, 570, 56)
                     text "Smoke" { at: 266, y7 + 19; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_smk }
@@ -2276,8 +2529,8 @@ part ConfigPanel {
                     on press cp_smoke_track { glass_preset_i = -1; glass_smoke = clamp((pointer.x - cp.sx - cp.sl_x) / cp.sl_w, 0, 1) }
                     on drag  cp_smoke_track { glass_preset_i = -1; glass_smoke = clamp((pointer.x - cp.sx - cp.sl_x) / cp.sl_w, 0, 1) }
 
-                    //  10.9 Vividness
-                    let y8 = 870
+                    //  10.10 Vividness
+                    let y8 = 1498
                     let h8 = max(cp_vivid_track.hover, cp_vivid_track.pressed)
                     CpCard(250, y8, 570, 56)
                     text "Vividness" { at: 266, y8 + 19; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_viv }
@@ -2290,8 +2543,8 @@ part ConfigPanel {
                     on press cp_vivid_track { glass_preset_i = -1; glass_vivid = clamp((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 2, 0, 2) }
                     on drag  cp_vivid_track { glass_preset_i = -1; glass_vivid = clamp((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 2, 0, 2) }
 
-                    //  10.10 Mirror
-                    let y9 = 932
+                    //  10.11 Mirror
+                    let y9 = 1560
                     let h9 = max(cp_mirror_track.hover, cp_mirror_track.pressed)
                     CpCard(250, y9, 570, 56)
                     text "Mirror" { at: 266, y9 + 19; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_mir }
@@ -2304,8 +2557,8 @@ part ConfigPanel {
                     on press cp_mirror_track { glass_preset_i = -1; glass_mirror = clamp((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 2, 0, 2) }
                     on drag  cp_mirror_track { glass_preset_i = -1; glass_mirror = clamp((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 2, 0, 2) }
 
-                    //  10.11 Highlight
-                    let y10 = 994
+                    //  10.12 Highlight
+                    let y10 = 1622
                     let h10 = max(cp_highlight_track.hover, cp_highlight_track.pressed)
                     CpCard(250, y10, 570, 56)
                     text "Highlight" { at: 266, y10 + 19; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_hi }
@@ -2318,8 +2571,8 @@ part ConfigPanel {
                     on press cp_highlight_track { glass_preset_i = -1; glass_highlight = clamp((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 2, 0, 2) }
                     on drag  cp_highlight_track { glass_preset_i = -1; glass_highlight = clamp((pointer.x - cp.sx - cp.sl_x) / cp.sl_w * 2, 0, 2) }
 
-                    //  10.12 Ripple
-                    let y11 = 1056
+                    //  10.13 Ripple
+                    let y11 = 1684
                     let h11 = max(cp_ripple_track.hover, cp_ripple_track.pressed)
                     CpCard(250, y11, 570, 56)
                     text "Edge ripple" { at: 266, y11 + 19; anchor: left center; size: 15.5; weight: 700; color: ink; family: "Space Grotesk"; measure: m_th_rip }

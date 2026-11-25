@@ -114,12 +114,21 @@ part NotchFrame {
         let nf.bar_x0 = nf.cx - nf_strip_w / 2
         let nf.bar_cy = nf.clock_h / 2
         let nf.ic_s = clamp((nf.clock_h - 6) / max(22, nf_ring_r * 2 + nf_ring_w + 2), 0.75, 1.1)
-        let nf.gm_gl = if(bar_num_style == 1, 0.28, if(bar_num_style == 2, 0.26, 0.27))
-        let nf.gm_rim = if(bar_num_style == 1, 0.30, if(bar_num_style == 2, 0.16, 0.24))
-        let nf.gm_fr = if(bar_num_style == 1, 0.35, if(bar_num_style == 2, 0.85, 0.45))
-        let nf.gm_op = if(bar_num_style == 1, 88%, if(bar_num_style == 2, 90%, 96%))
-        let nf.gm_col_a = if(bar_num_style == 3, primary, if(bar_num_style == 2, mix(ink, primary, 0.10), mix(ink, primary, 0.18)))
-        let nf.gm_col_b = if(bar_num_style == 3, secondary, if(bar_num_style == 2, mix(faint, secondary, 0.32), mix(ink, secondary, 0.22)))
+        let nf.gm_gl = if(bar_num_style == 1, 0.82, if(bar_num_style == 2, 0.70, 0.65))
+        let nf.gm_lens = glass_on and glass_bend and bar_num_style != 2
+        let nf.gm_rim = if(bar_num_style == 1, 0.66, if(bar_num_style == 2, 0.34, 0.56))
+        let nf.gm_fr = if(bar_num_style == 1, 0.12, if(bar_num_style == 2, 0.90, 0.16))
+        let nf.gm_tint = if(bar_num_style == 1, 0.44, if(bar_num_style == 2, 0.58, 0.64))
+        let nf.gm_milk = if(bar_num_style == 1, 0.04, if(bar_num_style == 2, 0.14, 0.0))
+        let nf.gm_vivid = if(bar_num_style == 1, 1.25, if(bar_num_style == 2, 1.08, 1.48))
+        let nf.gm_mir = if(bar_num_style == 1, 1.08, if(bar_num_style == 2, 0.45, 0.92))
+        let nf.gm_hi = if(bar_num_style == 1, 1.38, if(bar_num_style == 2, 0.72, 1.26))
+        let nf.gm_glow = if(bar_num_style == 1, 16%, if(bar_num_style == 2, 12%, 26%))
+        let nf.gm_op = if(bar_num_style == 1, 74%, if(bar_num_style == 2, 82%, 74%))
+        let nf.gm_col_a = if(bar_num_style == 3, mix(primary, #ffffff, 0.14), if(bar_num_style == 2, mix(ink, primary, 0.08), mix(ink, primary, 0.14)))
+        let nf.gm_col_b = if(bar_num_style == 3, mix(secondary, #ffffff, 0.14), if(bar_num_style == 2, mix(faint, secondary, 0.22), mix(ink, secondary, 0.18)))
+        let nf.gm_glow_a = if(bar_num_style == 3, nf.gm_col_a, #ffffff)
+        let nf.gm_glow_b = if(bar_num_style == 3, nf.gm_col_b, #ffffff)
         let nf.clock_x = if(nf_stacked, nf.cx, nf.bar_x0 + nf_pos_clk + nf_w_clk / 2)
         let nf.clock_y = if(nf_stacked, nf.clock_h / 2 - nf_fs * 1.1, nf.bar_cy - nf_fs * 0.62)
         let nf.date_x = if(nf_stacked, nf.cx - nf_date_w / 2, nf.bar_x0 + nf_pos_date)
@@ -454,17 +463,17 @@ part NotchFrame {
         group {
             show: nf_glass_on
             let nf.g_cy = if(nf_stacked, nf.clock_h / 2 - nf_fs * 0.58, nf.bar_cy)
-            BarGlassPair(floor(tick.hour / 10), mod(tick.hour, 10), floor(tick.minute / 10), mod(tick.minute, 10), 0, nf.clock_x - nf_w_clk / 2, nf.g_cy, nf_g_h, nf_g_wt, nf.gm_col_a, nf.gm_gl, nf.gm_rim, nf.gm_fr, nf.gm_op)
+            BarGlassPair(floor(tick.hour / 10), mod(tick.hour, 10), floor(tick.minute / 10), mod(tick.minute, 10), 0, nf.clock_x - nf_w_clk / 2, nf.g_cy, nf_g_h, nf_g_wt, nf.gm_col_a, nf.gm_gl, nf.gm_lens, nf.gm_rim, nf.gm_fr, nf.gm_tint, nf.gm_milk, nf.gm_vivid, nf.gm_mir, nf.gm_hi, nf.gm_glow_a, nf.gm_glow, nf.gm_op)
             group {
                 show: bar_show_secs
-                BarGlassNum2(floor(tick.second / 10), mod(tick.second, 10), nf.clock_x - nf_w_clk / 2 + nf_g_pair_w + 4, nf.g_cy + nf_fs * 0.16, nf_fs * 0.56, nf_g_wt, nf.gm_col_b, nf.gm_gl, nf.gm_rim, nf.gm_fr, nf.gm_op)
+                BarGlassNum2(floor(tick.second / 10), mod(tick.second, 10), nf.clock_x - nf_w_clk / 2 + nf_g_pair_w + 4, nf.g_cy + nf_fs * 0.16, nf_fs * 0.56, nf_g_wt, nf.gm_col_b, nf.gm_gl, nf.gm_lens, nf.gm_rim, nf.gm_fr, nf.gm_tint, nf.gm_milk, nf.gm_vivid, nf.gm_mir, nf.gm_hi, nf.gm_glow_b, nf.gm_glow, nf.gm_op)
             }
         }
         //  Date (Plain text or Vitreus Glass MM-DD), lunar date and weekday (`·周二`).
         text bar_date_txt { at: nf.date_x, nf.date_y; anchor: left center; size: nf_fs; weight: 600; color: aqua; family: "Space Grotesk"; measure: nf_date_m; show: bar_has_date and not nf_glass_on }
         group {
             show: bar_has_date and nf_glass_on
-            BarGlassPair(bar_mon_d0, bar_mon_d1, bar_day_d0, bar_day_d1, 1, nf.date_x, nf.date_y, nf_g_h, nf_g_wt, nf.gm_col_b, nf.gm_gl, nf.gm_rim, nf.gm_fr, nf.gm_op)
+            BarGlassPair(bar_mon_d0, bar_mon_d1, bar_day_d0, bar_day_d1, 1, nf.date_x, nf.date_y, nf_g_h, nf_g_wt, nf.gm_col_b, nf.gm_gl, nf.gm_lens, nf.gm_rim, nf.gm_fr, nf.gm_tint, nf.gm_milk, nf.gm_vivid, nf.gm_mir, nf.gm_hi, nf.gm_glow_b, nf.gm_glow, nf.gm_op)
         }
         text "·" { at: nf.date_x + nf_d_w + 5, nf.date_y; anchor: left center; size: nf_sub_fs; color: azure; opacity: 80%; family: "Noto Sans CJK SC"; show: nf_sep1 }
         text bar_lunar_txt { at: nf.date_x + nf_d_w + if(nf_sep1, 10 + nf_dot_w, 0), nf.date_y; anchor: left center; size: nf_sub_fs; weight: 600; color: aqua; family: "Noto Sans CJK SC"; measure: nf_lunar_m; show: bar_has_lunar }
