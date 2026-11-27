@@ -32,6 +32,10 @@ part Notifications {
     //  stay at the right until dismissed.  The settings switch gates it.
     prop nt_fly = 0
     spin nt_fly by if(nt_drift and nt_has and nt_fly < 1, 1 / max(nt_secs, 1), 0)
+    //  Gated clock for the fallback pencil bell so the scene can rest at 0 fps
+    //  when no notification is visible (bare global `time` keeps a scene awake).
+    prop nt_clk = 0
+    spin nt_clk by if((nt_has or nt_p > 0.01 or nt_np > 0.01) and not nt_icon_on and not motion.reduced, 1, 0)
     //  The timer writes once every 50 ms; the spring moves the rail between
     //  those samples, so the countdown reads as one continuous drain.
     prop nt_fill = 1 ~quick
@@ -115,11 +119,11 @@ part Notifications {
             scale: 1.16
             let bq = clamp(nt_sw, 0, 1)
             let bsw = (1 - bq) * sin(bq * 2000)
-            let bfr = floor(time * 8)
+            let bfr = floor(nt_clk * 8)
             repeat r in 0..6 {
-                let bang = r * 60 + time * 30
+                let bang = r * 60 + nt_clk * 30
                 let br0 = 20
-                let br1 = br0 + 2 + 1.5 * (1 - bq) + sin(time * 200 + r * 90)
+                let br1 = br0 + 2 + 1.5 * (1 - bq) + sin(nt_clk * 200 + r * 90)
                 line { from: 42 + br0 * cos(bang), 92 + br0 * sin(bang); to: 42 + br1 * cos(bang), 92 + br1 * sin(bang); width: 1.4; color: if(nt_urgent, alert, aqua); opacity: (30% + 50% * (1 - bq)) }
             }
             group {

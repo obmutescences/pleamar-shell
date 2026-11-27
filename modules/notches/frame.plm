@@ -88,10 +88,6 @@ part NotchFrame {
     follow nf_rx_s = bar_rx_act
     prop nf_tx_s = 0 ~quick
     follow nf_tx_s = bar_tx_act
-    prop nf_mon_pulse = 0 ~sp_pop
-    on change bar_mon_tick while (bar_show_cpu or bar_show_mem or bar_show_net) and not motion.reduced {
-        impulse nf_mon_pulse 110
-    }
 
     surface notch_frame {
         size: full, full
@@ -115,7 +111,9 @@ part NotchFrame {
         let nf.bar_cy = nf.clock_h / 2
         let nf.ic_s = clamp((nf.clock_h - 6) / max(22, nf_ring_r * 2 + nf_ring_w + 2), 0.75, 1.1)
         let nf.gm_gl = if(bar_num_style == 1, 0.82, if(bar_num_style == 2, 0.70, 0.65))
-        let nf.gm_lens = glass_on and glass_bend and bar_num_style != 2
+        //  Small 12..26px top-bar digits sit on the smoked notch; disable curved
+        //  lens refraction on their 3 separate bodies while keeping glass/rim/glow.
+        let nf.gm_lens = false
         let nf.gm_rim = if(bar_num_style == 1, 0.66, if(bar_num_style == 2, 0.34, 0.56))
         let nf.gm_fr = if(bar_num_style == 1, 0.12, if(bar_num_style == 2, 0.90, 0.16))
         let nf.gm_tint = if(bar_num_style == 1, 0.44, if(bar_num_style == 2, 0.58, 0.64))
@@ -179,8 +177,13 @@ part NotchFrame {
         let nf.sm = music_frame_sens
         let nf.hm = music_frame_hgt
         let nf.bon = if(nf.music, 1, 0)
-        //  Unified column count (6, 12, 24 or 48) drives one shared glass body.
+        //  Unified column count (6, 12, 24 or 48) drives one shared glass body;
+        //  vertical edges cap at 24 for aspect-matched spacing on 16:9 screens.
         let nf.nuse = clamp(music_frame_cols, 6, 48)
+        let nf.nuse_v = min(nf.nuse, 24)
+        let nf.drawer_waves_on = nf.music and (panel_open or nf.cp_p > 0.01 or center_open or nf.ct_p > 0.01)
+        let nf.shine_x = if(glass_shine, floor(pointer.x / 24) * 24, 0)
+        let nf.shine_y = if(glass_shine, floor(pointer.y / 24) * 24, 0)
         let nf.bw = 17 * mix(0.8, 1.9, music_frame_blend / 100)
         let nf.bbl = mix(10, 32, music_frame_blend / 100)
         let nf.cp_shift = if(panel_open or nf.cp_p > 0.01, 0, 30000)
@@ -208,40 +211,40 @@ part NotchFrame {
 
         let nf.db.0 = abs(2 * (0.5 / 12) - 1) * 23
         let nf.dl.0 = clamp(floor(nf.db.0), 0, 22)
-        let nf.dh.0 = if(nf.bon > 0.5, min(1, pow(mix(pick(nf.dl.0, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.0 - nf.dl.0), 1.4) * nf.sm) * clamp(min(0.5, 11.5) / 0.6, 0, 1) * nf.hm, 0)
+        let nf.dh.0 = if(nf.drawer_waves_on, min(1, pow(mix(pick(nf.dl.0, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.0 - nf.dl.0), 1.4) * nf.sm) * clamp(min(0.5, 11.5) / 0.6, 0, 1) * nf.hm, 0)
         let nf.db.1 = abs(2 * (1.5 / 12) - 1) * 23
         let nf.dl.1 = clamp(floor(nf.db.1), 0, 22)
-        let nf.dh.1 = if(nf.bon > 0.5, min(1, pow(mix(pick(nf.dl.1, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.1, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.1 - nf.dl.1), 1.4) * nf.sm) * clamp(min(1.5, 10.5) / 0.6, 0, 1) * nf.hm, 0)
+        let nf.dh.1 = if(nf.drawer_waves_on, min(1, pow(mix(pick(nf.dl.1, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.1, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.1 - nf.dl.1), 1.4) * nf.sm) * clamp(min(1.5, 10.5) / 0.6, 0, 1) * nf.hm, 0)
         let nf.db.2 = abs(2 * (2.5 / 12) - 1) * 23
         let nf.dl.2 = clamp(floor(nf.db.2), 0, 22)
-        let nf.dh.2 = if(nf.bon > 0.5, min(1, pow(mix(pick(nf.dl.2, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.2, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.2 - nf.dl.2), 1.4) * nf.sm) * clamp(min(2.5, 9.5) / 0.6, 0, 1) * nf.hm, 0)
+        let nf.dh.2 = if(nf.drawer_waves_on, min(1, pow(mix(pick(nf.dl.2, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.2, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.2 - nf.dl.2), 1.4) * nf.sm) * clamp(min(2.5, 9.5) / 0.6, 0, 1) * nf.hm, 0)
         let nf.db.3 = abs(2 * (3.5 / 12) - 1) * 23
         let nf.dl.3 = clamp(floor(nf.db.3), 0, 22)
-        let nf.dh.3 = if(nf.bon > 0.5, min(1, pow(mix(pick(nf.dl.3, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.3, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.3 - nf.dl.3), 1.4) * nf.sm) * clamp(min(3.5, 8.5) / 0.6, 0, 1) * nf.hm, 0)
+        let nf.dh.3 = if(nf.drawer_waves_on, min(1, pow(mix(pick(nf.dl.3, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.3, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.3 - nf.dl.3), 1.4) * nf.sm) * clamp(min(3.5, 8.5) / 0.6, 0, 1) * nf.hm, 0)
         let nf.db.4 = abs(2 * (4.5 / 12) - 1) * 23
         let nf.dl.4 = clamp(floor(nf.db.4), 0, 22)
-        let nf.dh.4 = if(nf.bon > 0.5, min(1, pow(mix(pick(nf.dl.4, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.4, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.4 - nf.dl.4), 1.4) * nf.sm) * clamp(min(4.5, 7.5) / 0.6, 0, 1) * nf.hm, 0)
+        let nf.dh.4 = if(nf.drawer_waves_on, min(1, pow(mix(pick(nf.dl.4, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.4, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.4 - nf.dl.4), 1.4) * nf.sm) * clamp(min(4.5, 7.5) / 0.6, 0, 1) * nf.hm, 0)
         let nf.db.5 = abs(2 * (5.5 / 12) - 1) * 23
         let nf.dl.5 = clamp(floor(nf.db.5), 0, 22)
-        let nf.dh.5 = if(nf.bon > 0.5, min(1, pow(mix(pick(nf.dl.5, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.5, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.5 - nf.dl.5), 1.4) * nf.sm) * clamp(min(5.5, 6.5) / 0.6, 0, 1) * nf.hm, 0)
+        let nf.dh.5 = if(nf.drawer_waves_on, min(1, pow(mix(pick(nf.dl.5, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.5, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.5 - nf.dl.5), 1.4) * nf.sm) * clamp(min(5.5, 6.5) / 0.6, 0, 1) * nf.hm, 0)
         let nf.db.6 = abs(2 * (6.5 / 12) - 1) * 23
         let nf.dl.6 = clamp(floor(nf.db.6), 0, 22)
-        let nf.dh.6 = if(nf.bon > 0.5, min(1, pow(mix(pick(nf.dl.6, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.6, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.6 - nf.dl.6), 1.4) * nf.sm) * clamp(min(6.5, 5.5) / 0.6, 0, 1) * nf.hm, 0)
+        let nf.dh.6 = if(nf.drawer_waves_on, min(1, pow(mix(pick(nf.dl.6, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.6, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.6 - nf.dl.6), 1.4) * nf.sm) * clamp(min(6.5, 5.5) / 0.6, 0, 1) * nf.hm, 0)
         let nf.db.7 = abs(2 * (7.5 / 12) - 1) * 23
         let nf.dl.7 = clamp(floor(nf.db.7), 0, 22)
-        let nf.dh.7 = if(nf.bon > 0.5, min(1, pow(mix(pick(nf.dl.7, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.7, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.7 - nf.dl.7), 1.4) * nf.sm) * clamp(min(7.5, 4.5) / 0.6, 0, 1) * nf.hm, 0)
+        let nf.dh.7 = if(nf.drawer_waves_on, min(1, pow(mix(pick(nf.dl.7, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.7, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.7 - nf.dl.7), 1.4) * nf.sm) * clamp(min(7.5, 4.5) / 0.6, 0, 1) * nf.hm, 0)
         let nf.db.8 = abs(2 * (8.5 / 12) - 1) * 23
         let nf.dl.8 = clamp(floor(nf.db.8), 0, 22)
-        let nf.dh.8 = if(nf.bon > 0.5, min(1, pow(mix(pick(nf.dl.8, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.8, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.8 - nf.dl.8), 1.4) * nf.sm) * clamp(min(8.5, 3.5) / 0.6, 0, 1) * nf.hm, 0)
+        let nf.dh.8 = if(nf.drawer_waves_on, min(1, pow(mix(pick(nf.dl.8, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.8, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.8 - nf.dl.8), 1.4) * nf.sm) * clamp(min(8.5, 3.5) / 0.6, 0, 1) * nf.hm, 0)
         let nf.db.9 = abs(2 * (9.5 / 12) - 1) * 23
         let nf.dl.9 = clamp(floor(nf.db.9), 0, 22)
-        let nf.dh.9 = if(nf.bon > 0.5, min(1, pow(mix(pick(nf.dl.9, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.9, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.9 - nf.dl.9), 1.4) * nf.sm) * clamp(min(9.5, 2.5) / 0.6, 0, 1) * nf.hm, 0)
+        let nf.dh.9 = if(nf.drawer_waves_on, min(1, pow(mix(pick(nf.dl.9, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.9, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.9 - nf.dl.9), 1.4) * nf.sm) * clamp(min(9.5, 2.5) / 0.6, 0, 1) * nf.hm, 0)
         let nf.db.10 = abs(2 * (10.5 / 12) - 1) * 23
         let nf.dl.10 = clamp(floor(nf.db.10), 0, 22)
-        let nf.dh.10 = if(nf.bon > 0.5, min(1, pow(mix(pick(nf.dl.10, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.10, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.10 - nf.dl.10), 1.4) * nf.sm) * clamp(min(10.5, 1.5) / 0.6, 0, 1) * nf.hm, 0)
+        let nf.dh.10 = if(nf.drawer_waves_on, min(1, pow(mix(pick(nf.dl.10, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.10, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.10 - nf.dl.10), 1.4) * nf.sm) * clamp(min(10.5, 1.5) / 0.6, 0, 1) * nf.hm, 0)
         let nf.db.11 = abs(2 * (11.5 / 12) - 1) * 23
         let nf.dl.11 = clamp(floor(nf.db.11), 0, 22)
-        let nf.dh.11 = if(nf.bon > 0.5, min(1, pow(mix(pick(nf.dl.11, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.11, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.11 - nf.dl.11), 1.4) * nf.sm) * clamp(min(11.5, 0.5) / 0.6, 0, 1) * nf.hm, 0)
+        let nf.dh.11 = if(nf.drawer_waves_on, min(1, pow(mix(pick(nf.dl.11, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.dl.11, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.db.11 - nf.dl.11), 1.4) * nf.sm) * clamp(min(11.5, 0.5) / 0.6, 0, 1) * nf.hm, 0)
 
         let nf.b.0 = abs(2 * (0.5 / nf.nuse) - 1) * 23
         let nf.l.0 = clamp(floor(nf.b.0), 0, 22)
@@ -389,55 +392,43 @@ part NotchFrame {
         let nf.h.47 = if(47 < nf.nuse and nf.bon > 0.5, min(1, pow(mix(pick(nf.l.47, spec.s.0, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23), pick(nf.l.47, spec.s.1, spec.s.2, spec.s.3, spec.s.4, spec.s.5, spec.s.6, spec.s.7, spec.s.8, spec.s.9, spec.s.10, spec.s.11, spec.s.12, spec.s.13, spec.s.14, spec.s.15, spec.s.16, spec.s.17, spec.s.18, spec.s.19, spec.s.20, spec.s.21, spec.s.22, spec.s.23, spec.s.23), nf.b.47 - nf.l.47), 1.4) * nf.sm) * clamp(min(47.5, nf.nuse - 47.5) / (0.05 * nf.nuse), 0, 1) * nf.hm, 0)
 
         //  One unified glass body for the frame, clock notch, open drawers,
-        //  and all column counts (6 / 12 / 24 / 48).
+        //  and all column counts (6 / 12 / 24 / 48).  Sleeping variants ensure
+        //  only the needed shapes and frost mode are awake each frame.
+        let nf.vh.0  = if(nf.nuse > 24, (nf.h.0  + nf.h.1 ) * 0.5, nf.h.0 )
+        let nf.vh.1  = if(nf.nuse > 24, (nf.h.2  + nf.h.3 ) * 0.5, nf.h.1 )
+        let nf.vh.2  = if(nf.nuse > 24, (nf.h.4  + nf.h.5 ) * 0.5, nf.h.2 )
+        let nf.vh.3  = if(nf.nuse > 24, (nf.h.6  + nf.h.7 ) * 0.5, nf.h.3 )
+        let nf.vh.4  = if(nf.nuse > 24, (nf.h.8  + nf.h.9 ) * 0.5, nf.h.4 )
+        let nf.vh.5  = if(nf.nuse > 24, (nf.h.10 + nf.h.11) * 0.5, nf.h.5 )
+        let nf.vh.6  = if(nf.nuse > 24, (nf.h.12 + nf.h.13) * 0.5, nf.h.6 )
+        let nf.vh.7  = if(nf.nuse > 24, (nf.h.14 + nf.h.15) * 0.5, nf.h.7 )
+        let nf.vh.8  = if(nf.nuse > 24, (nf.h.16 + nf.h.17) * 0.5, nf.h.8 )
+        let nf.vh.9  = if(nf.nuse > 24, (nf.h.18 + nf.h.19) * 0.5, nf.h.9 )
+        let nf.vh.10 = if(nf.nuse > 24, (nf.h.20 + nf.h.21) * 0.5, nf.h.10)
+        let nf.vh.11 = if(nf.nuse > 24, (nf.h.22 + nf.h.23) * 0.5, nf.h.11)
+        let nf.vh.12 = if(nf.nuse > 24, (nf.h.24 + nf.h.25) * 0.5, nf.h.12)
+        let nf.vh.13 = if(nf.nuse > 24, (nf.h.26 + nf.h.27) * 0.5, nf.h.13)
+        let nf.vh.14 = if(nf.nuse > 24, (nf.h.28 + nf.h.29) * 0.5, nf.h.14)
+        let nf.vh.15 = if(nf.nuse > 24, (nf.h.30 + nf.h.31) * 0.5, nf.h.15)
+        let nf.vh.16 = if(nf.nuse > 24, (nf.h.32 + nf.h.33) * 0.5, nf.h.16)
+        let nf.vh.17 = if(nf.nuse > 24, (nf.h.34 + nf.h.35) * 0.5, nf.h.17)
+        let nf.vh.18 = if(nf.nuse > 24, (nf.h.36 + nf.h.37) * 0.5, nf.h.18)
+        let nf.vh.19 = if(nf.nuse > 24, (nf.h.38 + nf.h.39) * 0.5, nf.h.19)
+        let nf.vh.20 = if(nf.nuse > 24, (nf.h.40 + nf.h.41) * 0.5, nf.h.20)
+        let nf.vh.21 = if(nf.nuse > 24, (nf.h.42 + nf.h.43) * 0.5, nf.h.21)
+        let nf.vh.22 = if(nf.nuse > 24, (nf.h.44 + nf.h.45) * 0.5, nf.h.22)
+        let nf.vh.23 = if(nf.nuse > 24, (nf.h.46 + nf.h.47) * 0.5, nf.h.23)
+
         group {
-            shader: frame_wave, if(nf.wave_on, nf.wave_k, 0), nf.wave_bass, nf.wave_speed, nf.wave_panel_on, nf.wave_pw, nf.wave_ph, nf.wave_cy, nf.clock_h
-            body {
-                show: not glass_frost_auto
-                color: nf.frame_color
-                glass: if(glass_on, 1% * glass_mix, 0%)
-                opacity: 1% * glass_tint
-                tint: glass_color_tint / 100
-                lens: glass_on and glass_bend
-                shine: if(glass_shine, pointer.x, 0), if(glass_shine, pointer.y, 0)
-                frost: glass_frost / 100
-                refraction: glass_refr
-                dispersion: glass_disp
-                dome: glass_dome
-                milk: glass_milk
-                smoke: glass_smoke
-                vivid: glass_vivid
-                mirror: glass_mirror
-                highlight: glass_highlight
-                ripple: glass_ripple
-                border: 1.5 * glass_border / 100, ink
-                rim: 1% * glass_edge
-                shadow: 0, 2, 12, 1% * glass_shadow_amt, glass_shadow
-                include "frame_shapes.plm"
-            }
-            body {
-                show: glass_frost_auto
-                color: nf.frame_color
-                glass: if(glass_on, 1% * glass_mix, 0%)
-                opacity: 1% * glass_tint
-                tint: glass_color_tint / 100
-                lens: glass_on and glass_bend
-                shine: if(glass_shine, pointer.x, 0), if(glass_shine, pointer.y, 0)
-                frost: auto
-                refraction: glass_refr
-                dispersion: glass_disp
-                dome: glass_dome
-                milk: glass_milk
-                smoke: glass_smoke
-                vivid: glass_vivid
-                mirror: glass_mirror
-                highlight: glass_highlight
-                ripple: glass_ripple
-                border: 1.5 * glass_border / 100, ink
-                rim: 1% * glass_edge
-                shadow: 0, 2, 12, 1% * glass_shadow_amt, glass_shadow
-                include "frame_shapes.plm"
-            }
+            //  Matches frame_wave.wgsl (s.a: bass, panel, cx, cy; s.b: pw, ph, strength, speed).
+            //  `while nf.wave_on` avoids an idle 2K offscreen pass and lets the scene sleep.
+            shader: frame_wave, nf.wave_bass, nf.wave_panel_on, nf.cx, nf.wave_cy, nf.wave_pw, nf.wave_ph, nf.wave_k, nf.wave_speed while nf.wave_on
+            include "frame_body_quiet.plm" while not nf.music and not glass_frost_auto
+            include "frame_body_quiet_auto.plm" while not nf.music and glass_frost_auto
+            include "frame_body_music.plm" while nf.music and not nf.drawer_waves_on and not glass_frost_auto
+            include "frame_body_music_auto.plm" while nf.music and not nf.drawer_waves_on and glass_frost_auto
+            include "frame_body_music_drawer.plm" while nf.music and nf.drawer_waves_on and not glass_frost_auto
+            include "frame_body_music_drawer_auto.plm" while nf.music and nf.drawer_waves_on and glass_frost_auto
         }
 
         //  Reference glyph measurements for stable inline/stacked width.
@@ -478,11 +469,11 @@ part NotchFrame {
         text "·" { at: nf.date_x + nf_d_w + 5, nf.date_y; anchor: left center; size: nf_sub_fs; color: azure; opacity: 80%; family: "Noto Sans CJK SC"; show: nf_sep1 }
         text bar_lunar_txt { at: nf.date_x + nf_d_w + if(nf_sep1, 10 + nf_dot_w, 0), nf.date_y; anchor: left center; size: nf_sub_fs; weight: 600; color: aqua; family: "Noto Sans CJK SC"; measure: nf_lunar_m; show: bar_has_lunar }
         text bar_weekday_txt { at: nf.date_x + nf_before_week_w + if(nf_sep2, 6, 0), nf.date_y; anchor: left center; size: nf_sub_fs; weight: 500; color: azure; family: "Noto Sans CJK SC"; measure: nf_week_m; show: bar_has_weekday }
-        on change tick.second while bar_show_secs and not motion.reduced {
+        on change tick.second while bar_show_secs and not nf_glass_on and not motion.reduced {
             nf_sec_ones: 0 ~10ms
             nf_sec_ones: 1 ~190ms after 10ms
         }
-        on change floor(tick.second / 10) while bar_show_secs and not motion.reduced {
+        on change floor(tick.second / 10) while bar_show_secs and not nf_glass_on and not motion.reduced {
             nf_sec_tens: 0 ~10ms
             nf_sec_tens: 1 ~190ms after 10ms
         }

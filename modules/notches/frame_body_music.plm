@@ -1,0 +1,25 @@
+part NotchFrameBodyMusic {
+    body {
+        color: nf.frame_color
+        glass: if(glass_on, 1% * glass_mix, 0%)
+        opacity: 1% * glass_tint
+        tint: glass_color_tint / 100
+        lens: glass_on and glass_bend
+        shine: nf.shine_x, nf.shine_y
+        frost: glass_frost / 100
+        refraction: glass_refr
+        dispersion: glass_disp
+        dome: glass_dome
+        milk: glass_milk
+        smoke: glass_smoke
+        vivid: glass_vivid
+        mirror: glass_mirror
+        highlight: glass_highlight
+        ripple: glass_ripple
+        border: 1.5 * glass_border / 100, ink
+        rim: 1% * glass_edge
+        shadow: 0, 2, 12, 1% * glass_shadow_amt, glass_shadow
+        include "frame_shapes_base.plm"
+        include "frame_shapes_music.plm"
+    }
+}

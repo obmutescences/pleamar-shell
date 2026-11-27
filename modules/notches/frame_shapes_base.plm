@@ -1,0 +1,31 @@
+part NotchFrameShapesBase {
+    //  Ring
+    box { from: 0 - nf.over / 2, 0 - nf.over / 2; size: nf.w + nf.over, nf.h + nf.over; corner: nf.inner_r + (nf.rail + nf.over) / 2; stroke: nf.rail + nf.over }
+    //  Clock notch
+    box { from: nf.cx - nf.clock_w / 2, 0; size: nf.clock_w, nf.clock_h; corner: 20; blend: 34 }
+    box { from: nf.cx - nf.clock_w / 2 + 14, nf.clock_h - 2; size: nf.clock_w - 28, 1; corner: 0.5 }
+    //  Settings drawer
+    box { from: nf.cx - nf.cp_ew / 2 + nf.cp_shift + nf.cp_wob * 0.5, 0; size: nf.cp_ew, max(0.3, nf.cp_eh); corner: mix(20, 26, nf.cp_p); blend: mix(34, 36, nf.cp_p) * nf.cp_p; show: panel_open or nf.cp_p > 0.01 }
+    ellipse { at: nf.cx - nf.cp_ew / 2 + 20 + nf.cp_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.cp_bell); blend: 16 * nf.cp_bell; show: (panel_open or nf.cp_p > 0.01) and nf.cp_bell > 0.02 }
+    ellipse { at: nf.cx + nf.cp_ew / 2 - 20 + nf.cp_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.cp_bell); blend: 16 * nf.cp_bell; show: (panel_open or nf.cp_p > 0.01) and nf.cp_bell > 0.02 }
+    //  Centre drawer
+    box { from: nf.cx - nf.ct_ew / 2 + nf.ct_shift + nf.ct_wob * 0.5, 0; size: nf.ct_ew, max(0.3, nf.ct_eh); corner: mix(20, 30, nf.ct_p); blend: mix(34, 36, nf.ct_p) * nf.ct_p; show: center_open or nf.ct_p > 0.01 }
+    ellipse { at: nf.cx - nf.ct_ew / 2 + 20 + nf.ct_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.ct_bell); blend: 16 * nf.ct_bell; show: (center_open or nf.ct_p > 0.01) and nf.ct_bell > 0.02 }
+    ellipse { at: nf.cx + nf.ct_ew / 2 - 20 + nf.ct_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.ct_bell); blend: 16 * nf.ct_bell; show: (center_open or nf.ct_p > 0.01) and nf.ct_bell > 0.02 }
+    //  Search drawer
+    box { from: nf.cx - nf.la_ew / 2 + nf.la_shift + nf.la_wob * 0.5, 0; size: nf.la_ew, max(0.3, nf.la_eh); corner: mix(20, 24, nf.launch_p); blend: mix(34, 36, nf.launch_p) * nf.launch_p; show: launch_open or nf.launch_p > 0.01 }
+    ellipse { at: nf.cx - nf.la_ew / 2 + 20 + nf.la_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.la_bell); blend: 16 * nf.la_bell; show: (launch_open or nf.launch_p > 0.01) and nf.la_bell > 0.02 }
+    ellipse { at: nf.cx + nf.la_ew / 2 - 20 + nf.la_shift, nf.clock_h; radius: 18; scale: 1, max(0.15, nf.la_bell); blend: 16 * nf.la_bell; show: (launch_open or nf.launch_p > 0.01) and nf.la_bell > 0.02 }
+    //  Notification centre drawer
+    box { from: nf.cx - mix(nf.clock_w, 480, nf.ntc_p) / 2 + if(nt_center or nf.ntc_p > 0.01, 0, 30000), 0; size: mix(nf.clock_w, 480, nf.ntc_p), max(0.3, nf.notify_h * nf.ntc_p); corner: mix(20, 26, nf.ntc_p); blend: mix(34, 36, nf.ntc_p) * nf.ntc_p; show: nt_center or nf.ntc_p > 0.01 }
+    //  Docked notification toast (top center)
+    box { from: nf.cx - nf.nt_cw / 2 + nf.nt_c_shift + nf.nt_wob * 0.4, 0; size: nf.nt_cw, max(0.3, nf.nt_ch); corner: mix(20, 22, nf.nt_p); blend: mix(28, 34, nf.nt_p) * nf.nt_p; show: nf.nt_c_on }
+    ellipse { at: nf.cx - nf.nt_cw / 2 + 18 + nf.nt_c_shift, nf.clock_h; radius: 15; scale: 1, max(0.15, nf.nt_bell); blend: 14 * nf.nt_bell; show: nf.nt_c_on and nf.nt_bell > 0.02 }
+    ellipse { at: nf.cx + nf.nt_cw / 2 - 18 + nf.nt_c_shift, nf.clock_h; radius: 15; scale: 1, max(0.15, nf.nt_bell); blend: 14 * nf.nt_bell; show: nf.nt_c_on and nf.nt_bell > 0.02 }
+    //  Docked notification toast (top right — fuses into top & right rails)
+    box { from: nf.w - nf.nt_rw + nf.nt_r_shift, 0; size: nf.nt_rw, max(0.3, nf.nt_rh); corner: mix(14, 22, nf.nt_p); blend: mix(24, 32, nf.nt_p) * nf.nt_p; show: nf.nt_r_on }
+    ellipse { at: nf.w - nf.nt_rw + 18 + nf.nt_r_shift, nf.rail + 4; radius: 14; scale: 1, max(0.15, nf.nt_bell); blend: 14 * nf.nt_bell; show: nf.nt_r_on and nf.nt_bell > 0.02 }
+    ellipse { at: nf.w - nf.rail - 4 + nf.nt_r_shift, nf.nt_rh - 14; radius: 14; scale: max(0.15, nf.nt_bell), 1; blend: 14 * nf.nt_bell; show: nf.nt_r_on and nf.nt_bell > 0.02 }
+    //  Pointer magnetic bulge on the clock notch (off-screen when idle so SDF stays clean).
+    box { at: nf_bulge_x + nf.bulge_shift, nf.clock_h / 2; size: 64 * nf_bulge_p, nf.clock_h * nf_bulge_p; corner: 20; blend: 12 * nf_bulge_p; show: nf_bulge_p > 0.01 }
+}

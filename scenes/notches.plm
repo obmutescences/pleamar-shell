@@ -16,4 +16,11 @@ scene Pleamar {
     include "../modules/common/common.plm"
     include "../modules/notifications/notifications.plm"
     include "../modules/notches/frame.plm"
+
+    //  Pace full-screen lens captures: 60ms while a drawer/popup is open,
+    //  250ms during music-only border animation (-80% wlr-screencopy load on
+    //  both pleamar and the compositor), and ~500ms while quiet.  Pause
+    //  captures mid-drawer transition so springs never compete with readbacks.
+    lens every 60ms + 190ms * if(panel_open or center_open or launch_open or nt_center or audio_pick_open, 0, if(music_frame_on and music_on, 1, 2.3))
+    lens hold while (cp_np > 0.01 and cp_np < 0.99) or (ct_np > 0.01 and ct_np < 0.99) or (la_p > 0.01 and la_p < 0.99) or (nt_np > 0.01 and nt_np < 0.99)
 }
